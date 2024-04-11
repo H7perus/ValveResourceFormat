@@ -451,6 +451,10 @@ namespace GUI.Types.Renderer
                 GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
                     0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
                     0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
+
+                GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
+                    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
+                    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
             }
 
             using (new GLDebugGroup("Main Scene Translucent Render"))

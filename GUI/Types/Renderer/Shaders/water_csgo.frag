@@ -83,6 +83,10 @@ void main()
     //outputColor.rgb = texture(g_tSceneDepth, uv).rgb; //this works fine, although I can't make sense of what the texture is supposed to be. EDIT: after a pull it seems to not do anything anymore
     //outputColor.rgb = texture(g_tSsrColor, uv).rgb; //this does not work fine.
     outputColor.rgb = readMSFramebufferZeroth(g_tSsrColor, uv + sin(g_flTime) * 0.05).rgb ;
+
+    // To visualise depth
+    //outputColor.rgb = RemapVal(readMSFramebufferZeroth(g_tSsrDepth, uv).r, 0.0, 0.08, 1, 0).xxx;
+
     return;
 
 
