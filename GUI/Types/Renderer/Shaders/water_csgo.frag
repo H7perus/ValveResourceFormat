@@ -43,8 +43,8 @@ out vec4 outputColor;
 uniform sampler2DMS depth_map;
 uniform sampler2DMS color_map;
 
-uniform sampler2D g_tSsrColor;
-uniform sampler2D g_tSsrDepth;
+uniform sampler2DMS g_tSsrColor;
+uniform sampler2DMS g_tSsrDepth;
 
 
 uniform vec2 resolution;
@@ -57,7 +57,7 @@ uniform vec4 g_vWaterDecayColor;
 //uses "globally" supplied resolution, not flexible
 vec4 readMSFramebufferZeroth(sampler2DMS tex, vec2 uv)
 {
-    ivec2 tex_coord = ivec2(uv * resolution);
+    ivec2 tex_coord = ivec2(uv * textureSize(tex));
     return texelFetch(tex, tex_coord, 0);
 }
 //vec4 readMSFramebufferAvgBi(sampler2DMS tex, vec2 uv) //later
@@ -81,8 +81,8 @@ void main()
     outputColor.w = 1.0;
 
     //outputColor.rgb = texture(g_tSceneDepth, uv).rgb; //this works fine, although I can't make sense of what the texture is supposed to be. EDIT: after a pull it seems to not do anything anymore
-    outputColor.rgb = texture(g_tSsrColor, uv).rgb; //this does not work fine.
-    //outputColor.rgb = readMSFramebufferZeroth(color_map, uv).rgb * 0.5;
+    //outputColor.rgb = texture(g_tSsrColor, uv).rgb; //this does not work fine.
+    outputColor.rgb = readMSFramebufferZeroth(g_tSsrColor, uv + sin(g_flTime) * 0.05).rgb ;
     return;
 
 

@@ -257,7 +257,7 @@ namespace GUI.Types.Renderer
 
             if (this is GLWorldViewer)
             {
-                SsrFramebuffer = Framebuffer.Prepare(2048, 2048, 0, MainFramebuffer.ColorFormat, MainFramebuffer.DepthFormat);
+                SsrFramebuffer = Framebuffer.Prepare(2048, 2048, 1, MainFramebuffer.ColorFormat, MainFramebuffer.DepthFormat);
                 SsrFramebuffer.Initialize();
                 //SsrFramebuffer.ClearColor = new(0, 255, 0, 255);
 
@@ -450,7 +450,7 @@ namespace GUI.Types.Renderer
                 // copy current color to ssr framebuffer
                 GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
                     0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-                    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Width, ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+                    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
             }
 
             using (new GLDebugGroup("Main Scene Translucent Render"))
