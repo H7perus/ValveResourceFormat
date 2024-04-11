@@ -40,10 +40,12 @@ out vec4 outputColor;
 //uniform sampler2D g_tColor; // SrgbRead(true)
 //uniform sampler2D g_tDebris;
 //uniform sampler2D g_tDebrisNormal;
-uniform sampler2D g_tSceneDepth;
 uniform sampler2DMS depth_map;
 uniform sampler2DMS color_map;
-uniform sampler2D color_map_reduced;
+
+uniform sampler2D g_tSsrColor;
+uniform sampler2D g_tSsrDepth;
+
 
 uniform vec2 resolution;
 
@@ -79,7 +81,7 @@ void main()
     outputColor.w = 1.0;
 
     //outputColor.rgb = texture(g_tSceneDepth, uv).rgb; //this works fine, although I can't make sense of what the texture is supposed to be. EDIT: after a pull it seems to not do anything anymore
-    outputColor.rgb = texture(color_map_reduced, uv).rgb; //this does not work fine.
+    outputColor.rgb = texture(g_tSsrColor, uv).rgb; //this does not work fine.
     //outputColor.rgb = readMSFramebufferZeroth(color_map, uv).rgb * 0.5;
     return;
 
