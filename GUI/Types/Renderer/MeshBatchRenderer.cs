@@ -3,6 +3,9 @@ using System.Runtime.CompilerServices;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 
+
+
+
 namespace GUI.Types.Renderer
 {
     static class MeshBatchRenderer
@@ -122,6 +125,16 @@ namespace GUI.Types.Renderer
                 LightProbeType = context.Scene.LightingInfo.LightProbeType,
             };
 
+
+            //TEMPORARY FRAMEBUFFER CREATION
+            Framebuffer tempFramebuffer;
+            tempFramebuffer = Framebuffer.Prepare(context.Framebuffer.Width, context.Framebuffer.Height, 0, context.Framebuffer.ColorFormat, context.Framebuffer.DepthFormat);
+            tempFramebuffer.Initialize();
+            tempFramebuffer.ClearMask = ClearBufferMask.ColorBufferBit;
+            tempFramebuffer.ClearColor = new OpenTK.Graphics.Color4(255, 0, 255, 255);
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, context.Framebuffer.FboHandle);
+
+
             foreach (var request in requests)
             {
                 if (vao != request.Call.VertexArrayObject)
@@ -195,6 +208,37 @@ namespace GUI.Types.Renderer
                     material.Render(shader);
                 }
 
+                if (shader.FileName == "water_csgo")
+                {
+                    var (w, h) = (context.Framebuffer.Width, context.Framebuffer.Height);
+                    GL.BlitNamedFramebuffer(context.Framebuffer.FboHandle, tempFramebuffer.FboHandle, 0, 0, w, h, 0, 0, w, h, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+                    GL.BindFramebuffer(FramebufferTarget.FramebufferExt, tempFramebuffer.FboHandle);
+
+                    //tempFramebuffer.Clear(); //this is here because its easier to tell if something is screwed with read operations
+                    tempFramebuffer.Clear();
+
+
+                    //Verify that the buffer contains proper data with the following code:
+
+                    //GL.BindTexture(TextureTarget.Texture2D, tempFramebuffer.Color.Handle);
+                    //int[] pixelData = new int[tempFramebuffer.Width * tempFramebuffer.Height];
+                    //GL.GetTexImage(TextureTarget.Texture2D, 0, PixelFormat.Rgb, PixelType.UnsignedByte, pixelData);
+                    //int red = System.Drawing.Color.FromArgb(pixelData[0]).R;
+                    //int green = System.Drawing.Color.FromArgb(pixelData[0]).G;
+                    //int blue = System.Drawing.Color.FromArgb(pixelData[0]).B;
+
+                    //ErrorCode testerror = GL.GetError();
+
+                    
+                    GL.BindFramebuffer(FramebufferTarget.Framebuffer, context.Framebuffer.FboHandle);
+
+                    shader.SetTexture(0, "depth_map", context.Framebuffer.Depth);
+                    shader.SetTexture(1, "color_map", context.Framebuffer.Color);       //Note: I will probably not retain the MS framebuffer, very little point to doing this, probably invisible difference
+                    shader.SetTexture(2, "color_map_reduced", tempFramebuffer.Color);
+
+                    shader.SetUniform2("resolution", new Vector2(context.Framebuffer.Width, context.Framebuffer.Height));
+                }
+
                 Draw(shader, ref uniforms, ref config, request);
             }
 
@@ -204,6 +248,8 @@ namespace GUI.Types.Renderer
                 GL.BindVertexArray(0);
                 GL.UseProgram(0);
             }
+            //TEMPORARY FRAMEBUFFER DESTRUCTION
+            tempFramebuffer.Dispose();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
