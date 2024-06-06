@@ -121,7 +121,7 @@ namespace ValveResourceFormat.IO
         /// Extract content file from a compiled resource.
         /// </summary>
         /// <param name="resource">The resource to be extracted or decompiled.</param>
-        public static ContentFile Extract(Resource resource, IFileLoader fileLoader)
+        public static ContentFile Extract(Resource resource, IFileLoader fileLoader, IProgress<string> progress = null)
         {
             var contentFile = new ContentFile();
 
@@ -129,7 +129,7 @@ namespace ValveResourceFormat.IO
             {
                 case ResourceType.Map:
                 case ResourceType.World:
-                    contentFile = new MapExtract(resource, fileLoader).ToContentFile();
+                    contentFile = new MapExtract(resource, fileLoader) { ProgressReporter = progress }.ToContentFile();
                     break;
 
                 case ResourceType.Model:
@@ -142,7 +142,7 @@ namespace ValveResourceFormat.IO
                 case ResourceType.PanoramaVectorGraphic:
                     if (resource.DataBlock == null)
                     {
-                        contentFile.Data = Array.Empty<byte>();
+                        contentFile.Data = [];
                         break;
                     }
 
@@ -235,7 +235,7 @@ namespace ValveResourceFormat.IO
         /// Extract content file from a non-resource stream.
         /// </summary>
         /// <param name="stream">Stream to be extracted or decompiled.</param>
-        public static ContentFile ExtractNonResource(Stream stream)
+        public static ContentFile ExtractNonResource(Stream stream, string fileName)
         {
             Span<byte> buffer = stackalloc byte[4];
             var read = stream.Read(buffer);
@@ -250,13 +250,14 @@ namespace ValveResourceFormat.IO
             return magic switch
             {
                 FlexSceneFile.FlexSceneFile.MAGIC => new FlexSceneExtract(stream).ToContentFile(),
+                ClosedCaptions.ClosedCaptions.MAGIC => new ClosedCaptionsExtract(stream, fileName).ToContentFile(),
                 _ => null,
             };
         }
 
-        public static bool TryExtractNonResource(Stream stream, out ContentFile contentFile)
+        public static bool TryExtractNonResource(Stream stream, string fileName, out ContentFile contentFile)
         {
-            contentFile = ExtractNonResource(stream);
+            contentFile = ExtractNonResource(stream, fileName);
             return contentFile != null;
         }
 

@@ -1,7 +1,6 @@
+using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization;
-using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Types.Renderer
 {
@@ -44,7 +43,7 @@ namespace GUI.Types.Renderer
         private readonly bool hasDepthBias;
         private int textureUnit;
 
-        public RenderMaterial(Material material, ShaderLoader shaderLoader, Dictionary<string, byte> shaderArguments)
+        public RenderMaterial(Material material, VrfGuiContext guiContext, Dictionary<string, byte> shaderArguments)
             : this(material)
         {
             var materialArguments = material.GetShaderArguments();
@@ -58,13 +57,45 @@ namespace GUI.Types.Renderer
                 }
             }
 
-            Shader = shaderLoader.LoadShader(material.ShaderName, combinedShaderParameters);
+            if (material.ShaderName == "sky.vfx")
+            {
+                var shader = guiContext.FileLoader.LoadShader(material.ShaderName);
+
+                if (shader.Features != null)
+                {
+                    foreach (var block in shader.Features.SfBlocks)
+                    {
+                        if (block.Name.StartsWith("F_TEXTURE_FORMAT", StringComparison.Ordinal))
+                        {
+                            for (byte i = 0; i < block.CheckboxNames.Count; i++)
+                            {
+                                var checkbox = block.CheckboxNames[i];
+
+                                switch (checkbox)
+                                {
+                                    case "YCoCg (dxt compressed)": combinedShaderParameters.Add("VRF_TEXTURE_FORMAT_YCOCG", i); break;
+                                    case "RGBM (dxt compressed)": combinedShaderParameters.Add("VRF_TEXTURE_FORMAT_RGBM_DXT", i); break;
+                                    case "RGBM (8-bit uncompressed)": combinedShaderParameters.Add("VRF_TEXTURE_FORMAT_RGBM", i); break;
+                                }
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            Shader = guiContext.ShaderLoader.LoadShader(material.ShaderName, combinedShaderParameters);
+            SortId = GetSortId();
         }
 
         public RenderMaterial(Shader shader) : this(new Material { ShaderName = shader.Name })
         {
             Shader = shader;
+            SortId = GetSortId();
         }
+
+        private int GetSortId() => Shader.Program * 10000 + Random.Shared.Next(1, 9999);
 
         RenderMaterial(Material material)
         {
@@ -77,6 +108,7 @@ namespace GUI.Types.Renderer
                 || material.ShaderName == "vr_glass_markable.vfx"
                 || material.ShaderName == "csgo_glass.vfx"
                 || material.ShaderName == "csgo_effects.vfx"
+                || material.ShaderName == "csgo_decalmodulate.vfx"
                 || material.ShaderName == "tools_sprite.vfx";
             IsAlphaTest = material.IntParams.GetValueOrDefault("F_ALPHA_TEST") == 1;
             isAdditiveBlend = material.IntParams.GetValueOrDefault("F_ADDITIVE_BLEND") == 1;
@@ -97,6 +129,10 @@ namespace GUI.Types.Renderer
             {
                 blendMode = (int)material.IntParams.GetValueOrDefault("F_BLEND_MODE");
             }
+            else if (material.ShaderName == "csgo_decalmodulate.vfx")
+            {
+                blendMode = 3; // mod2x
+            }
 
             if (blendMode > 0)
             {
@@ -107,8 +143,6 @@ namespace GUI.Types.Renderer
                 // 5 = multiply
                 // 6 = modthenadd
             }
-
-            SortId = GetHashCode(); // It doesn't really matter what we use, it could be a random value
         }
 
         public void Render(Shader shader = default)
@@ -216,6 +250,27 @@ namespace GUI.Types.Renderer
             {
                 GL.BindTextureUnit(i, 0);
             }
+        }
+
+        public static Vector3 SrgbGammaToLinear(Vector3 vSrgbGammaColor)
+        {
+            var vLinearSegment = vSrgbGammaColor / 12.92f;
+            const float power = 2.4f;
+
+            var vExpSegment = (vSrgbGammaColor / 1.055f) + new Vector3(0.055f / 1.055f);
+            vExpSegment = new Vector3(
+                MathF.Pow(vExpSegment.X, power),
+                MathF.Pow(vExpSegment.Y, power),
+                MathF.Pow(vExpSegment.Z, power)
+            );
+
+            var vLinearColor = new Vector3(
+                (vSrgbGammaColor.X <= 0.04045f) ? vLinearSegment.X : vExpSegment.X,
+                (vSrgbGammaColor.Y <= 0.04045f) ? vLinearSegment.Y : vExpSegment.Y,
+                (vSrgbGammaColor.Z <= 0.04045f) ? vLinearSegment.Z : vExpSegment.Z
+            );
+
+            return vLinearColor;
         }
     }
 }

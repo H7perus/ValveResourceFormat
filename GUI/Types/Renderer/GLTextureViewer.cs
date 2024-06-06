@@ -136,6 +136,7 @@ namespace GUI.Types.Renderer
                 AutoSize = true,
                 Dock = DockStyle.Fill
             };
+            saveButton.Click += OnSaveButtonClick;
             var copyLabel = new Label
             {
                 Text = "or Ctrl-C to copy",
@@ -364,6 +365,8 @@ namespace GUI.Types.Renderer
 
         protected override void Dispose(bool disposing)
         {
+            base.Dispose(disposing);
+
             if (disposing)
             {
                 GLControl.PreviewKeyDown -= OnPreviewKeyDown;
@@ -388,8 +391,6 @@ namespace GUI.Types.Renderer
                 texture?.Dispose();
                 SaveAsFbo?.Dispose();
             }
-
-            base.Dispose(disposing);
         }
 
         private void OnSaveButtonClick(object sender, EventArgs e)

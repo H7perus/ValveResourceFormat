@@ -82,7 +82,9 @@ public sealed class ShaderExtract
     private Dictionary<string, IndentedTextWriter> IncludeWriters { get; set; }
 
     public ShaderExtract(Resource resource)
-        : this((SboxShader)resource.GetBlockByType(BlockType.DXBC))
+        : this((SboxShader)(resource.GetBlockByType(BlockType.SPRV)
+                         ?? resource.GetBlockByType(BlockType.DXBC)
+                         ?? resource.GetBlockByType(BlockType.DATA)))
     { }
 
     public ShaderExtract(SboxShader sboxShaderCollection)
@@ -216,6 +218,7 @@ public sealed class ShaderExtract
         writer.WriteLine($"Description = \"{Features.FeaturesHeader.FileDescription}\";");
         writer.WriteLine($"DevShader = {(Features.FeaturesHeader.DevShader == 0 ? "false" : "true")};");
         writer.WriteLine($"Version = {Features.FeaturesHeader.Version};");
+        writer.WriteLine($"// VcsFileVersion = {Features.FeaturesHeader.VcsFileVersion};");
 
         writer.Indent--;
         writer.WriteLine("}");
@@ -1165,9 +1168,9 @@ public sealed class ShaderExtract
         static string GetFuncName(string func, int cutOff)
             => cutOff == 3 ? func : func + (4 - cutOff);
 
-        if (intDefsCutOff <= 3)
+        if (intDefsCutOff <= 3 || floatDefsCutOff <= 3)
         {
-            if (floatDefsCutOff <= 3)
+            if (floatDefsCutOff <= intDefsCutOff)
             {
                 var defaults = string.Join(", ", param.FloatDefs[..^floatDefsCutOff]);
                 annotations.Add($"{GetFuncName("Default", floatDefsCutOff)}({defaults});");
