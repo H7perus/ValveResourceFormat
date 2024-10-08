@@ -7,6 +7,9 @@ charset = utf-8
 trim_trailing_whitespace = true
 insert_final_newline = true
 
+[*.yml]
+indent_size = 2
+
 [*.cs]
 tab_width = 4
 end_of_line = lf
@@ -107,6 +110,12 @@ dotnet_diagnostic.IDE0059.severity = none
 # IDE0079: Remove unnecessary suppression
 dotnet_diagnostic.IDE0079.severity = none
 
+# CA1515: Consider making public types internal
+dotnet_diagnostic.CA1515.severity = none
+
+# WFO1000: Properties of classes derived from `Control` should have `DesignerSerializationVisibilityAttribute`
+dotnet_diagnostic.WFO1000.severity = none
+
 #
 # Dotnet code style settings:
 #
@@ -135,6 +144,9 @@ dotnet_style_explicit_tuple_names = true:suggestion
 
 # IDE0042: Deconstruct variable declaration
 csharp_style_deconstructed_variable_declaration = false:silent
+
+# IDE0130: Namespace does not match folder structure
+dotnet_style_namespace_match_folder = false:silent
 
 #
 # CSharp code style settings:

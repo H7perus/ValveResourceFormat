@@ -173,6 +173,7 @@ namespace GUI.Types.Renderer
                 var result = new WorldLoader(world, Scene);
 
                 AddCheckBox("Show Fog", Scene.FogEnabled, v => Scene.FogEnabled = v);
+                AddCheckBox("Color Correction", postProcessRenderer.ColorCorrectionEnabled, v => postProcessRenderer.ColorCorrectionEnabled = v);
 
                 if (result.SkyboxScene != null)
                 {
@@ -340,6 +341,7 @@ namespace GUI.Types.Renderer
                     entityInfoForm.AddProperty("Light Probe Handshake", $"{sceneNode.LightProbeVolumePrecomputedHandshake}");
                 }
 
+                entityInfoForm.AddProperty("Flags", sceneNode.Flags.ToString());
                 entityInfoForm.AddProperty("Layer", sceneNode.LayerName);
             }
 
@@ -567,16 +569,21 @@ namespace GUI.Types.Renderer
             }
         }
 
+        private const string PhysicsRenderAsOpaque = "S2V: Render as opaque";
+
         private void SetAvailablPhysicsGroups(IEnumerable<string> physicsGroups)
         {
             physicsGroupsComboBox.Items.Clear();
 
-            var physicsGroupsArray = physicsGroups.OrderByDescending(s => s.Contains('-', StringComparison.Ordinal)).ToArray();
+            var physicsGroupsArray = physicsGroups
+                .OrderByDescending(static s => s.StartsWith('-'))
+                .ToArray();
 
             if (physicsGroupsArray.Length > 0)
             {
                 physicsGroupsComboBox.Enabled = true;
                 physicsGroupsComboBox.Items.AddRange(physicsGroupsArray);
+                physicsGroupsComboBox.Items.Add(PhysicsRenderAsOpaque);
             }
             else
             {
@@ -586,9 +593,17 @@ namespace GUI.Types.Renderer
 
         private void SetEnabledPhysicsGroups(HashSet<string> physicsGroups)
         {
+            var renderTranslucent = !physicsGroups.Contains(PhysicsRenderAsOpaque);
+
+            if (!renderTranslucent)
+            {
+                physicsGroups.Remove(PhysicsRenderAsOpaque);
+            }
+
             foreach (var physNode in Scene.AllNodes.OfType<PhysSceneNode>())
             {
                 physNode.Enabled = physicsGroups.Contains(physNode.PhysGroupName);
+                physNode.IsTranslucentRenderMode = renderTranslucent;
             }
 
             Scene.UpdateOctrees();

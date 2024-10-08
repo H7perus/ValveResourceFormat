@@ -116,7 +116,7 @@ namespace GUI.Types.PackageViewer
 
             TreeView.BeginUpdate();
 
-            var resourceEntries = new List<PackageEntry>();
+            var resourceEntries = new Queue<(string PathOnDisk, PackageEntry Entry)>();
 
             // TODO: This is not adding to the selected folder, but to root
             foreach (var file in files)
@@ -143,7 +143,7 @@ namespace GUI.Types.PackageViewer
 
                     if (Viewers.Resource.IsAccepted(magicResourceVersion) && name.EndsWith(GameFileLoader.CompiledFileSuffix, StringComparison.Ordinal))
                     {
-                        resourceEntries.Add(entry);
+                        resourceEntries.Enqueue((file, entry));
                     }
                 }
             }
@@ -159,6 +159,55 @@ namespace GUI.Types.PackageViewer
                 MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 MessageBox.Show("TODO :)");
+
+#if DEBUG
+                while (resourceEntries.TryDequeue(out var entry))
+                {
+                    VrfGuiContext.CurrentPackage.ReadEntry(entry.Entry, out var output, false);
+                    using var entryStream = new MemoryStream(output);
+
+                    using var resource = new ValveResourceFormat.Resource();
+                    resource.Read(entryStream);
+
+                    if (resource.ExternalReferences is null)
+                    {
+                        continue;
+                    }
+
+                    // TODO: This doesn't work properly
+                    var folderDepth = entry.Entry.DirectoryName.Count(static c => c == Package.DirectorySeparatorChar);
+                    var folder = Path.GetDirectoryName(entry.PathOnDisk.AsSpan());
+
+                    while (folderDepth-- > 0)
+                    {
+                        folder = Path.GetDirectoryName(folder);
+                    }
+
+                    foreach (var reference in resource.ExternalReferences.ResourceRefInfoList)
+                    {
+                        if (reference.Name.StartsWith("_bakeresourcecache", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        // Do not recurse maps (skyboxes)
+                        if (reference.Name.EndsWith(".vmap", StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+
+                        var file = Path.Combine(folder.ToString(), reference.Name);
+
+                        if (!File.Exists(file))
+                        {
+                            Log.Warn(nameof(PackageViewer), $"Faield to find file: {file}");
+                            continue;
+                        }
+                    }
+
+
+                }
+#endif
             }
         }
 
@@ -526,6 +575,12 @@ namespace GUI.Types.PackageViewer
         private void VPK_OnContextMenu(object sender, PackageContextMenuEventArgs e)
         {
             var isRoot = e.PkgNode == TreeView.mainTreeView.Root;
+            var isFolder = e.PackageEntry is null;
+
+            if (e.TreeNode is not null)
+            {
+                isFolder = e.TreeNode.IsFolder;
+            }
 
             if (IsEditingPackage)
             {
@@ -533,13 +588,13 @@ namespace GUI.Types.PackageViewer
                 {
                     LastContextTreeNode = e.TreeNode;
 
-                    Program.MainForm.ShowVpkEditingContextMenu((Control)sender, e.Location, isRoot, e.TreeNode.IsFolder);
+                    Program.MainForm.ShowVpkEditingContextMenu((Control)sender, e.Location, isRoot, isFolder);
                 }
 
                 return;
             }
 
-            Program.MainForm.ShowVpkContextMenu((Control)sender, e.Location, isRoot);
+            Program.MainForm.ShowVpkContextMenu((Control)sender, e.Location, isRoot, isFolder);
         }
     }
 }

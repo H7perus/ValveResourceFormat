@@ -14,11 +14,12 @@ namespace GUI
 {
     partial class MainForm
     {
-        public void ShowVpkContextMenu(Control control, Point position, bool isRootNode)
+        public void ShowVpkContextMenu(Control control, Point position, bool isRootNode, bool isFolderNode)
         {
             copyFileNameToolStripMenuItem.Visible = !isRootNode;
-            openWithDefaultAppToolStripMenuItem.Visible = !isRootNode;
-            viewAssetInfoToolStripMenuItem.Visible = !isRootNode;
+            openWithDefaultAppToolStripMenuItem.Visible = !isRootNode && !isFolderNode;
+            viewAssetInfoToolStripMenuItem.Visible = !isRootNode && !isFolderNode;
+            toolStripSeparator3.Visible = isRootNode || !isFolderNode;
 
             verifyPackageContentsToolStripMenuItem.Visible = isRootNode;
             recoverDeletedToolStripMenuItem.Visible = isRootNode;
@@ -456,6 +457,11 @@ namespace GUI
 
             var packageViewer = (mainTabs.SelectedTab.Controls[nameof(TreeViewWithSearchResults)] as TreeViewWithSearchResults).Viewer;
             packageViewer.SaveToFile(saveDialog.FileName);
+        }
+
+        private void OnOpenWelcomeScreenToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            OpenWelcome();
         }
     }
 }

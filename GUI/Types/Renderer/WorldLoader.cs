@@ -264,11 +264,11 @@ namespace GUI.Types.Renderer
 
             Entities.AddRange(entities);
 
-            foreach (var (entity, classname) in entitiesReordered)
+            void LoadEntity(string classname, Entity entity)
             {
                 if (classname == "worldspawn")
                 {
-                    continue; // do not draw
+                    return; // do not draw
                 }
 
                 var transformationMatrix = parentTransform * EntityTransformHelper.CalculateTransformationMatrix(entity);
@@ -300,7 +300,7 @@ namespace GUI.Types.Renderer
                 {
                     var entityLumpName = entity.GetProperty<string>("entitylumpname");
 
-                    if (childEntityLumps.TryGetValue(entityLumpName, out var childLump))
+                    if (entityLumpName != null && childEntityLumps.TryGetValue(entityLumpName, out var childLump))
                     {
                         LoadEntitiesFromLump(childLump, entityLumpName, transformationMatrix);
                     }
@@ -417,6 +417,7 @@ namespace GUI.Types.Renderer
                 else if (classname == "env_cubemap_fog")
                 {
                     // If it has "start_disabled", only take it if it's the first one in the map.
+                    // this might not be right, and the first env_cubemap_fog found might take priority, like with post processing
                     if (!entity.GetProperty<bool>("start_disabled") || scene.FogInfo.CubeFogActive)
                     {
                         scene.FogInfo.CubeFogActive = true;
@@ -511,6 +512,7 @@ namespace GUI.Types.Renderer
                                 if (mat != null && mat.Textures.TryGetValue("g_tSkyTexture", out fogTexture))
                                 {
                                     var brightnessExposureBias = mat.Material.FloatParams.GetValueOrDefault("g_flBrightnessExposureBias", 0f);
+                                    // todo: make sure this matches with scene post process
                                     var renderOnlyExposureBias = mat.Material.FloatParams.GetValueOrDefault("g_flRenderOnlyExposureBias", 0f);
 
                                     // These are both logarithms, so this is equivalent to a multiply of the raw value
@@ -674,7 +676,7 @@ namespace GUI.Types.Renderer
 
                 if (transformationMatrix == default)
                 {
-                    continue;
+                    return;
                 }
 
                 var model = entity.GetProperty<string>(CommonHashes.Model);
@@ -745,14 +747,127 @@ namespace GUI.Types.Renderer
                     _ => Vector4.One,
                 };
 
-                tint.X = (float)Math.Pow(tint.X, 2.2);
-                tint.Y = (float)Math.Pow(tint.Y, 2.2);
-                tint.Z = (float)Math.Pow(tint.Z, 2.2);
+                tint.X = MathF.Pow(tint.X, 2.2f);
+                tint.Y = MathF.Pow(tint.Y, 2.2f);
+                tint.Z = MathF.Pow(tint.Z, 2.2f);
+
+                if (classname == "post_processing_volume")
+                {
+                    var exposureSpeedUp = entity.GetPropertyUnchecked<float>("exposurespeedup");
+                    var exposureSpeedDown = entity.GetPropertyUnchecked<float>("exposurespeeddown");
+                    var minExposure = entity.GetPropertyUnchecked<float>("minexposure");
+                    var maxExposure = entity.GetPropertyUnchecked<float>("maxexposure");
+                    var exposureCompensation = entity.GetPropertyUnchecked<float>("exposurecompensation");
+                    var fadeTime = entity.GetPropertyUnchecked<float>("fadetime");
+                    var isMaster = entity.GetProperty<bool>("master");
+                    var useExposure = entity.GetProperty<bool>("enableexposure");
+
+                    ExposureSettings exposureParams = new();
+                    if (useExposure)
+                    {
+                        exposureParams.ExposureMin = minExposure;
+                        exposureParams.ExposureMax = maxExposure;
+                        exposureParams.ExposureCompensation = exposureCompensation;
+                        exposureParams.ExposureSpeedDown = exposureSpeedDown;
+                        exposureParams.ExposureSpeedUp = exposureSpeedUp;
+                        // todo: test where this is enabled/disabled
+                        exposureParams.AutoExposureEnabled = useExposure;
+                    }
+
+                    var postProcess = new ScenePostProcessVolume(scene)
+                    {
+                        ExposureSettings = exposureParams,
+                        FadeTime = fadeTime,
+                        UseExposure = useExposure,
+                        IsMaster = isMaster,
+                        Transform = transformationMatrix, // needed if model is used
+                    };
+
+                    var postProcessResourceFilename = entity.GetProperty<string>("postprocessing");
+
+                    if (postProcessResourceFilename != null)
+                    {
+                        var postProcessResource = guiContext.LoadFileCompiled(postProcessResourceFilename);
+
+                        if (postProcessResource != null)
+                        {
+                            var postProcessAsset = (PostProcessing)postProcessResource.DataBlock;
+
+                            postProcess.LoadPostProcessResource(postProcessAsset);
+                        }
+                    }
+
+                    var postProcessHasModel = false;
+
+                    if (model != null)
+                    {
+                        var postProcessModel = guiContext.LoadFileCompiled(model);
+
+                        if (postProcessModel != null)
+                        {
+                            var ppModelResource = (Model)postProcessModel.DataBlock;
+
+                            postProcess.ModelVolume = ppModelResource;
+
+                            var ppModelNode = new ModelSceneNode(scene, ppModelResource, skin, optimizeForMapLoad: true)
+                            {
+                                Transform = transformationMatrix,
+                                Tint = tint,
+                                LayerName = layerName,
+                                Name = model,
+                                EntityData = entity,
+                            };
+
+                            postProcessHasModel = true; // for collision we'd need to collect phys data within the class
+
+                            scene.Add(ppModelNode, false);
+                        }
+                        else
+                        {
+                            Log.Warn(nameof(WorldLoader), $"Post Process model failed to load file \"{model}\".");
+                        }
+
+                    }
+
+                    scene.PostProcessInfo.AddPostProcessVolume(postProcess);
+
+                    // If the post process model exists, we hackily let it add the model to the scene nodes
+                    if (!postProcessHasModel)
+                    {
+                        return;
+                    }
+                }
+                else if (classname == "env_tonemap_controller")
+                {
+                    var minExposureTC = entity.GetPropertyUnchecked<float>("minexposure");
+                    var maxExposureTC = entity.GetPropertyUnchecked<float>("minexposure");
+                    var exposureRate = entity.GetPropertyUnchecked<float>("rate");
+                    //var isMasterTC = entity.GetPropertyUnchecked<bool>("master"); // master actually doesn't do anything
+
+                    var exposureSettings = new ExposureSettings()
+                    {
+                        ExposureMin = minExposureTC,
+                        ExposureMax = maxExposureTC,
+                        ExposureSpeedDown = exposureRate,
+                        ExposureSpeedUp = exposureRate,
+                    };
+
+                    var tonemapController = new SceneTonemapController(scene)
+                    {
+                        ControllerExposureSettings = exposureSettings,
+                    };
+
+
+                    if (scene.PostProcessInfo.MasterTonemapController == null)
+                    {
+                        scene.PostProcessInfo.MasterTonemapController = tonemapController;
+                    }
+                }
 
                 if (model == null)
                 {
                     CreateDefaultEntity(entity, classname, transformationMatrix);
-                    continue;
+                    return;
                 }
 
                 var newEntity = guiContext.LoadFileCompiled(model);
@@ -773,7 +888,7 @@ namespace GUI.Types.Renderer
                         scene.Add(errorModel, false);
                     }
 
-                    continue;
+                    return;
                 }
 
                 var newModel = (Model)newEntity.DataBlock;
@@ -861,6 +976,20 @@ namespace GUI.Types.Renderer
 
                         scene.Add(physSceneNode, false);
                     }
+                }
+            }
+
+            foreach (var (entity, classname) in entitiesReordered)
+            {
+                try
+                {
+                    LoadEntity(classname, entity);
+                }
+                catch (Exception e)
+                {
+                    var id = entity.GetPropertyUnchecked(CommonHashes.HammerUniqueId, string.Empty);
+
+                    throw new InvalidDataException($"Failed to process entity '{classname}' (hammeruniqueid={id})", e);
                 }
             }
         }
