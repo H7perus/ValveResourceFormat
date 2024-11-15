@@ -42,7 +42,7 @@ namespace ValveResourceFormat.IO
         private readonly Dictionary<string, Mesh> ExportedMeshes = [];
         private readonly List<Task> MaterialGenerationTasks = [];
         private readonly Dictionary<string, Task<SharpGLTF.Schema2.Texture>> ExportedTextures = [];
-        private readonly object TextureWriteSynchronizationLock = new(); // TODO: Use SemaphoreSlim?
+        private readonly Lock TextureWriteSynchronizationLock = new(); // TODO: Use SemaphoreSlim?
         private TextureSampler TextureSampler;
         private int TexturesExportedSoFar;
         private bool IsExporting;
@@ -632,9 +632,9 @@ namespace ValveResourceFormat.IO
 
             if (entity != null && ExportExtras)
             {
-                foreach (var (hash, property) in entity.Properties)
+                foreach (var (key, value) in entity.Properties)
                 {
-                    exportedMesh.Extras[property.Name] = property.Data as string;
+                    exportedMesh.Extras[key] = value as string;
                 }
             }
 

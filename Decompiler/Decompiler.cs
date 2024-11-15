@@ -12,7 +12,6 @@ using System.Threading.Tasks;
 using ConsoleAppFramework;
 using SteamDatabase.ValvePak;
 using ValveResourceFormat;
-using ValveResourceFormat.Blocks;
 using ValveResourceFormat.CompiledShader;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes;
@@ -26,9 +25,10 @@ namespace Decompiler
     {
         private readonly Dictionary<string, ResourceStat> stats = [];
         private readonly Dictionary<string, string> uniqueSpecialDependancies = [];
-        private readonly HashSet<uint> unknownEntityKeys = [];
+        private readonly HashSet<string> unknownEntityKeys = [];
+        private HashSet<string> knownEntityKeys;
 
-        private readonly object ConsoleWriterLock = new();
+        private readonly Lock ConsoleWriterLock = new();
         private int CurrentFile;
         private int TotalFiles;
 
@@ -445,7 +445,7 @@ namespace Decompiler
 
             if (stream.Length >= magicData.Length)
             {
-                stream.Read(magicData);
+                stream.ReadExactly(magicData);
                 stream.Seek(-magicData.Length, SeekOrigin.Current);
             }
 
@@ -1201,17 +1201,17 @@ namespace Decompiler
                     {
                         var entityLump = (EntityLump)resource.DataBlock;
                         var entities = entityLump.GetEntities();
-                        var knownKeys = StringToken.InvertedTable;
+                        knownEntityKeys ??= [.. EntityLumpKnownKeys.KnownKeys];
 
                         foreach (var entity in entities)
                         {
                             foreach (var property in entity.Properties)
                             {
-                                if (!knownKeys.ContainsKey(property.Key))
+                                if (!knownEntityKeys.Contains(property.Key))
                                 {
                                     lock (unknownEntityKeys)
                                     {
-                                        unknownEntityKeys.Add(property.Key);
+                                        unknownEntityKeys.Add(property.Key.Remove(0, "vrf_unknown_key_".Length));
                                     }
                                 }
                             }
@@ -1282,11 +1282,11 @@ namespace Decompiler
 
             AddStat(info);
 
-            if (resource.EditInfo != null && resource.EditInfo.Structs.TryGetValue(ResourceEditInfo.REDIStruct.SpecialDependencies, out var specialDepsRedi))
+            if (resource.EditInfo != null)
             {
                 lock (uniqueSpecialDependancies)
                 {
-                    foreach (var dep in ((ValveResourceFormat.Blocks.ResourceEditInfoStructs.SpecialDependencies)specialDepsRedi).List)
+                    foreach (var dep in resource.EditInfo.SpecialDependencies)
                     {
                         uniqueSpecialDependancies[$"{dep.CompilerIdentifier} \"{dep.String}\""] = path;
                     }

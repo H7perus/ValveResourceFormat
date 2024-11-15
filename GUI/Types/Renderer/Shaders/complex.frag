@@ -679,7 +679,8 @@ void main()
 #endif
 
 #if (blendMod2x)
-    outputColor = vec4(mix(vec3(0.5), outputColor.rgb, vec3(outputColor.a)), outputColor.a);
+    vec3 gammaOutput = SrgbLinearToGamma(outputColor.rgb);
+    outputColor = vec4(mix(vec3(0.5), gammaOutput, vec3(outputColor.a)), outputColor.a);
 #endif
 
     if (HandleMaterialRenderModes(mat, outputColor))
@@ -699,7 +700,7 @@ void main()
 #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
     else if (g_iRenderMode == renderMode_LightmapShadows)
     {
-        #if (LightmapGameVersionNumber == 2)
+        #if (LightmapGameVersionNumber >= 2)
             vec4 dlsh = texture(g_tDirectLightShadows, vLightmapUVScaled);
             outputColor = vec4(vec3(1.0 - dlsh.x) + vec3(1.0 - min3(dlsh.yzw)) * vec3(0.5, 0.5, 0), 1.0);
         #endif

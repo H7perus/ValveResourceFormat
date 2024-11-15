@@ -37,7 +37,7 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 9.0.x
 
     - name: Cache NuGet
       uses: actions/cache@v4
@@ -162,6 +162,7 @@ jobs:
         verbose: true
 
   release:
+    name: Create release
     if: startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
@@ -172,8 +173,35 @@ jobs:
         path: artifacts
 
     - name: Display artifacts folder structure
-      run: ls -Rl
+      run: find .
       working-directory: artifacts
+
+    - name: Upload binaries to be signed
+      id: signpath-artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: signpath-to-be-signed
+        retention-days: 1
+        # If the folder or executable names change, login to signpath
+        # and modify the "Artifact Configurations" there, as it specifies the paths
+        path: |
+          artifacts/Source2Viewer/
+          artifacts/cli-windows-x64/
+
+    - name: Sign the binaries
+      uses: signpath/github-action-submit-signing-request@v1
+      with:
+        api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
+        organization-id: '4ff8c8f4-926e-4ee5-8886-7899212bb76e'
+        github-artifact-id: '${{ steps.signpath-artifact.outputs.artifact-id }}'
+        project-slug: 'ValveResourceFormat'
+        signing-policy-slug: 'release-signing'
+        output-artifact-directory: 'signed'
+        wait-for-completion: true
+
+    - name: Display signed folder structure
+      run: find .
+      working-directory: signed
 
     - name: Create release files
       run: |
@@ -184,13 +212,13 @@ jobs:
        chmod +x artifacts/cli-linux-arm64/Source2Viewer-CLI
        chmod +x artifacts/cli-macos-x64/Source2Viewer-CLI
        chmod +x artifacts/cli-macos-arm64/Source2Viewer-CLI
-       zip -9j release/cli-windows-x64.zip artifacts/cli-windows-x64/*
+       zip -9j release/cli-windows-x64.zip signed/cli-windows-x64/*
        zip -9j release/cli-linux-x64.zip artifacts/cli-linux-x64/*
        zip -9j release/cli-linux-arm.zip artifacts/cli-linux-arm/*
        zip -9j release/cli-linux-arm64.zip artifacts/cli-linux-arm64/*
        zip -9j release/cli-macos-x64.zip artifacts/cli-macos-x64/*
        zip -9j release/cli-macos-arm64.zip artifacts/cli-macos-arm64/*
-       mv artifacts/Source2Viewer/Source2Viewer.exe release/
+       mv signed/Source2Viewer/Source2Viewer.exe release/
        mv artifacts/nupkg/ValveResourceFormat.*.nupkg release/ValveResourceFormat.nupkg
 
     - name: Display structure of archived files

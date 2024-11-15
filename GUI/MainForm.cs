@@ -741,7 +741,7 @@ namespace GUI
             }
             else if (Types.Viewers.Audio.IsAccepted(magic, vrfGuiContext.FileName))
             {
-                return new Types.Viewers.Audio().Create(vrfGuiContext, stream);
+                return new Types.Viewers.Audio().Create(vrfGuiContext, stream, isPreview);
             }
             else if (Types.Viewers.FlexSceneFile.IsAccepted(magic))
             {
@@ -938,7 +938,7 @@ namespace GUI
         {
             await UpdateChecker.CheckForUpdates().ConfigureAwait(false);
 
-            Invoke(() =>
+            await InvokeAsync(() =>
             {
                 if (UpdateChecker.IsNewVersionAvailable)
                 {
@@ -957,7 +957,7 @@ namespace GUI
                     using var form = new UpdateAvailableForm();
                     form.ShowDialog(this);
                 }
-            });
+            }).ConfigureAwait(false);
         }
     }
 }

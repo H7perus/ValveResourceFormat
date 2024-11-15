@@ -8,7 +8,7 @@ using GUI.Forms;
 using GUI.Utils;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Utils;
+using ValveResourceFormat.Serialization.KeyValues;
 using static GUI.Controls.SavedCameraPositionsControl;
 using static GUI.Types.Renderer.PickingTexture;
 
@@ -282,7 +282,6 @@ namespace GUI.Types.Renderer
                 entityInfoForm.Disposed += OnEntityInfoFormDisposed;
             }
             entityInfoForm.Clear();
-            entityInfoForm.SetEntityLayout(isEntity);
 
             if (isEntity)
             {
@@ -350,6 +349,7 @@ namespace GUI.Types.Renderer
                 entityInfoForm.Text += " (in 3D skybox)";
             }
 
+            entityInfoForm.ShowOutputsTabIfAnyData();
             entityInfoForm.Show();
         }
 
@@ -505,39 +505,14 @@ namespace GUI.Types.Renderer
 
         private void ShowEntityProperties(SceneNode sceneNode)
         {
-            Dictionary<uint, string> knownKeys = null;
-
-            foreach (var property in sceneNode.EntityData.Properties)
+            foreach (var (key, value) in sceneNode.EntityData.Properties)
             {
-                var name = property.Value.Name;
-
-                if (name == null)
+                entityInfoForm.AddProperty(key, value switch
                 {
-                    knownKeys ??= StringToken.InvertedTable;
-
-                    if (knownKeys.TryGetValue(property.Key, out var knownKey))
-                    {
-                        name = knownKey;
-                    }
-                    else
-                    {
-                        name = $"key={property.Key}";
-                    }
-                }
-
-                var value = property.Value.Data;
-
-                if (value == null)
-                {
-                    value = "";
-                }
-                else if (value.GetType() == typeof(byte[]))
-                {
-                    var tmp = value as byte[];
-                    value = string.Join(' ', tmp.Select(p => p.ToString(CultureInfo.InvariantCulture)).ToArray());
-                }
-
-                entityInfoForm.AddProperty(name, value.ToString());
+                    null => string.Empty,
+                    KVObject { IsArray: true } kvArray => string.Join(' ', kvArray.Select(p => p.Value.ToString())),
+                    _ => value.ToString(),
+                });
             }
 
             if (sceneNode.EntityData.Connections != null)
