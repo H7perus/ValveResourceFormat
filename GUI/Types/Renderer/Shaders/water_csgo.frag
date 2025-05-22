@@ -39,7 +39,6 @@ uniform vec4 g_vWaterDecayColor;
 uniform sampler2D g_tSsrColor;
 uniform sampler2D g_tSsrDepth;
 
-
 vec3 hsv2rgb(vec3 c)
 {
     vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
@@ -81,9 +80,6 @@ void main()
 
     uv = gl_FragCoord.xy / resolution;
     outputColor.w = 1.0; //I am sorry, transparency fans
-
-
-
 
 
     world_depth = (1.0 /   (texture(g_tSsrDepth, uv).r -0.05) ) * 0.95;
@@ -290,20 +286,28 @@ float water_height(vec2 coords)
     //float tau = 2 * PI;
     float term_a_exp = 5;
     float term_a_weight = 10;
+    float term_a_freq = 0.2;
+    float term_a_speed = 5;
+
     float term_b_exp = 1;
     float term_b_weight = 8.34;
-    float term_c_exp = 2;
-    float term_c_weight = 6;
+    float term_b_freq = 1 / 4.17;
+    float term_b_speed =3.1;
+
+    float term_c_exp = 1.2;
+    float term_c_weight = 15;
+    float term_c_freq = 0.05;
+    float term_c_speed = 4;
 
     float post_exp = 1;
 
-    float term_a = (sin(       float(dModulo(   double(x/5) + double(flTime * 5), TAU))     )    +    sin(     float(dModulo(   double(y/5) + double(flTime * 5), TAU))   )   ) / 4 + 0.5; //low freq
+    float term_a = (sin(       float(dModulo(   double(x * term_a_freq * 1.5) + double(flTime * term_a_speed), TAU))     )    +    sin(     float(dModulo(   double(y * term_a_freq) + double(flTime * term_a_speed), TAU))   )   ) / 4 + 0.5; //low freq
     term_a = pow(term_a, term_a_exp) * term_a_weight;
         
-    float term_b = (sin(            float(dModulo(   double((x - y) / 4.17) + double(flTime * 3.1)    , TAU))    ) + sin(    float(dModulo(   double((x + y) / 4.17) + double(flTime * 3.1)    , TAU))    )) / 4 + 0.5; //med freq
+    float term_b = (sin(            float(dModulo(   double((x - y) * term_b_freq) + double(flTime * term_b_speed)    , TAU))    ) + sin(    float(dModulo(   double((x + y) * term_b_freq) + double(flTime * term_b_speed)    , TAU))    )) / 4 + 0.5; //med freq
     term_b = pow(term_b, term_b_exp) * term_b_weight;
 
-    float term_c = sin(  float(dModulo(   double(0.3 * x + 0.1 * y) + double(flTime*0.3)    , TAU))   ) / 2 + 0.5; //weird diagonal higher freq
+    float term_c = sin(  float(dModulo(   double( (1 * x + 3 * y) * term_c_freq ) + double(flTime*term_c_speed)    , TAU))   ) / 2 + 0.5; //weird diagonal higher freq
     term_c = pow(term_c, term_c_exp) * term_c_weight;
 
     float height_max = (term_a_weight + term_b_weight + term_c_weight);
