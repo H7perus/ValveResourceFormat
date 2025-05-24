@@ -1,11 +1,13 @@
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 
+#nullable disable
+
 namespace GUI.Types.Renderer
 {
     internal class PostProcessRenderer
     {
-        private VrfGuiContext guiContext;
+        private readonly VrfGuiContext guiContext;
         private int vao;
         private Shader shader;
 
@@ -74,9 +76,8 @@ namespace GUI.Types.Renderer
             GL.BindVertexArray(vao);
             GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
 
-            GL.EnableVertexAttribArray(0);
-            GL.BindVertexArray(0);
             GL.UseProgram(0);
+            GL.BindVertexArray(0);
 
             GL.DepthMask(true);
             GL.Enable(EnableCap.DepthTest);

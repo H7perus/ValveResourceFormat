@@ -3,8 +3,9 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes.ModelData;
 using ValveResourceFormat.ResourceTypes.ModelData.Attachments;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -38,9 +39,9 @@ namespace ValveResourceFormat.ResourceTypes
         {
         }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
-            base.Read(reader, resource);
+            base.Read(reader);
             if (Data.ContainsKey("m_attachments"))
             {
                 var attachmentsData = Data.GetArray("m_attachments");

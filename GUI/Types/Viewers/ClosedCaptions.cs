@@ -5,6 +5,8 @@ using GUI.Controls;
 using GUI.Utils;
 using ValveResourceFormat.ClosedCaptions;
 
+#nullable disable
+
 namespace GUI.Types.Viewers
 {
     class ClosedCaptions : IViewer
@@ -17,7 +19,7 @@ namespace GUI.Types.Viewers
         public TabPage Create(VrfGuiContext vrfGuiContext, Stream stream)
         {
             var tabOuterPage = new TabPage();
-            var tabControl = new TabControl
+            var tabControl = new ThemedTabControl
             {
                 Dock = DockStyle.Fill,
             };
@@ -48,7 +50,7 @@ namespace GUI.Types.Viewers
             tabControl.Controls.Add(tabPage);
 
             tabPage = new TabPage("Text");
-            var textControl = new CodeTextBox(captions.ToString());
+            var textControl = CodeTextBox.Create(captions.ToString());
             tabPage.Controls.Add(textControl);
             tabControl.Controls.Add(tabPage);
 

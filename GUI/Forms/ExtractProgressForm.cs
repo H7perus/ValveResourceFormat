@@ -12,6 +12,8 @@ using SteamDatabase.ValvePak;
 using ValveResourceFormat;
 using ValveResourceFormat.IO;
 
+#nullable disable
+
 namespace GUI.Forms
 {
     partial class ExtractProgressForm : Form
@@ -171,7 +173,7 @@ namespace GUI.Forms
         private void OnTypesDialogSelectedValueChanged(object sender, EventArgs e)
         {
             var control = (ComboBox)sender;
-            var type = (string)control.Tag;
+            var type = (string)control.Tag!;
 
             // TODO: Remember last selected value in settings?
             if (control.SelectedIndex == 0)
@@ -239,7 +241,8 @@ namespace GUI.Forms
             {
                 if (filesFailedToExport > 0)
                 {
-                    SetProgress($"{filesFailedToExport} files failed to extract, check console for more information.");
+                    var nl = Environment.NewLine;
+                    SetProgress($"WARNING:{nl}{nl}{filesFailedToExport} files failed to extract, check console for more information.{nl}");
                 }
 
                 Text = t.IsFaulted ? "Source 2 Viewer - Export failed, check console for details" : "Source 2 Viewer - Export completed";
@@ -380,10 +383,21 @@ namespace GUI.Forms
 
             if (GltfModelExporter.CanExport(resource) && outExtension is ".glb" or ".gltf")
             {
-                gltfExporter.Export(resource, outFilePath, cancellationTokenSource.Token);
-                if (gltfExporter.FileLoader is TrackingFileLoader trackingFileLoader)
+                try
                 {
-                    extractedFiles.UnionWith(trackingFileLoader.LoadedFilePaths);
+                    gltfExporter.Export(resource, outFilePath, cancellationTokenSource.Token);
+
+                    if (gltfExporter.FileLoader is TrackingFileLoader trackingFileLoader)
+                    {
+                        extractedFiles.UnionWith(trackingFileLoader.LoadedFilePaths);
+                    }
+                }
+                catch (Exception e)
+                {
+                    filesFailedToExport++;
+
+                    Log.Error(nameof(ExtractProgressForm), $"Failed to extract '{resource.FileName}': {e}");
+                    SetProgress($"Failed to extract '{resource.FileName}': {e.Message}");
                 }
 
                 return;

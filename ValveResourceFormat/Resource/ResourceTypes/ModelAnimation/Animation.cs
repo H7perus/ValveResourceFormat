@@ -2,8 +2,9 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using ValveResourceFormat.ResourceTypes.ModelAnimation.SegmentDecoders;
 using ValveResourceFormat.ResourceTypes.ModelFlex;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes.ModelAnimation
 {
@@ -156,7 +157,7 @@ namespace ValveResourceFormat.ResourceTypes.ModelAnimation
 
 #if DEBUG
                 Console.WriteLine($"Unhandled animation bone decoder type '{decoder}' for attribute '{localChannel.Attribute}'");
-#endif            
+#endif
             }
 
             return animArray
@@ -205,7 +206,22 @@ namespace ValveResourceFormat.ResourceTypes.ModelAnimation
             }
 
             GetMovementForTime(time, out var movement, out var nextMovement, out var t);
-            return AnimationMovement.Lerp(movement, nextMovement, t);
+            return AnimationMovement.Lerp(movement, nextMovement, time);
+        }
+
+        public AnimationMovement.MovementData GetMovementOffsetData(int frame)
+        {
+            if (!HasMovementData())
+            {
+                return new();
+            }
+
+            var movementIndex = GetMovementIndexForFrame(frame);
+            var lastMovement = movementIndex == 0 ? null : Movements[movementIndex - 1];
+            var movement = Movements[movementIndex];
+
+            var movementTime = frame / (float)movement.EndFrame;
+            return AnimationMovement.Lerp(lastMovement, movement, movementTime);
         }
 
         /// <summary>
@@ -267,6 +283,11 @@ namespace ValveResourceFormat.ResourceTypes.ModelAnimation
         {
             foreach (var root in skeleton.Roots)
             {
+                if (root.IsProceduralCloth)
+                {
+                    continue;
+                }
+
                 GetAnimationMatrixRecursive(root, Matrix4x4.Identity, Matrix4x4.Identity, frame, matrices);
             }
         }

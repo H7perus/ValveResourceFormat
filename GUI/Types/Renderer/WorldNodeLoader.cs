@@ -1,7 +1,8 @@
+using System.Diagnostics;
 using GUI.Utils;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization;
+using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Types.Renderer
 {
@@ -62,7 +63,9 @@ namespace GUI.Types.Renderer
                         continue;
                     }
 
-                    var modelNode = new ModelSceneNode(scene, (Model)newResource.DataBlock, null, optimizeForMapLoad: true)
+                    var model = (Model?)newResource.DataBlock;
+                    Debug.Assert(model != null);
+                    var modelNode = new ModelSceneNode(scene, model, null)
                     {
                         Transform = matrix,
                         Tint = tintColor,
@@ -89,7 +92,9 @@ namespace GUI.Types.Renderer
                         continue;
                     }
 
-                    var meshNode = new MeshSceneNode(scene, (Mesh)newResource.DataBlock, 0)
+                    var mesh = (Mesh?)newResource.DataBlock;
+                    Debug.Assert(mesh != null);
+                    var meshNode = new MeshSceneNode(scene, mesh, 0)
                     {
                         Transform = matrix,
                         Tint = tintColor,
@@ -116,8 +121,11 @@ namespace GUI.Types.Renderer
                         continue;
                     }
 
+                    var model = (Model?)newResource.DataBlock;
+                    Debug.Assert(model != null);
+
                     var layerIndex = sceneObject.GetIntegerProperty("m_nLayer");
-                    var aggregate = new SceneAggregate(scene, (Model)newResource.DataBlock)
+                    var aggregate = new SceneAggregate(scene, model)
                     {
                         LayerName = node.LayerNames[(int)layerIndex],
                         Name = renderableModel,

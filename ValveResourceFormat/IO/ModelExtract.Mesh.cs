@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -9,9 +8,10 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO.ContentFormats.DmxModel;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.RubikonPhysics;
-using ValveResourceFormat.Serialization;
-using ValveResourceFormat.Utils;
+using ValveResourceFormat.Serialization.KeyValues;
 using RnShapes = ValveResourceFormat.ResourceTypes.RubikonPhysics.Shapes;
+
+#nullable disable
 
 namespace ValveResourceFormat.IO;
 
@@ -40,9 +40,21 @@ partial class ModelExtract
         /// Pre-parsed input signatures used to map DirectX semantic names to engine semantic names.
         /// </summary>
         public Dictionary<string, Material.VsInputSignature> MaterialInputSignatures { get; init; }
+
+        /// <summary>
+        /// Remap table for the mesh bone indices.
+        /// </summary>
+        public int[] BoneRemapTable { get; init; }
     }
 
-    public record struct RenderMeshExtractConfiguration(Mesh Mesh, string Name, int Index, string FileName, ImportFilter ImportFilter = default);
+    public record struct RenderMeshExtractConfiguration(
+        Mesh Mesh,
+        string Name,
+        int Index,
+        string FileName,
+        int[] BoneRemapTable = null,
+        ImportFilter ImportFilter = default
+    );
 
     public sealed record SurfaceTagCombo(string SurfacePropName, HashSet<string> InteractAsStrings)
     {
@@ -90,8 +102,8 @@ partial class ModelExtract
         var i = 0;
         foreach (var embedded in model.GetEmbeddedMeshes())
         {
-            embedded.Mesh.VBIB = model.RemapBoneIndices(embedded.Mesh.VBIB, embedded.MeshIndex);
-            RenderMeshesToExtract.Add(new(embedded.Mesh, embedded.Name, embedded.MeshIndex, GetDmxFileName_ForEmbeddedMesh(embedded.Name, i++)));
+            var remapTable = model.GetRemapTable(embedded.MeshIndex);
+            RenderMeshesToExtract.Add(new(embedded.Mesh, embedded.Name, embedded.MeshIndex, GetDmxFileName_ForEmbeddedMesh(embedded.Name, i++), remapTable));
         }
 
         foreach (var reference in model.GetReferenceMeshNamesAndLoD())
@@ -106,10 +118,12 @@ partial class ModelExtract
             GrabMaterialInputSignatures(resource);
 
             var mesh = (Mesh)resource.DataBlock;
-            mesh.VBIB = model.RemapBoneIndices(mesh.VBIB, reference.MeshIndex);
             model.SetExternalMeshData(mesh);
 
-            RenderMeshesToExtract.Add(new(mesh, reference.MeshName, reference.MeshIndex, GetDmxFileName_ForReferenceMesh(reference.MeshName)));
+            var remapTable = model.GetRemapTable(reference.MeshIndex);
+            var meshKey = Path.GetFileNameWithoutExtension(reference.MeshName);
+
+            RenderMeshesToExtract.Add(new(mesh, meshKey, reference.MeshIndex, GetDmxFileName_ForReferenceMesh(reference.MeshName), remapTable));
         }
     }
 
@@ -136,37 +150,55 @@ partial class ModelExtract
             (attributes.GetArray<string>("m_InteractAsStrings") ?? attributes.GetArray<string>("m_PhysicsTagStrings")).ToHashSet()
         ).ToArray();
 
+        // Fix index error on some old vphys files
+        if (PhysicsSurfaceNames.Length == 0)
+        {
+            PhysicsSurfaceNames = [string.Empty];
+        }
+
+        if (PhysicsCollisionTags.Length == 0)
+        {
+            PhysicsCollisionTags = [[]];
+        }
+
         var i = 0;
         foreach (var physicsPart in physAggregateData.Parts)
         {
             foreach (var hull in physicsPart.Shape.Hulls)
             {
                 PhysHullsToExtract.Add((hull, GetDmxFileName_ForEmbeddedMesh("hull", i++)));
-
-                SurfaceTagCombos.Add(new SurfaceTagCombo(
-                    PhysicsSurfaceNames[hull.SurfacePropertyIndex],
-                    PhysicsCollisionTags[hull.CollisionAttributeIndex]
-                ));
+                StoreSurfaceTagCombo(hull);
             }
 
             foreach (var mesh in physicsPart.Shape.Meshes)
             {
                 PhysMeshesToExtract.Add((mesh, GetDmxFileName_ForEmbeddedMesh("phys", i++)));
 
-                SurfaceTagCombos.Add(new SurfaceTagCombo(
-                    PhysicsSurfaceNames[mesh.SurfacePropertyIndex],
-                    PhysicsCollisionTags[mesh.CollisionAttributeIndex]
-                ));
+                StoreSurfaceTagCombo(mesh);
 
                 foreach (var surfaceIndex in mesh.Shape.Materials)
                 {
-                    SurfaceTagCombos.Add(new SurfaceTagCombo(
-                        PhysicsSurfaceNames[surfaceIndex],
-                        PhysicsCollisionTags[mesh.CollisionAttributeIndex]
-                    ));
+                    StoreSurfaceTagCombo(mesh.CollisionAttributeIndex, surfaceIndex);
                 }
             }
         }
+    }
+
+    private void StoreSurfaceTagCombo<T>(ShapeDescriptor<T> shapeDesc) where T : struct
+        => StoreSurfaceTagCombo(shapeDesc.CollisionAttributeIndex, shapeDesc.SurfacePropertyIndex);
+
+    private void StoreSurfaceTagCombo(int collisionAttributeIndex, int surfacePropertyIndex)
+    {
+        if (PhysicsCollisionTags.Length <= collisionAttributeIndex
+        || PhysicsSurfaceNames.Length <= surfacePropertyIndex)
+        {
+            return;
+        }
+
+        SurfaceTagCombos.Add(new SurfaceTagCombo(
+            PhysicsSurfaceNames[surfacePropertyIndex],
+            PhysicsCollisionTags[collisionAttributeIndex]
+        ));
     }
 
     public static IEnumerable<ContentFile> GetContentFiles_DrawCallSplit(Resource aggregateModelResource, IFileLoader fileLoader, Vector3[] drawOrigins, int drawCallCount)
@@ -179,7 +211,7 @@ partial class ModelExtract
             yield break;
         }
 
-        var (mesh, name, index, fileName, _) = extract.RenderMeshesToExtract[0];
+        var (mesh, name, index, fileName, _, _) = extract.RenderMeshesToExtract[0];
 
         var options = new DatamodelRenderMeshExtractOptions
         {
@@ -193,7 +225,7 @@ partial class ModelExtract
             options
         );
 
-        var sharedMeshExtractConfiguration = new RenderMeshExtractConfiguration(mesh, name, index, fileName, new(true, new(1)));
+        var sharedMeshExtractConfiguration = new RenderMeshExtractConfiguration(mesh, name, index, fileName, ImportFilter: new(true, new(1)));
         extract.RenderMeshesToExtract.Clear();
         extract.RenderMeshesToExtract.Add(sharedMeshExtractConfiguration);
 
@@ -227,9 +259,12 @@ partial class ModelExtract
         return aggModelName[..^vmdlExt.Length] + "_draw" + drawCallIndex + vmdlExt;
     }
 
-    private static void FillDatamodelVertexData(VBIB.OnDiskBufferData vertexBuffer, DmeVertexData vertexData, Material.VsInputSignature materialInputSignature)
+    private static void FillDatamodelVertexData(VBIB.OnDiskBufferData vertexBuffer, DmeVertexData vertexData, Material.VsInputSignature materialInputSignature,
+        int boneWeightCount, int[] boneRemapTable)
     {
         var indices = Enumerable.Range(0, (int)vertexBuffer.ElementCount).ToArray(); // May break with non-unit strides, non-tri faces
+
+        var boneArrayComponents = boneWeightCount > 4 ? 8 : 4;
 
         foreach (var attribute in vertexBuffer.InputLayoutFields)
         {
@@ -250,10 +285,21 @@ partial class ModelExtract
             }
             else if (attribute.SemanticName is "BLENDINDICES")
             {
-                vertexData.JointCount = 4;
+                vertexData.JointCount = boneWeightCount;
 
-                var blendIndices = VBIB.GetBlendIndicesArray(vertexBuffer, attribute);
-                vertexData.AddStream(semantic, Array.ConvertAll(blendIndices, i => (int)i));
+                var boneIndices = VBIB.GetBlendIndicesArray(vertexBuffer, attribute, boneRemapTable);
+                var compactedLength = boneIndices.Length / boneArrayComponents * boneWeightCount;
+
+                var compactIndices = new int[compactedLength];
+                for (var i = 0; i < boneIndices.Length; i += boneArrayComponents)
+                {
+                    for (var j = 0; j < boneWeightCount; j++)
+                    {
+                        compactIndices[i / boneArrayComponents * boneWeightCount + j] = boneIndices[i + j];
+                    }
+                }
+
+                vertexData.AddStream(semantic, compactIndices);
                 continue;
             }
             else if (attribute.SemanticName is "BLENDWEIGHT" or "BLENDWEIGHTS")
@@ -261,7 +307,16 @@ partial class ModelExtract
                 var vectorWeights = VBIB.GetBlendWeightsArray(vertexBuffer, attribute);
                 var flatWeights = MemoryMarshal.Cast<Vector4, float>(vectorWeights).ToArray();
 
-                vertexData.AddStream("blendweights$" + attribute.SemanticIndex, flatWeights);
+                var compactWeights = new float[flatWeights.Length / boneArrayComponents * boneWeightCount];
+                for (var i = 0; i < flatWeights.Length; i += boneArrayComponents)
+                {
+                    for (var j = 0; j < boneWeightCount; j++)
+                    {
+                        compactWeights[i / boneArrayComponents * boneWeightCount + j] = flatWeights[i + j];
+                    }
+                }
+
+                vertexData.AddStream("blendweights$" + attribute.SemanticIndex, compactWeights);
                 continue;
             }
 
@@ -312,7 +367,7 @@ partial class ModelExtract
     {
         using var dmx = ConvertMeshToDatamodelMesh(mesh, name, options);
         using var stream = new MemoryStream();
-        dmx.Save(stream, "keyvalues2", 4);
+        dmx.Save(stream, "binary", 9);
 
         return stream.ToArray();
     }
@@ -324,7 +379,8 @@ partial class ModelExtract
         var indexBuffers = mbuf.IndexBuffers.Select(ib => new Lazy<int[]>(() => GltfModelExporter.ReadIndices(ib, 0, (int)ib.ElementCount, 0))).ToArray();
 
         var datamodel = new Datamodel.Datamodel("model", 22);
-        DmxModelMultiVertexBufferLayout(name, mbuf.VertexBuffers.Count, out var dmeModel, out var dags, out var dmeVertexBuffers);
+        var dmeModel = new DmeModel() { Name = name };
+        var dmeVertexBuffers = new Dictionary<(int, int), (DmeDag Dag, DmeVertexData VertexData)>(mbuf.VertexBuffers.Count);
 
         var materialInputSignature = Material.VsInputSignature.Empty;
         var drawCallIndex = 0;
@@ -333,8 +389,20 @@ partial class ModelExtract
         {
             foreach (var drawCall in sceneObject.GetArray("m_drawCalls"))
             {
-                var vertexBufferInfo = drawCall.GetArray("m_vertexBuffers")[0]; // In what situation can we have more than 1 vertex buffer per draw call?
-                var vertexBufferIndex = vertexBufferInfo.GetInt32Property("m_hBuffer");
+                var vertexBuffers = drawCall.GetArray("m_vertexBuffers");
+
+                Debug.Assert(vertexBuffers.Length <= 2); // Hello traveler, if you are here to update this code to support more than 2 buffers!
+
+                var dmeVertexBufferKey = (
+                    vertexBuffers[0].GetInt32Property("m_hBuffer"),
+                    vertexBuffers.Length > 1 ? vertexBuffers[1].GetInt32Property("m_hBuffer") : -1
+                );
+
+                if (!dmeVertexBuffers.TryGetValue(dmeVertexBufferKey, out var dmeVertexBuffer))
+                {
+                    dmeVertexBuffer = CreateDmxDagVertexData(dmeModel, name);
+                    dmeVertexBuffers[dmeVertexBufferKey] = dmeVertexBuffer;
+                }
 
                 var indexBufferInfo = drawCall.GetSubCollection("m_indexBuffer");
                 var indexBufferIndex = indexBufferInfo.GetInt32Property("m_hBuffer");
@@ -356,21 +424,19 @@ partial class ModelExtract
                 var startIndex = drawCall.GetInt32Property("m_nStartIndex");
                 var indexCount = drawCall.GetInt32Property("m_nIndexCount");
 
-                var dag = dags[vertexBufferIndex];
+                var dag = dmeVertexBuffer.Dag;
 
                 if (options.SplitDrawCallsIntoSeparateSubmeshes)
                 {
+                    var subMeshName = "draw" + drawCallIndex;
+
                     if (drawCallIndex > 0)
                     {
                         // new submesh with same vertex buffer as first submesh
-                        dag = [];
-                        dmeModel.Children.Add(dag);
-                        dmeModel.JointList.Add(dag);
-                        dag.Shape.CurrentState = dmeVertexBuffers[vertexBufferIndex];
-                        dag.Shape.BaseStates.Add(dmeVertexBuffers[vertexBufferIndex]);
+                        dag = CreateDmxDag(dmeModel, dmeVertexBuffer.VertexData, subMeshName);
                     }
 
-                    dag.Shape.Name = "draw" + drawCallIndex;
+                    dag.Shape.Name = subMeshName;
                 }
 
                 GenerateTriangleFaceSetFromIndexBuffer(
@@ -385,9 +451,16 @@ partial class ModelExtract
             }
         }
 
-        for (var i = 0; i < mbuf.VertexBuffers.Count; i++)
+        var boneWeightCount = mesh.Data.GetSubCollection("m_skeleton")?.GetInt32Property("m_nBoneWeightCount") ?? 0;
+
+        foreach (var (vertexBufferIndices, dmeObjects) in dmeVertexBuffers)
         {
-            FillDatamodelVertexData(mbuf.VertexBuffers[i], dmeVertexBuffers[i], materialInputSignature);
+            FillDatamodelVertexData(mbuf.VertexBuffers[vertexBufferIndices.Item1], dmeObjects.VertexData, materialInputSignature, boneWeightCount, options.BoneRemapTable);
+
+            if (vertexBufferIndices.Item2 != -1)
+            {
+                FillDatamodelVertexData(mbuf.VertexBuffers[vertexBufferIndices.Item2], dmeObjects.VertexData, materialInputSignature, boneWeightCount, options.BoneRemapTable);
+            }
         }
 
         TieElementRoot(datamodel, dmeModel);
@@ -455,7 +528,7 @@ partial class ModelExtract
 
         TieElementRoot(dmx, dmeModel);
         using var stream = new MemoryStream();
-        dmx.Save(stream, "keyvalues2", 4);
+        dmx.Save(stream, "binary", 9);
 
         return stream.ToArray();
     }
@@ -525,7 +598,7 @@ partial class ModelExtract
 
         TieElementRoot(dmx, dmeModel);
         using var stream = new MemoryStream();
-        dmx.Save(stream, "keyvalues2", 4);
+        dmx.Save(stream, "binary", 9);
 
         return stream.ToArray();
     }
@@ -546,20 +619,34 @@ partial class ModelExtract
 
         for (var i = 0; i < vertexBufferCount; i++)
         {
-            // dmx requires one dag per vertex buffer
-            var dag = dags[i] = new DmeDag() { Name = name };
-            dmeModel.Children.Add(dag);
-            dmeModel.JointList.Add(dag);
-
-            var transformList = new DmeTransformsList();
-            transformList.Transforms.Add(new DmeTransform());
-            dmeModel.BaseStates.Add(transformList);
-
-            var vertexData = dmeVertexBuffers[i] = new DmeVertexData { Name = "bind" };
-            dag.Shape.Name = name;
-            dag.Shape.CurrentState = vertexData;
-            dag.Shape.BaseStates.Add(vertexData);
+            (dags[i], dmeVertexBuffers[i]) = CreateDmxDagVertexData(dmeModel, name);
         }
+    }
+
+    private static DmeDag CreateDmxDag(DmeModel dmeModel, DmeVertexData vertexData, string name)
+    {
+        var dag = new DmeDag() { Name = name };
+        dmeModel.Children.Add(dag);
+        dmeModel.JointList.Add(dag);
+
+        var transformList = new DmeTransformsList();
+        transformList.Transforms.Add(new DmeTransform());
+        dmeModel.BaseStates.Add(transformList);
+
+        dag.Shape.Name = name;
+        dag.Shape.CurrentState = vertexData;
+        dag.Shape.BaseStates.Add(vertexData);
+
+        return dag;
+    }
+
+    private static (DmeDag, DmeVertexData) CreateDmxDagVertexData(DmeModel dmeModel, string name)
+    {
+        // dmx requires one dag per vertex buffer
+        var vertexData = new DmeVertexData { Name = "bind" };
+        var dag = CreateDmxDag(dmeModel, vertexData, name);
+
+        return (dag, vertexData);
     }
 
     private static void GenerateTriangleFaceSet(DmeDag dag, int triangleStart, int triangleEnd, string material)
@@ -603,7 +690,7 @@ partial class ModelExtract
             ["model"] = dmeModel,
             ["exportTags"] = new Element(dmx, "exportTags", null, "DmeExportTags")
             {
-                ["source"] = $"Generated with {ValveResourceFormat.Utils.StringToken.VRF_GENERATOR}",
+                ["source"] = $"Generated with {StringToken.VRF_GENERATOR}",
             }
         };
     }

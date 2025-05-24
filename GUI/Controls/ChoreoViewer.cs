@@ -11,22 +11,21 @@ namespace GUI.Controls
     class ChoreoViewer : TextControl
     {
         private readonly ChoreoSceneFileData choreoDataList;
-        private ListView fileListView;
+        private readonly ListView fileListView;
+
         public ChoreoViewer(Resource resource)
         {
-            choreoDataList = (ChoreoSceneFileData)resource.DataBlock;
+            var dataBlock = (ChoreoSceneFileData?)resource.DataBlock;
+            ArgumentNullException.ThrowIfNull(dataBlock);
+            choreoDataList = dataBlock;
 
             var fileName = Path.GetFileNameWithoutExtension(resource.FileName) + ".vcdlist";
-            AddList(fileName);
-        }
 
-        private void AddList(string vcdListName)
-        {
             fileListView = new ListView
             {
                 View = View.Details,
                 Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top,
-
+                Dock = DockStyle.Fill,
                 FullRowSelect = true,
                 MultiSelect = false,
                 ShowItemToolTips = true
@@ -36,7 +35,7 @@ namespace GUI.Controls
             fileListView.Columns.Add("Name", 250);
             fileListView.Columns.Add("Version");
 
-            AddListItem(null, vcdListName, choreoDataList.Version);
+            AddListItem(null, fileName, choreoDataList.Version);
             for (var i = 0; i < choreoDataList.Scenes.Length; i++)
             {
                 var scene = choreoDataList.Scenes[i];
@@ -44,7 +43,6 @@ namespace GUI.Controls
             }
 
             AddControl(fileListView);
-            fileListView.Dock = DockStyle.Fill;
         }
 
         private void AddListItem(int? index, string name, int version)
@@ -61,12 +59,7 @@ namespace GUI.Controls
             item.Tag = index;
         }
 
-        protected override void InitLayout()
-        {
-            base.InitLayout();
-        }
-
-        private void FileListView_ItemSelectionChanged(object sender, EventArgs e)
+        private void FileListView_ItemSelectionChanged(object? sender, EventArgs e)
         {
             if (fileListView.SelectedItems.Count == 0)
             {

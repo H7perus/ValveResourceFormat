@@ -89,6 +89,10 @@
     in vec3 vPerVertexLightingOut;
 #endif
 
+#if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 0)
+    const vec3 vLightmapUVScaled = vec3(0.0);
+#endif
+
 uniform sampler2DShadow g_tShadowDepthBufferDepth;
 
 float CalculateSunShadowMapVisibility(vec3 vPosition)
@@ -156,6 +160,16 @@ vec3 GetLightColor(uint nLightIndex)
     return vColor * flBrightness;
 }
 
+// https://lisyarus.github.io/blog/graphics/2022/07/30/point-light-attenuation.html
+float attenuate_cusp(float s, float falloff)
+{
+    if (s >= 1.0)
+        return 0.0;
+
+    float s2 = pow2(s);
+    return pow2(1 - s2) / (1 + falloff * s);
+}
+
 void CalculateDirectLighting(inout LightingTerms_t lighting, inout MaterialProperties_t mat)
 {
     const float MIN_ALPHA = 0.0001;
@@ -175,11 +189,6 @@ void CalculateDirectLighting(inout LightingTerms_t lighting, inout MaterialPrope
 
         vec4 vLightStrengths = pow2(dls);
         uvec4 vLightIndices = uvec4(dli * 255.0);
-
-        //const uint testIndex = 35;
-        //lighting.DiffuseDirect = vec3(any(equal(vLightIndices.xyw, uvec3(testIndex)))) + ((vLightIndices.z == testIndex) ? vec3(1) : vec3(0));
-        //lighting.DiffuseDirect *= vLightStrengths.xyw;
-        //return;
 
         for (int i = 0; i < 4; i++)
         {
@@ -224,20 +233,48 @@ void CalculateDirectLighting(inout LightingTerms_t lighting, inout MaterialPrope
             dlsh = textureLod(g_tLPV_Shadows, vLightProbeShadowCoords, 0.0);
         #endif
 
-        const uint uLightIndex = 0;
-
-        float visibility = 1.0 - dlsh[uLightIndex];
-
-        if (visibility > MIN_ALPHA && uLightIndex == 0)
+        for(uint uShadowIndex = 0; uShadowIndex < 4; ++uShadowIndex)
         {
-            visibility *= CalculateSunShadowMapVisibility(mat.PositionWS);
-        }
+            float shadowFactor = 1.0 - dlsh[uShadowIndex];
+            if (shadowFactor <= MIN_ALPHA)
+            {
+                continue;
+            }
+            uint nLightIndexStart = uShadowIndex == 0 ? 0 : g_nNumLightsPerShadow[uShadowIndex - 1];
+            uint nLightCount = g_nNumLightsPerShadow[uShadowIndex];
 
-        if (visibility > MIN_ALPHA)
-        {
-            vec3 lightColor = GetLightColor(uLightIndex);
-            vec3 lightVector = GetLightDirection(mat.PositionWS, uLightIndex);
-            CalculateShading(lighting, lightVector, visibility * lightColor, mat);
+            for(uint uLightIndex = nLightIndexStart; uLightIndex < nLightCount; ++uLightIndex)
+            {
+                float visibility = shadowFactor;
+                vec3 lightVector = GetLightDirection(mat.PositionWS, uLightIndex);
+
+                if (IsDirectionalLight(uLightIndex))
+                {
+                    visibility *= CalculateSunShadowMapVisibility(mat.PositionWS);
+                }
+                else
+                {
+                    if (!g_bExperimentalLightsEnabled)
+                    {
+                        continue;
+                    }
+
+                    float flInvRange = g_vLightDirection_InvRange[uLightIndex].a * 0.5;
+                    vec3 vLightPosition = g_vLightPosition_Type[uLightIndex].xyz;
+                    float flDistance = length(vLightPosition - mat.PositionWS);
+                    float flFallOff = g_vLightFallOff[uLightIndex].x;
+
+                    // 0.0 near the light, 1.0 at the light maximum range
+                    float flDistanceOverRange = flDistance * flInvRange;
+                    visibility *= attenuate_cusp(flDistanceOverRange, flFallOff);
+                }
+
+                if (visibility > MIN_ALPHA)
+                {
+                    vec3 lightColor = GetLightColor(uLightIndex);
+                    CalculateShading(lighting, lightVector, visibility * lightColor, mat);
+                }
+            }
         }
     #else
         // Non lightmapped scene
@@ -346,7 +383,7 @@ void CalculateIndirectLighting(inout LightingTerms_t lighting, inout MaterialPro
     // Environment Maps
 #if defined(S_SPECULAR) && (S_SPECULAR == 1)
     vec3 ambientDiffuse;
-    float normalizationTerm = GetEnvMapNormalization(GetIsoRoughness(mat.Roughness), mat.AmbientNormal, lighting.DiffuseIndirect);
+    float normalizationTerm = GetEnvMapNormalization(mat.IsometricRoughness, mat.AmbientNormal, lighting.DiffuseIndirect);
 
     lighting.SpecularIndirect = GetEnvironment(mat) * normalizationTerm;
 #endif
@@ -374,4 +411,21 @@ void ApplyAmbientOcclusion(inout LightingTerms_t o, MaterialProperties_t mat)
     o.DiffuseIndirect *= mat.DiffuseAO;
     o.SpecularDirect *= DirectAOSpecular;
     o.SpecularIndirect *= mat.SpecularAO;
+}
+
+
+LightingTerms_t CalculateLighting(inout MaterialProperties_t mat)
+{
+    LightingTerms_t lighting = InitLighting();
+
+    #if defined(ANISO_ROUGHNESS)
+        mat.IsometricRoughness = dot(mat.Roughness, vec2(0.5));
+    #else
+        mat.IsometricRoughness = mat.Roughness.x;
+    #endif
+
+    CalculateDirectLighting(lighting, mat);
+    CalculateIndirectLighting(lighting, mat);
+
+    return lighting;
 }

@@ -6,19 +6,28 @@ namespace GUI.Types.Renderer
     abstract class ShapeSceneNode : SceneNode
     {
         public virtual bool IsTranslucent { get; } = true;
-        // sphere/capsule constants
-        public const int SphereSegments = 8;
-        public const int SphereBands = 5;
-
-        protected Shader shader;
-        protected virtual bool Shaded { get; } = true;
-        protected RenderTexture ToolTexture;
-        protected int indexCount;
-        protected int vaoHandle;
         public bool IsTranslucentRenderMode { get; set; } = true;
 
-        public ShapeSceneNode(Scene scene, List<SimpleVertexNormal> verts, List<int> inds)
-            : base(scene)
+        // sphere/capsule constants
+        private const int SphereSegments = 8;
+        private const int SphereBands = 5;
+        // constants for sizes of spheres/capsules
+        public const int HemisphereVerts = SphereBands * SphereSegments + 1;
+        public const int HemisphereTriangles = SphereSegments * (2 * SphereBands - 1);
+        public const int CapsuleTriangles = 2 * HemisphereTriangles + 2 * SphereSegments;
+
+        protected readonly Shader shader;
+        protected int indexCount;
+        protected int vaoHandle;
+        protected virtual bool Shaded { get; } = true;
+        protected RenderTexture? ToolTexture;
+
+        private ShapeSceneNode(Scene scene) : base(scene)
+        {
+            shader = Scene.GuiContext.ShaderLoader.LoadShader("vrf.basic_shape");
+        }
+
+        public ShapeSceneNode(Scene scene, List<SimpleVertexNormal> verts, List<int> inds) : this(scene)
         {
             Init(verts, inds);
         }
@@ -26,10 +35,10 @@ namespace GUI.Types.Renderer
         /// <summary>
         /// Constructs a node with a single box shape
         /// </summary>
-        public ShapeSceneNode(Scene scene, Vector3 minBounds, Vector3 maxBounds, Color32 color) : base(scene)
+        public ShapeSceneNode(Scene scene, Vector3 minBounds, Vector3 maxBounds, Color32 color) : this(scene)
         {
-            var inds = new List<int>();
-            var verts = new List<SimpleVertexNormal>();
+            var verts = new List<SimpleVertexNormal>(8);
+            var inds = new List<int>(8 * 9);
             AddBox(verts, inds, minBounds, maxBounds, color);
 
             LocalBoundingBox = new AABB(minBounds, maxBounds);
@@ -40,10 +49,10 @@ namespace GUI.Types.Renderer
         /// <summary>
         /// Constructs a node with a single capsule shape
         /// </summary>
-        public ShapeSceneNode(Scene scene, Vector3 from, Vector3 to, float radius, Color32 color) : base(scene)
+        public ShapeSceneNode(Scene scene, Vector3 from, Vector3 to, float radius, Color32 color) : this(scene)
         {
-            var inds = new List<int>();
-            var verts = new List<SimpleVertexNormal>();
+            var verts = new List<SimpleVertexNormal>(HemisphereVerts * 2);
+            var inds = new List<int>(CapsuleTriangles * 6);
             AddCapsule(verts, inds, from, to, radius, color);
 
             var min = Vector3.Min(from, to);
@@ -56,10 +65,10 @@ namespace GUI.Types.Renderer
         /// <summary>
         /// Constructs a node with a single sphere shape
         /// </summary>
-        public ShapeSceneNode(Scene scene, Vector3 center, float radius, Color32 color) : base(scene)
+        public ShapeSceneNode(Scene scene, Vector3 center, float radius, Color32 color) : this(scene)
         {
-            var inds = new List<int>();
-            var verts = new List<SimpleVertexNormal>();
+            var verts = new List<SimpleVertexNormal>(HemisphereVerts * 2);
+            var inds = new List<int>(HemisphereTriangles * 6 * 2);
             AddSphere(verts, inds, center, radius, color);
 
             LocalBoundingBox = new AABB(new Vector3(radius), new Vector3(-radius));
@@ -75,7 +84,6 @@ namespace GUI.Types.Renderer
         private void Init(List<SimpleVertexNormal> verts, List<int> inds)
         {
             indexCount = inds.Count;
-            shader = Scene.GuiContext.ShaderLoader.LoadShader("vrf.basic_shape");
 
             GL.CreateVertexArrays(1, out vaoHandle);
             GL.CreateBuffers(1, out int vboHandle);
@@ -84,8 +92,8 @@ namespace GUI.Types.Renderer
             GL.VertexArrayElementBuffer(vaoHandle, iboHandle);
             SimpleVertexNormal.BindDefaultShaderLayout(vaoHandle, shader.Program);
 
-            GL.NamedBufferData(vboHandle, verts.Count * SimpleVertexNormal.SizeInBytes, verts.ToArray(), BufferUsageHint.StaticDraw);
-            GL.NamedBufferData(iboHandle, inds.Count * sizeof(int), inds.ToArray(), BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(vboHandle, verts.Count * SimpleVertexNormal.SizeInBytes, ListAccessors<SimpleVertexNormal>.GetBackingArray(verts), BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(iboHandle, inds.Count * sizeof(int), ListAccessors<int>.GetBackingArray(inds), BufferUsageHint.StaticDraw);
 
 #if DEBUG
             var vaoLabel = nameof(PhysSceneNode);
@@ -198,19 +206,28 @@ namespace GUI.Types.Renderer
 
         protected static void AddBox(List<SimpleVertexNormal> verts, List<int> inds, Vector3 minBounds, Vector3 maxBounds, Color32 color)
         {
-            verts.AddRange(
-                [
-                    new(new(minBounds.X, minBounds.Y, minBounds.Z), color),
-                    new(new(minBounds.X, minBounds.Y, maxBounds.Z), color),
-                    new(new(minBounds.X, maxBounds.Y, maxBounds.Z), color),
-                    new(new(minBounds.X, maxBounds.Y, minBounds.Z), color),
+            Span<SimpleVertexNormal> boxVertices =
+            [
+                new(new(minBounds.X, minBounds.Y, minBounds.Z), color),
+                new(new(minBounds.X, minBounds.Y, maxBounds.Z), color),
+                new(new(minBounds.X, maxBounds.Y, maxBounds.Z), color),
+                new(new(minBounds.X, maxBounds.Y, minBounds.Z), color),
 
-                    new(new(maxBounds.X, minBounds.Y, minBounds.Z), color),
-                    new(new(maxBounds.X, minBounds.Y, maxBounds.Z), color),
-                    new(new(maxBounds.X, maxBounds.Y, maxBounds.Z), color),
-                    new(new(maxBounds.X, maxBounds.Y, minBounds.Z), color)
-                ]
-            );
+                new(new(maxBounds.X, minBounds.Y, minBounds.Z), color),
+                new(new(maxBounds.X, minBounds.Y, maxBounds.Z), color),
+                new(new(maxBounds.X, maxBounds.Y, maxBounds.Z), color),
+                new(new(maxBounds.X, maxBounds.Y, minBounds.Z), color)
+            ];
+
+            // calculate box normals
+            var center = (minBounds + maxBounds) / 2f;
+            for (var i = 0; i < boxVertices.Length; i++)
+            {
+                var normalFromBoxCenter = Vector3.Normalize(boxVertices[i].Position - center);
+                boxVertices[i].Normal = normalFromBoxCenter;
+            }
+
+            verts.AddRange(boxVertices);
 
             AddFace(inds, 0, 1, 2, 3);
             AddFace(inds, 1, 5, 6, 2);
@@ -257,7 +274,7 @@ namespace GUI.Types.Renderer
             GL.UseProgram(renderShader.Program);
 
             renderShader.SetUniform4x4("transform", Transform);
-            renderShader.SetUniform1("bAnimated", 0.0f);
+            renderShader.SetBoneAnimationData(false);
             renderShader.SetUniform1("sceneObjectId", Id);
 
             renderShader.SetUniform1("g_bNormalShaded", Shaded);

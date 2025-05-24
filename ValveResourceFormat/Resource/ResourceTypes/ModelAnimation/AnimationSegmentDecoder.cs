@@ -1,4 +1,4 @@
-using System.Runtime.CompilerServices;
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes.ModelAnimation
 {

@@ -7,7 +7,8 @@ using System.Text.RegularExpressions;
 using GUI.Controls;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -132,6 +133,7 @@ namespace GUI.Types.Renderer
                 }
 
                 VrfGuiContext.MaterialLoader.SetDefaultMaterialParameters(shader.Default);
+                shader.StoreAttributeLocations();
 
                 ShaderDefines[shaderName] = parsedData.Defines;
 

@@ -1,15 +1,9 @@
 <h1 align="center"><img src="./Misc/Icons/source2viewer.png" width="64" align="center"> Source 2 Viewer</h1>
 
 <p align="center">
-    <a href="https://github.com/ValveResourceFormat/ValveResourceFormat/actions">
-        <img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ValveResourceFormat/ValveResourceFormat/build.yml?logo=github&style=for-the-badge&branch=master">
-    </a>
-    <a href="https://www.nuget.org/packages/ValveResourceFormat/">
-        <img src="https://img.shields.io/nuget/v/ValveResourceFormat.svg?logo=nuget&style=for-the-badge">
-    </a>
-    <a href="https://app.codecov.io/gh/ValveResourceFormat/ValveResourceFormat">
-        <img src="https://img.shields.io/codecov/c/github/ValveResourceFormat/ValveResourceFormat/master?logo=codecov&logoColor=ffffff&style=for-the-badge">
-    </a>
+    <a href="https://github.com/ValveResourceFormat/ValveResourceFormat/actions"><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/ValveResourceFormat/ValveResourceFormat/build.yml?logo=github&style=for-the-badge&branch=master"></a>
+    <a href="https://www.nuget.org/packages/ValveResourceFormat/"><img src="https://img.shields.io/nuget/v/ValveResourceFormat.svg?logo=nuget&style=for-the-badge"></a>
+    <a href="https://app.codecov.io/gh/ValveResourceFormat/ValveResourceFormat"><img src="https://img.shields.io/codecov/c/github/ValveResourceFormat/ValveResourceFormat/master?logo=codecov&logoColor=ffffff&style=for-the-badge"></a>
 </p>
 
 *\* The library component of Source 2 Viewer is called ValveResourceFormat (VRF).*
@@ -119,6 +113,7 @@ Magic        | Description
 `0x4B563302` | KV3\x02 - Binary keyvalues 3 (version 2)
 `0x4B563303` | KV3\x03 - Binary keyvalues 3 (version 3)
 `0x4B563304` | KV3\x04 - Binary keyvalues 3 (version 4)
+`0x4B563305` | KV3\x05 - Binary keyvalues 3 (version 5)
 `0x564B4256` | VBKV - binary keyvalues 1 (handled by ValveKeyvalue)
 `0x55AA1234` | VPK - valve package (handled by ValvePak)
 `0x44434356` | VCCD - closed captions
@@ -150,8 +145,9 @@ Option                        | Description
 `--vpk_list` (or `-l`)        | Lists all resources in given VPK. File extension and path filters apply.
 `--vpk_dir`                   | Print a list of files in given VPK and information about them.
 | **Type specific export**    | |
-`--gltf_export_format`        | Exports meshes/models in given glTF format. Must be either 'gltf' (default) or 'glb'.
+`--gltf_export_format`        | Exports meshes/models in given glTF format. Must be either 'gltf' or 'glb'.
 `--gltf_export_materials`     | Whether to export materials during glTF exports.
+`--gltf_export_animations`    | Whether to export animations during glTF exports.
 `--gltf_textures_adapt`       | Whether to perform any glTF spec adaptations on textures (e.g. split metallic map).
 `--gltf_export_extras`        | Export additional Mesh properties into glTF extras
 `--tools_asset_info_short`    | Whether to print only file paths for tools_asset_info files.

@@ -22,21 +22,21 @@ namespace ValveResourceFormat.ResourceTypes
             Type = platformBlockType;
         }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 
-            const int ShaderFileCount = (int)VcsProgramType.ComputeShader;
-            Span<OnDiskShaderFile> shaderFiles = stackalloc OnDiskShaderFile[ShaderFileCount + 1];
+            const int ShaderFileCount = 9;
+            Span<OnDiskShaderFile> shaderFiles = stackalloc OnDiskShaderFile[ShaderFileCount];
 
-            for (var i = 0; i <= ShaderFileCount; i++)
+            for (var i = 0; i < ShaderFileCount; i++)
             {
                 shaderFiles[i].Type = (VcsProgramType)i;
                 shaderFiles[i].Offset = reader.ReadUInt32();
                 shaderFiles[i].Size = reader.ReadUInt32();
             }
 
-            var shaderName = Path.GetFileNameWithoutExtension(resource.FileName);
+            var shaderName = Path.GetFileNameWithoutExtension(Resource.FileName);
             var shaderModelType = VcsShaderModelType._50;
             var platformType = Type switch
             {
@@ -62,7 +62,7 @@ namespace ValveResourceFormat.ResourceTypes
                 var name = GetVcsCompatibleFileName(onDiskShaderFile.Type);
                 var stream = new MemoryStream(reader.ReadBytes((int)onDiskShaderFile.Size));
 
-                var shaderFile = new ShaderFile { IsSbox = true };
+                var shaderFile = new VfxProgramData { IsSbox = true };
                 shaderFile.Read(name, stream);
                 Shaders.Add(shaderFile);
             }

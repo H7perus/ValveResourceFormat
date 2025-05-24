@@ -1,8 +1,9 @@
 using System.Globalization;
 using System.Linq;
 using ValveResourceFormat.ResourceTypes.RubikonPhysics;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {

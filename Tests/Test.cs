@@ -1,11 +1,12 @@
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using ValveResourceFormat;
+using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Utils;
 
 namespace Tests
 {
@@ -95,6 +96,30 @@ namespace Tests
                 ms.Seek(0, SeekOrigin.Begin);
 
                 resource.Read(ms);
+
+                Assert.That(resource.DataBlock, Is.Not.TypeOf<ResourceData>());
+            }
+        }
+
+        [Test]
+        public void ReadBlocksNoFileName()
+        {
+            var resources = new Dictionary<string, Resource>();
+            var path = Path.Combine(TestContext.CurrentContext.TestDirectory, "Files");
+            var files = Directory.GetFiles(path, "*.*_c");
+
+            if (files.Length == 0)
+            {
+                Assert.Fail("There are no files to test.");
+            }
+
+            foreach (var file in files)
+            {
+                using var resource = new Resource();
+                using var fs = new FileStream(file, FileMode.Open, FileAccess.Read);
+                resource.Read(fs);
+
+                Assert.That(resource.DataBlock, Is.Not.TypeOf<ResourceData>());
             }
         }
 
@@ -108,7 +133,7 @@ namespace Tests
             {
                 var name = Path.GetFileName(Path.GetDirectoryName(file));
 
-                if (!resources.TryGetValue(name, out var resource))
+                if (name == null || !resources.TryGetValue(name, out var resource))
                 {
                     Assert.Fail($"{name}: no such resource");
 
@@ -126,7 +151,16 @@ namespace Tests
                     continue;
                 }
 
-                var actualOutput = resource.GetBlockByType(blockType).ToString();
+                var blockData = resource.GetBlockByType(blockType);
+
+                if (blockData == null)
+                {
+                    Assert.Fail($"{name}: block is null: {blockType}");
+
+                    continue;
+                }
+
+                var actualOutput = blockData.ToString();
                 var expectedOutput = File.ReadAllText(file);
 
                 // We don't care about Valve's messy whitespace, so just strip it.
@@ -167,6 +201,8 @@ namespace Tests
 
             var ex = Assert.Throws<InvalidDataException>(() => resource.Read(ms));
 
+            Debug.Assert(ex != null);
+            Assert.That(ex, Is.Not.Null);
             Assert.That(ex.Message, Does.Contain("Use ValvePak"));
         }
 

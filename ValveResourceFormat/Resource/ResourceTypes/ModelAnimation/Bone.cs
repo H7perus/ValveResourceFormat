@@ -1,8 +1,11 @@
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes.ModelAnimation
 {
     public class Bone
     {
         public int Index { get; }
+        public ModelSkeletonBoneFlags Flags { get; }
         public Bone Parent { get; private set; }
         public List<Bone> Children { get; } = [];
 
@@ -14,10 +17,13 @@ namespace ValveResourceFormat.ResourceTypes.ModelAnimation
         public Matrix4x4 BindPose { get; }
         public Matrix4x4 InverseBindPose { get; }
 
-        public Bone(int index, string name, Vector3 position, Quaternion rotation)
+        public bool IsProceduralCloth => (Flags & ModelSkeletonBoneFlags.ProceduralCloth) == ModelSkeletonBoneFlags.ProceduralCloth;
+
+        public Bone(int index, string name, Vector3 position, Quaternion rotation, ModelSkeletonBoneFlags flags)
         {
             Index = index;
             Name = name;
+            Flags = flags;
 
             Position = position;
             Angle = rotation;
@@ -25,7 +31,11 @@ namespace ValveResourceFormat.ResourceTypes.ModelAnimation
             // Calculate matrices
             BindPose = Matrix4x4.CreateFromQuaternion(rotation) * Matrix4x4.CreateTranslation(position);
 
-            Matrix4x4.Invert(BindPose, out var inverseBindPose);
+            if (!Matrix4x4.Invert(BindPose, out var inverseBindPose))
+            {
+                throw new InvalidOperationException("Matrix invert failed");
+            }
+
             InverseBindPose = inverseBindPose;
         }
 

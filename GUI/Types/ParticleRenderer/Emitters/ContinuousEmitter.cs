@@ -9,7 +9,7 @@ namespace GUI.Types.ParticleRenderer.Emitters
         private readonly INumberProvider emitRate = new LiteralNumberProvider(100);
         private readonly float emitInterval = 0.01f;
 
-        private Action particleEmitCallback;
+        private Action? particleEmitCallback;
 
         private float time;
         private float lastEmissionTime;
@@ -36,6 +36,7 @@ namespace GUI.Types.ParticleRenderer.Emitters
         public override void Stop()
         {
             IsFinished = true;
+            particleEmitCallback = null;
         }
 
         public override void Emit(float frameTime)
@@ -53,10 +54,9 @@ namespace GUI.Types.ParticleRenderer.Emitters
             if (time >= nextStartTime && (nextEmissionDuration == 0f || time <= nextStartTime + nextEmissionDuration))
             {
                 var numToEmit = (int)MathF.Floor((time - lastEmissionTime) / emitInterval);
-                var emitCount = Math.Min(5 * (int)emitRate.NextNumber(), numToEmit); // Limit the amount of particles to emit at once in case of refocus
-                for (var i = 0; i < emitCount; i++)
+                for (var i = 0; i < numToEmit; i++)
                 {
-                    particleEmitCallback();
+                    particleEmitCallback?.Invoke();
                 }
 
                 lastEmissionTime += numToEmit * emitInterval;

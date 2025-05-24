@@ -1,5 +1,7 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes.Choreo
 {
     public class ChoreoCurveData
@@ -22,7 +24,7 @@ namespace ValveResourceFormat.ResourceTypes.Choreo
 
             foreach (var sample in Samples)
             {
-                kv.AddProperty(null, new KVValue(KVType.OBJECT, sample.ToKeyValues()));
+                kv.AddItem(sample.ToKeyValues());
             }
 
             return kv;

@@ -12,6 +12,8 @@ using SkiaSharp;
 using static GUI.Types.Renderer.PickingTexture;
 using WinFormsMouseEventArgs = System.Windows.Forms.MouseEventArgs;
 
+#nullable disable
+
 namespace GUI.Controls
 {
     partial class GLViewerControl : ControlPanelView
@@ -33,7 +35,6 @@ namespace GUI.Controls
 
         public event EventHandler<RenderEventArgs> GLPaint;
         public event EventHandler GLLoad;
-        public Action<GLViewerControl> GLPostLoad { get; set; }
 
         protected readonly Types.Renderer.TextRenderer textRenderer;
         protected readonly PostProcessRenderer postProcessRenderer;
@@ -46,6 +47,7 @@ namespace GUI.Controls
         Point MousePreviousPosition;
         Point InitialMousePosition;
         protected TrackedKeys CurrentlyPressedKeys;
+        protected Point LastMouseDelta { get; private set; }
 
         private long lastUpdate;
         private long lastFpsUpdate;
@@ -87,6 +89,7 @@ namespace GUI.Controls
             GLControl.GotFocus += OnGotFocus;
             GLControl.LostFocus += OnLostFocus;
             GLControl.VisibleChanged += OnVisibleChanged;
+            Program.MainForm.Activated += OnAppActivated;
             Disposed += OnDisposed;
 
             glControlContainer.Controls.Add(GLControl);
@@ -139,12 +142,17 @@ namespace GUI.Controls
 
             if (e.KeyCode == Keys.F11)
             {
+                var currentScreen = Screen.FromControl(Program.MainForm);
+
                 FullScreenForm = new Form
                 {
                     Text = "Source 2 Viewer Fullscreen",
                     Icon = Program.MainForm.Icon,
                     ControlBox = false,
                     FormBorderStyle = FormBorderStyle.None,
+                    StartPosition = FormStartPosition.Manual,
+                    Location = currentScreen.Bounds.Location,
+                    Size = currentScreen.Bounds.Size,
                     WindowState = FormWindowState.Maximized
                 };
                 FullScreenForm.Controls.Add(GLControl);
@@ -204,6 +212,7 @@ namespace GUI.Controls
             GLControl.GotFocus -= OnGotFocus;
             GLControl.LostFocus -= OnLostFocus;
             GLControl.VisibleChanged -= OnVisibleChanged;
+            Program.MainForm.Activated -= OnAppActivated;
             Disposed -= OnDisposed;
         }
 
@@ -212,7 +221,12 @@ namespace GUI.Controls
             if (GLControl.Visible)
             {
                 HandleResize();
-                GLControl.Focus();
+
+                if (Form.ActiveForm != null)
+                {
+                    GLControl.Focus();
+                    GLControl.Invalidate();
+                }
             }
         }
 
@@ -440,7 +454,7 @@ namespace GUI.Controls
             }
             catch (Exception exception)
             {
-                var control = new CodeTextBox(exception.ToString());
+                var control = CodeTextBox.CreateFromException(exception);
                 glControlContainer.Controls.Clear();
                 glControlContainer.Controls.Add(control);
 
@@ -448,8 +462,6 @@ namespace GUI.Controls
             }
 
             HandleResize();
-            GLPostLoad?.Invoke(this);
-            GLPostLoad = null;
 
             lastUpdate = Stopwatch.GetTimestamp();
         }
@@ -472,6 +484,9 @@ namespace GUI.Controls
                 return;
             }
 
+            var isActiveForm = Form.ActiveForm != null;
+
+            var isTextureViewer = this is GLTextureViewer;
             var currentTime = Stopwatch.GetTimestamp();
             var elapsed = Stopwatch.GetElapsedTime(lastUpdate, currentTime);
             lastUpdate = currentTime;
@@ -479,7 +494,7 @@ namespace GUI.Controls
             // Clamp frametime because it is possible to go past 1 second when gl control is paused which may cause issues in things like particle rendering
             var frameTime = MathF.Min(1f, (float)elapsed.TotalSeconds);
 
-            if (MouseOverRenderArea && this is not GLTextureViewer)
+            if (MouseOverRenderArea && !isTextureViewer)
             {
                 var pressedKeys = CurrentlyPressedKeys;
                 var modifierKeys = ModifierKeys;
@@ -495,6 +510,7 @@ namespace GUI.Controls
                 }
 
                 Camera.Tick(frameTime, pressedKeys, MouseDelta);
+                LastMouseDelta = MouseDelta;
                 MouseDelta = Point.Empty;
             }
 
@@ -531,7 +547,7 @@ namespace GUI.Controls
 
             BlitFramebufferToScreen();
 
-            if (Settings.Config.DisplayFps != 0)
+            if (Settings.Config.DisplayFps != 0 && isActiveForm && !isTextureViewer)
             {
                 using (new GLDebugGroup("Text Render"))
                 {
@@ -541,7 +557,17 @@ namespace GUI.Controls
 
             GLControl.SwapBuffers();
             Picker?.TriggerEventIfAny();
-            GLControl.Invalidate();
+
+            if (isActiveForm)
+            {
+                // Infinite loop of invalidates causes a bug with message box dialogs not actually appearing in front,
+                // requiring user to press Alt key for it to appear. Checking for active form also pauses rendering while
+                // the app is not focused. We don't have a reference to the file save/open dialog, thus ActiveForm will be null.
+                //
+                // Repro: open a renderer tab, right click on tab to export, save with name that would cause "file already exists" popup.
+                //
+                GLControl.Invalidate();
+            }
         }
 
         private void BlitFramebufferToScreen()
@@ -578,7 +604,7 @@ namespace GUI.Controls
             }
 
             HandleResize();
-            Draw();
+            GLControl.Invalidate();
         }
 
         private void HandleResize()
@@ -623,6 +649,11 @@ namespace GUI.Controls
             MainFramebuffer?.Dispose();
         }
 
+        private void OnAppActivated(object sender, EventArgs e)
+        {
+            GLControl.Invalidate();
+        }
+
         private void OnGotFocus(object sender, EventArgs e)
         {
             if (!MainFramebuffer.HasValidDimensions())
@@ -632,7 +663,7 @@ namespace GUI.Controls
 
             GLControl.MakeCurrent();
             HandleResize();
-            Draw();
+            GLControl.Invalidate();
         }
 
         private void OnLostFocus(object sender, EventArgs e)

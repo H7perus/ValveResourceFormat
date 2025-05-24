@@ -1,6 +1,9 @@
+using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using PrimitiveType = OpenTK.Graphics.OpenGL.PrimitiveType;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -69,7 +72,7 @@ namespace GUI.Types.Renderer
 
             vertexCount = vertices.Count;
 
-            GL.NamedBufferData(vboHandle, vertices.Count * SimpleVertex.SizeInBytes, vertices.ToArray(), BufferUsageHint.DynamicDraw);
+            GL.NamedBufferData(vboHandle, vertices.Count * SimpleVertex.SizeInBytes, ListAccessors<SimpleVertex>.GetBackingArray(vertices), BufferUsageHint.DynamicDraw);
         }
 
         private static void GetAnimationMatrixRecursive(List<SimpleVertex> vertices, List<(Vector3 Position, string String)> text, Bone bone, Matrix4x4 bindPose, Frame frame)
@@ -105,7 +108,22 @@ namespace GUI.Types.Renderer
 
         public override void Render(Scene.RenderContext context)
         {
-            if (!Enabled || context.RenderPass != RenderPass.AfterOpaque)
+            if (!Enabled)
+            {
+                return;
+            }
+
+            if (context.RenderPass == RenderPass.Translucent)
+            {
+                foreach (var text in TextCalls)
+                {
+                    textRenderer.RenderTextBillboard(context.View.Camera, text.Position, 3f, Vector4.One, text.String, center: false);
+                }
+
+                return;
+            }
+
+            if (context.RenderPass != RenderPass.AfterOpaque)
             {
                 return;
             }
@@ -116,7 +134,7 @@ namespace GUI.Types.Renderer
             GL.UseProgram(renderShader.Program);
 
             renderShader.SetUniform4x4("transform", Transform);
-            renderShader.SetUniform1("bAnimated", 0.0f);
+            renderShader.SetBoneAnimationData(false);
             renderShader.SetUniform1("sceneObjectId", Id);
 
             GL.BindVertexArray(vaoHandle);
@@ -125,11 +143,6 @@ namespace GUI.Types.Renderer
             GL.UseProgram(0);
             GL.BindVertexArray(0);
             GL.DepthFunc(DepthFunction.Greater);
-
-            foreach (var text in TextCalls)
-            {
-                textRenderer.RenderTextBillboard(context.View.Camera, text.Position, 3f, Vector4.One, text.String, center: false);
-            }
         }
     }
 }

@@ -2,13 +2,15 @@ using System.IO;
 using System.Text;
 using ValveResourceFormat.Blocks;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes
 {
     public class Plaintext : ResourceData
     {
         public string Data { get; private set; }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 

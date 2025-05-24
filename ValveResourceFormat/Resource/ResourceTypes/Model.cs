@@ -6,8 +6,9 @@ using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using ValveResourceFormat.ResourceTypes.ModelData;
 using ValveResourceFormat.ResourceTypes.ModelData.Attachments;
 using ValveResourceFormat.ResourceTypes.ModelFlex;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -17,7 +18,7 @@ namespace ValveResourceFormat.ResourceTypes
         {
             get
             {
-                cachedSkeleton ??= Skeleton.FromModelData(Data, filterBonesUsedByLod0: false);
+                cachedSkeleton ??= Skeleton.FromModelData(Data);
                 return cachedSkeleton;
             }
         }
@@ -33,7 +34,6 @@ namespace ValveResourceFormat.ResourceTypes
         private List<Animation> CachedAnimations;
         private Skeleton cachedSkeleton { get; set; }
         private FlexController[] cachedFlexControllers { get; set; }
-        private readonly Dictionary<(VBIB VBIB, int MeshIndex), VBIB> remappedVBIBCache = [];
         public Dictionary<string, Hitbox[]> HitboxSets { get; private set; }
         public Dictionary<string, Attachment> Attachments { get; private set; }
 
@@ -57,9 +57,9 @@ namespace ValveResourceFormat.ResourceTypes
             return flexControllers.ToArray();
         }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
-            base.Read(reader, resource);
+            base.Read(reader);
 
             if (Resource.GetBlockByType(BlockType.MDAT) is Mesh mesh)
             {
@@ -81,47 +81,39 @@ namespace ValveResourceFormat.ResourceTypes
             Attachments ??= mesh.Attachments;
         }
 
-        public void SetSkeletonFilteredForLod0()
-        {
-            cachedSkeleton ??= Skeleton.FromModelData(Data, filterBonesUsedByLod0: true);
-        }
-
+        /// <summary>
+        /// Get the bone remap table of a specific mesh.
+        /// This is used to remap bone indices in the mesh VBIB to bone indices of the model skeleton.
+        /// </summary>
         public int[] GetRemapTable(int meshIndex)
         {
-            var remapTableStarts = Data.GetIntegerArray("m_remappingTableStarts");
+            var remappingTableStarts = Data.GetIntegerArray("m_remappingTableStarts");
 
-            if (remapTableStarts.Length <= meshIndex)
+            if (remappingTableStarts.Length <= meshIndex)
             {
                 return null;
             }
 
-            // Get the remap table and invert it for our construction method
-            var remapTable = Data.GetIntegerArray("m_remappingTable").Select(i => (int)i);
+            var remappingTable = Data.GetIntegerArray("m_remappingTable");
 
-            var start = (int)remapTableStarts[meshIndex];
-            return remapTable
-                .Skip(start)
-                .Take(Skeleton.LocalRemapTable.Length)
-                .ToArray();
+            var remappingTableStart = (int)remappingTableStarts[meshIndex];
+
+            var nextMeshIndex = meshIndex + 1;
+            var nextMeshStart = remappingTableStarts.Length > nextMeshIndex
+                ? remappingTableStarts[nextMeshIndex]
+                : remappingTable.Length;
+
+            var meshBoneCount = nextMeshStart - remappingTableStart;
+
+            var meshRemappingTable = new int[meshBoneCount];
+            for (var i = 0; i < meshBoneCount; i++)
+            {
+                meshRemappingTable[i] = (int)remappingTable[remappingTableStart + i];
+            }
+
+            return meshRemappingTable;
         }
 
-        public VBIB RemapBoneIndices(VBIB vbib, int meshIndex)
-        {
-            if (Skeleton.Bones.Length == 0)
-            {
-                return vbib;
-            }
-            if (remappedVBIBCache.TryGetValue((vbib, meshIndex), out var res))
-            {
-                return res;
-            }
-            res = vbib.RemapBoneIndices(VBIB.CombineRemapTables([
-                GetRemapTable(meshIndex),
-                Skeleton.LocalRemapTable,
-            ]));
-            remappedVBIBCache.Add((vbib, meshIndex), res);
-            return res;
-        }
 
         public IEnumerable<(int MeshIndex, string MeshName, long LoDMask)> GetReferenceMeshNamesAndLoD()
         {

@@ -1,7 +1,5 @@
 using System.Globalization;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using GUI.Controls;
 using GUI.Forms;
@@ -11,6 +9,8 @@ using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static GUI.Controls.SavedCameraPositionsControl;
 using static GUI.Types.Renderer.PickingTexture;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -95,6 +95,30 @@ namespace GUI.Types.Renderer
             AddDivider();
         }
 
+        private void AddSceneExposureSlider()
+        {
+            var exposureLabel = new Label();
+            void UpdateExposureText(float exposure)
+            {
+                exposureLabel.Text = $"Exposure: {exposure:0.00}";
+            }
+
+            AddControl(exposureLabel);
+
+            var exposureSlider = AddTrackBar((exposureAmountInt) =>
+            {
+                var exposure = exposureAmountInt / 10f;
+                UpdateExposureText(exposure);
+                Scene.PostProcessInfo.CustomExposure = exposure;
+            });
+
+            exposureSlider.TrackBar.Minimum = 1;
+            exposureSlider.TrackBar.Maximum = 80;
+            var sceneExposure = Scene.PostProcessInfo.CalculateTonemapScalar();
+            exposureSlider.TrackBar.Value = (int)(sceneExposure * 10);
+            UpdateExposureText(sceneExposure);
+        }
+
         private void OnGetOrSetPositionFromClipboardRequest(object sender, bool isSetRequest)
         {
             var pitch = 0.0f;
@@ -174,6 +198,8 @@ namespace GUI.Types.Renderer
 
                 AddCheckBox("Show Fog", Scene.FogEnabled, v => Scene.FogEnabled = v);
                 AddCheckBox("Color Correction", postProcessRenderer.ColorCorrectionEnabled, v => postProcessRenderer.ColorCorrectionEnabled = v);
+                AddCheckBox("Experimental Lights", false, v => viewBuffer.Data.ExperimentalLightsEnabled = v);
+                AddCheckBox("Occlusion Culling", EnableOcclusionCulling, (v) => EnableOcclusionCulling = v);
 
                 if (result.SkyboxScene != null)
                 {
@@ -190,8 +216,15 @@ namespace GUI.Types.Renderer
                 var uniqueWorldLayers = new HashSet<string>(4);
                 var uniquePhysicsGroups = new HashSet<string>();
 
+                NavMeshSceneNode.AddNavNodesToScene(result.NavMesh, Scene);
+
                 foreach (var node in Scene.AllNodes)
                 {
+                    if (node.LayerName.StartsWith("LightProbeGrid", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
                     uniqueWorldLayers.Add(node.LayerName);
 
                     if (node is PhysSceneNode physSceneNode)
@@ -241,6 +274,8 @@ namespace GUI.Types.Renderer
                     Camera.SetLocation(Camera.Location + Camera.GetForwardVector() * 10f); // Escape the camera model
                     cameraSet = true;
                 }
+
+                AddSceneExposureSlider();
             }
 
             if (!cameraSet)
@@ -426,81 +461,71 @@ namespace GUI.Types.Renderer
                 return;
             }
 
-            Matrix4x4.Invert(sceneNode.Transform * Camera.CameraViewMatrix, out var transform);
+            if (!Matrix4x4.Invert(sceneNode.Transform * Camera.CameraViewMatrix, out var transform))
+            {
+                throw new InvalidOperationException("Matrix invert failed");
+            }
 
             FullScreenForm?.Close();
 
-            Program.MainForm.OpenFile(foundFile.Context, foundFile.PackageEntry).ContinueWith(
-                t =>
+            foundFile.Context.GLPostLoadAction = (viewerControl) =>
+            {
+                var yaw = MathF.Atan2(-transform.M32, -transform.M31);
+                var scaleZ = MathF.Sqrt(transform.M31 * transform.M31 + transform.M32 * transform.M32 + transform.M33 * transform.M33);
+                var unscaledZ = transform.M33 / scaleZ;
+                var pitch = MathF.Asin(-unscaledZ);
+
+                viewerControl.Camera.CopyFrom(Camera);
+                viewerControl.Camera.SetLocationPitchYaw(transform.Translation, pitch, yaw);
+
+                if (viewerControl is not GLModelViewer glModelViewer || sceneNode is not ModelSceneNode worldModel)
                 {
-                    var glViewer = t.Result.Controls.OfType<TabControl>().FirstOrDefault()?
-                        .Controls.OfType<TabPage>().First(tab => tab.Controls.OfType<GLViewerControl>() is not null)?
-                        .Controls.OfType<GLViewerControl>().First();
-                    if (glViewer is not null)
+                    return;
+                }
+
+                // Set same mesh groups
+                if (glModelViewer.meshGroupListBox != null)
+                {
+                    foreach (int checkedItemIndex in glModelViewer.meshGroupListBox.CheckedIndices)
                     {
-                        glViewer.GLPostLoad = (viewerControl) =>
-                        {
-                            var yaw = MathF.Atan2(-transform.M32, -transform.M31);
-                            var scaleZ = MathF.Sqrt(transform.M31 * transform.M31 + transform.M32 * transform.M32 + transform.M33 * transform.M33);
-                            var unscaledZ = transform.M33 / scaleZ;
-                            var pitch = MathF.Asin(-unscaledZ);
-
-                            viewerControl.Camera.SetLocationPitchYaw(transform.Translation, pitch, yaw);
-
-                            if (sceneNode is not ModelSceneNode worldModel)
-                            {
-                                return;
-                            }
-
-                            if (glViewer is GLModelViewer glModelViewer)
-                            {
-                                // Set same mesh groups
-                                if (glModelViewer.meshGroupListBox != null)
-                                {
-                                    foreach (int checkedItemIndex in glModelViewer.meshGroupListBox.CheckedIndices)
-                                    {
-                                        glModelViewer.meshGroupListBox.SetItemChecked(checkedItemIndex, false);
-                                    }
-
-                                    foreach (var group in worldModel.GetActiveMeshGroups())
-                                    {
-                                        var item = glModelViewer.meshGroupListBox.FindStringExact(group);
-
-                                        if (item != ListBox.NoMatches)
-                                        {
-                                            glModelViewer.meshGroupListBox.SetItemChecked(item, true);
-                                        }
-                                    }
-                                }
-
-                                // Set same material group
-                                if (glModelViewer.materialGroupListBox != null && worldModel.ActiveMaterialGroup != null)
-                                {
-                                    var skinId = glModelViewer.materialGroupListBox.FindStringExact(worldModel.ActiveMaterialGroup);
-
-                                    if (skinId != -1)
-                                    {
-                                        glModelViewer.materialGroupListBox.SelectedIndex = skinId;
-                                    }
-                                }
-
-                                // Set animation
-                                if (glModelViewer.animationComboBox != null && worldModel.AnimationController.ActiveAnimation != null)
-                                {
-                                    var animationId = glModelViewer.animationComboBox.FindStringExact(worldModel.AnimationController.ActiveAnimation.Name);
-
-                                    if (animationId != -1)
-                                    {
-                                        glModelViewer.animationComboBox.SelectedIndex = animationId;
-                                    }
-                                }
-                            }
-                        };
+                        glModelViewer.meshGroupListBox.SetItemChecked(checkedItemIndex, false);
                     }
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnRanToCompletion,
-                TaskScheduler.Default);
+
+                    foreach (var group in worldModel.GetActiveMeshGroups())
+                    {
+                        var item = glModelViewer.meshGroupListBox.FindStringExact(group);
+
+                        if (item != ListBox.NoMatches)
+                        {
+                            glModelViewer.meshGroupListBox.SetItemChecked(item, true);
+                        }
+                    }
+                }
+
+                // Set same material group
+                if (glModelViewer.materialGroupListBox != null && worldModel.ActiveMaterialGroup != null)
+                {
+                    var skinId = glModelViewer.materialGroupListBox.FindStringExact(worldModel.ActiveMaterialGroup);
+
+                    if (skinId != -1)
+                    {
+                        glModelViewer.materialGroupListBox.SelectedIndex = skinId;
+                    }
+                }
+
+                // Set animation
+                if (glModelViewer.animationComboBox != null && worldModel.AnimationController.ActiveAnimation != null)
+                {
+                    var animationId = glModelViewer.animationComboBox.FindStringExact(worldModel.AnimationController.ActiveAnimation.Name);
+
+                    if (animationId != -1)
+                    {
+                        glModelViewer.animationComboBox.SelectedIndex = animationId;
+                    }
+                }
+            };
+
+            Program.MainForm.OpenFile(foundFile.Context, foundFile.PackageEntry);
         }
 
         private void ShowEntityProperties(SceneNode sceneNode)

@@ -1,6 +1,8 @@
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 
+#nullable disable
+
 namespace GUI.Types.Renderer
 {
     class Shader
@@ -13,6 +15,8 @@ namespace GUI.Types.Renderer
 
         private readonly Dictionary<string, int> Uniforms = [];
         public RenderMaterial Default;
+
+        public readonly Dictionary<string, int> Attributes = [];
 
 #if DEBUG
         public string FileName { get; init; }
@@ -28,12 +32,30 @@ namespace GUI.Types.Renderer
 
         public IEnumerable<(string Name, int Index, ActiveUniformType Type, int Size)> GetAllUniformNames()
         {
+            var uniformBlockMemberIndices = new List<int>();
+
+            GL.GetProgram(Program, GetProgramParameterName.ActiveUniformBlocks, out var uniformBlockCount);
+
+            for (var i = 0; i < uniformBlockCount; i++)
+            {
+                GL.GetActiveUniformBlock(Program, i, ActiveUniformBlockParameter.UniformBlockActiveUniforms, out var activeUniformsCount);
+
+                var uniformIndices = new int[activeUniformsCount];
+                GL.GetActiveUniformBlock(Program, i, ActiveUniformBlockParameter.UniformBlockActiveUniformIndices, uniformIndices);
+                uniformBlockMemberIndices.AddRange(uniformIndices);
+            }
+
             GL.GetProgram(Program, GetProgramParameterName.ActiveUniforms, out var count);
 
-            Uniforms.EnsureCapacity(count);
+            Uniforms.EnsureCapacity(count - uniformBlockMemberIndices.Count);
 
             for (var i = 0; i < count; i++)
             {
+                if (uniformBlockMemberIndices.Contains(i))
+                {
+                    continue;
+                }
+
                 var uniformName = GL.GetActiveUniform(Program, i, out var size, out var uniformType);
                 var uniformLocation = GL.GetUniformLocation(Program, uniformName);
 
@@ -43,6 +65,20 @@ namespace GUI.Types.Renderer
                 }
 
                 yield return (uniformName, i, uniformType, size);
+            }
+        }
+
+        public void StoreAttributeLocations()
+        {
+            GL.GetProgram(Program, GetProgramParameterName.ActiveAttributes, out var attributeCount);
+
+            Attributes.EnsureCapacity(attributeCount);
+
+            for (var i = 0; i < attributeCount; i++)
+            {
+                GL.GetActiveAttrib(Program, i, 64, out var length, out var size, out var type, out var name);
+                var attribLocation = GL.GetAttribLocation(Program, name);
+                Attributes[name] = attribLocation;
             }
         }
 
@@ -127,6 +163,15 @@ namespace GUI.Types.Renderer
             if (uniformLocation > -1)
             {
                 GL.ProgramUniform4(Program, uniformLocation, value.X, value.Y, value.Z, value.W);
+            }
+        }
+
+        public void SetBoneAnimationData(bool animated, int boneOffset = 0, int boneCount = 0, int weightCount = 0)
+        {
+            var uniformLocation = GetUniformLocation("uAnimationData");
+            if (uniformLocation > -1)
+            {
+                GL.ProgramUniform4((uint)Program, uniformLocation, animated ? 1u : 0u, (uint)boneOffset, (uint)boneCount, (uint)weightCount);
             }
         }
 

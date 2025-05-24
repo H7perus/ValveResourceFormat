@@ -1,7 +1,9 @@
 using System.IO;
 using System.Text;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Utils;
+using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -9,19 +11,20 @@ namespace ValveResourceFormat.ResourceTypes
     {
         public List<List<string>> Resources { get; private set; } = [];
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 
-            if (resource.ContainsBlockType(BlockType.NTRO))
+            if (Resource.ContainsBlockType(BlockType.NTRO))
             {
                 var ntro = new NTRO
                 {
                     StructName = "ResourceManifest_t",
                     Offset = Offset,
                     Size = Size,
+                    Resource = Resource,
                 };
-                ntro.Read(reader, resource);
+                ntro.Read(reader);
 
                 Resources =
                 [
@@ -79,18 +82,25 @@ namespace ValveResourceFormat.ResourceTypes
 
         public override string ToString()
         {
-            using var writer = new IndentedTextWriter();
-            foreach (var block in Resources)
+            var root = new KVObject(null);
+            var index = 0;
+
+            foreach (var resource in Resources)
             {
-                foreach (var entry in block)
+                var arr = new KVObject(null, isArray: true);
+
+                foreach (var file in resource)
                 {
-                    writer.WriteLine(entry);
+                    arr.AddItem(file);
                 }
 
-                writer.WriteLine();
+                var key = index > 0 ? $"resourceManifest{index}" : "resourceManifest";
+                root.AddProperty(key, arr);
+                index++;
             }
 
-            return writer.ToString();
+            var kv = new KV3File(root);
+            return kv.ToString();
         }
     }
 }

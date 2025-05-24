@@ -2,7 +2,10 @@ using System.Diagnostics;
 using System.Linq;
 using GUI.Types.Renderer.UniformBuffers;
 using GUI.Utils;
+using OpenTK.Graphics.OpenGL;
 using static GUI.Types.Renderer.GLSceneViewer;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -65,18 +68,14 @@ namespace GUI.Types.Renderer
 
         public void Add(SceneNode node, bool dynamic)
         {
-            if (dynamic)
-            {
-                dynamicNodes.Add(node);
-                DynamicOctree.Insert(node, node.BoundingBox);
-                node.Id = (uint)dynamicNodes.Count * 2 - 1;
-            }
-            else
-            {
-                staticNodes.Add(node);
-                StaticOctree.Insert(node, node.BoundingBox);
-                node.Id = (uint)staticNodes.Count * 2;
-            }
+            var (nodeList, octree, indexOffset) = dynamic
+                ? (dynamicNodes, DynamicOctree, 1u)
+                : (staticNodes, StaticOctree, 0u);
+
+            nodeList.Add(node);
+            node.Id = (uint)nodeList.Count * 2 - indexOffset;
+
+            octree.Insert(node, node.BoundingBox);
         }
 
         public SceneNode Find(uint id)
@@ -119,11 +118,21 @@ namespace GUI.Types.Renderer
                 node.Update(updateContext);
             }
 
+            if (OctreeDirty)
+            {
+                UpdateOctrees();
+                OctreeDirty = false;
+            }
+
             foreach (var node in dynamicNodes)
             {
                 var oldBox = node.BoundingBox;
                 node.Update(updateContext);
-                DynamicOctree.Update(node, oldBox, node.BoundingBox);
+
+                if (!oldBox.Equals(node.BoundingBox))
+                {
+                    DynamicOctree.Update(node, oldBox, node.BoundingBox);
+                }
             }
         }
 
@@ -152,7 +161,12 @@ namespace GUI.Types.Renderer
         public List<SceneNode> GetFrustumCullResults(Frustum frustum)
         {
             var currentFrustum = frustum.GetHashCode();
-            if (LastFrustum != currentFrustum)
+
+            // Optimization: Do not clear static culled results from last frame if:
+            // 1. Frustum did not change
+            // 2. Did not run occlusion queries
+
+            if (LastFrustum != currentFrustum || occlusionDirty)
             {
                 LastFrustum = currentFrustum;
 
@@ -277,6 +291,7 @@ namespace GUI.Types.Renderer
             [DepthOnlyProgram.Static] = [],
             [DepthOnlyProgram.StaticAlphaTest] = [],
             [DepthOnlyProgram.Animated] = [],
+            [DepthOnlyProgram.AnimatedEightBones] = [],
         };
 
         public void SetupSceneShadows(Camera camera, int shadowMapSize)
@@ -293,12 +308,9 @@ namespace GUI.Types.Renderer
                 bucket.Clear();
             }
 
-            StaticOctree.Root.Query(LightingInfo.SunLightFrustum, CulledShadowNodes);
-
-            if (LightingInfo.HasBakedShadowsFromLightmap)
+            if (!LightingInfo.HasBakedShadowsFromLightmap)
             {
-                // Can also check for the NoShadows flag
-                CulledShadowNodes.RemoveAll(static node => node.LayerName != "Entities");
+                StaticOctree.Root.Query(LightingInfo.SunLightFrustum, CulledShadowNodes);
             }
 
             DynamicOctree.Root.Query(LightingInfo.SunLightFrustum, CulledShadowNodes);
@@ -333,6 +345,11 @@ namespace GUI.Types.Renderer
                             (true, _) => DepthOnlyProgram.StaticAlphaTest,
                             (false, true) => DepthOnlyProgram.Animated,
                         };
+
+                        if (mesh.BoneWeightCount > 4)
+                        {
+                            bucket = DepthOnlyProgram.AnimatedEightBones;
+                        }
 
                         CulledShadowDrawCalls[bucket].Add(new MeshBatchRenderer.Request
                         {
@@ -388,6 +405,130 @@ namespace GUI.Types.Renderer
             }
         }
 
+        private bool occlusionDirty;
+
+        static void ClearOccludedStateRecursive(Octree<SceneNode>.Node node)
+        {
+            foreach (var child in node.Children)
+            {
+                child.OcclusionCulled = false;
+                child.OcculsionQuerySubmitted = false;
+                ClearOccludedStateRecursive(child);
+            }
+        }
+
+        public void RenderOcclusionProxies(RenderContext renderContext, Shader depthOnlyShader)
+        {
+            if (!renderContext.View.EnableOcclusionCulling)
+            {
+                if (occlusionDirty)
+                {
+                    ClearOccludedStateRecursive(StaticOctree.Root);
+                    occlusionDirty = false;
+                    LastFrustum = -1;
+                }
+
+                return;
+            }
+
+            occlusionDirty = true;
+
+            GL.ColorMask(false, false, false, false);
+            GL.DepthMask(false);
+            GL.Disable(EnableCap.CullFace);
+
+            GL.UseProgram(depthOnlyShader.Program);
+            GL.BindVertexArray(GuiContext.MeshBufferCache.EmptyVAO);
+
+            var maxTests = 128;
+            var maxDepth = 8;
+            TestOctantsRecursive(StaticOctree.Root, renderContext.Camera.Location, ref maxTests, maxDepth);
+
+            GL.UseProgram(0);
+            GL.BindVertexArray(0);
+
+            GL.ColorMask(true, true, true, true);
+            GL.DepthMask(true);
+            GL.Enable(EnableCap.CullFace);
+        }
+
+        private static void TestOctantsRecursive(Octree<SceneNode>.Node octant, Vector3 cameraPosition, ref int maxTests, int maxDepth)
+        {
+            foreach (var octreeNode in octant.Children)
+            {
+                if (octreeNode.FrustumCulled)
+                {
+                    octreeNode.OcclusionCulled = false;
+                    octreeNode.OcculsionQuerySubmitted = false;
+                    continue;
+                }
+
+                if (!octreeNode.HasChildren)
+                {
+                    continue;
+                }
+
+                if (octreeNode.Region.Contains(cameraPosition))
+                {
+                    // if the camera is inside the octant, we can skip the occlusion test, however we still need to test the children
+                    TestOctantsRecursive(octreeNode, cameraPosition, ref maxTests, --maxDepth);
+
+                    octreeNode.OcclusionCulled = false;
+                    octreeNode.OcculsionQuerySubmitted = false;
+                    continue;
+                }
+
+                if (octreeNode.OcculsionQuerySubmitted)
+                {
+                    var visible = -1;
+                    GL.GetQueryObject(
+                        octreeNode.OcclusionQueryHandle,
+                        GetQueryObjectParam.QueryResultNoWait,
+                        out visible
+                    );
+
+                    octreeNode.OcclusionCulled = visible == 0;
+                    octreeNode.OcculsionQuerySubmitted = visible == -1;
+
+                    if (visible == 1)
+                    {
+                        TestOctantsRecursive(octreeNode, cameraPosition, ref maxTests, --maxDepth);
+                    }
+
+                    continue;
+                }
+
+                // Octree node passed frustum test, contains elements, and was not waiting for a previous query
+
+                if (octreeNode.OcclusionQueryHandle == -1)
+                {
+                    octreeNode.OcclusionQueryHandle = GL.GenQuery();
+                }
+
+                octreeNode.OcculsionQuerySubmitted = true;
+                maxTests--;
+
+                GL.VertexAttrib4(
+                    0,
+                    octreeNode.Region.Min.X,
+                    octreeNode.Region.Min.Y,
+                    octreeNode.Region.Min.Z,
+                    octreeNode.Region.Size.X
+                );
+
+                GL.VertexAttribI2(1, maxDepth, maxTests);
+
+                GL.BeginQuery(QueryTarget.AnySamplesPassedConservative, octreeNode.OcclusionQueryHandle);
+                GL.DrawArrays(PrimitiveType.Triangles, 0, 36);
+                GL.EndQuery(QueryTarget.AnySamplesPassedConservative);
+            }
+
+            if (maxTests < 0 || maxDepth < 0)
+            {
+                return;
+            }
+        }
+
         public void RenderTranslucentLayer(RenderContext renderContext)
         {
             using (new GLDebugGroup("Translucent RenderLoose"))
@@ -409,14 +550,21 @@ namespace GUI.Types.Renderer
         {
             foreach (var renderer in AllNodes)
             {
+                if (renderer.LayerName.StartsWith("LightProbeGrid", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
                 renderer.LayerEnabled = layers.Contains(renderer.LayerName);
             }
 
-            if (!skipUpdate)
+            if (skipUpdate)
             {
-                UpdateOctrees();
+                OctreeDirty = false;
             }
         }
+
+        public bool OctreeDirty { get; set; }
 
         public void UpdateOctrees()
         {
@@ -645,7 +793,10 @@ namespace GUI.Types.Renderer
 
         private void UpdateGpuEnvmapData(SceneEnvMap envMap, int index)
         {
-            Matrix4x4.Invert(envMap.Transform, out var invertedTransform);
+            if (!Matrix4x4.Invert(envMap.Transform, out var invertedTransform))
+            {
+                throw new InvalidOperationException("Matrix invert failed");
+            }
 
             LightingInfo.LightingData.EnvMapWorldToLocal[index] = invertedTransform;
             LightingInfo.LightingData.EnvMapBoxMins[index] = new Vector4(envMap.LocalBoundingBox.Min, 0);

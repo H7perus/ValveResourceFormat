@@ -1,8 +1,7 @@
-using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
-using ValveResourceFormat.ThirdParty;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace ValveResourceFormat.Serialization.VfxEval
 {
@@ -10,6 +9,8 @@ namespace ValveResourceFormat.Serialization.VfxEval
     {
         // parsed data assigned here
         public string DynamicExpressionResult { get; private set; }
+        public byte[] DynamicExpressionBlob { get; private set; }
+
         // parse the input one line at a time
         private readonly List<string> DynamicExpressionList = [];
 
@@ -68,9 +69,9 @@ namespace ValveResourceFormat.Serialization.VfxEval
             ("MatrixColorCorrect2", 2), // 31
             ("MatrixColorTint",     1), // 32
             ("normalize_safe",      1), // 33
-            ("Remap01ScaleOffset",  1), // 34
-            ("radians",             1), // 35
-            ("degrees",             1), // 36
+            ("radians",             1), // 34
+            ("degrees",             1), // 35
+            ("Remap01ScaleOffset",  1), // 36
             ("MatrixColorTint2",    2), // 37
             ("MatrixColorTint3",    3), // 38
             ("RemapVal",            5), // 39
@@ -80,7 +81,7 @@ namespace ValveResourceFormat.Serialization.VfxEval
 
         private enum OPCODE
         {
-            ENDOFDATA,          // 00
+            RETURN,          // 00
             UNKNOWN01,
             BRANCH_SEP,         // 02
             UNKNOWN03,
@@ -88,8 +89,8 @@ namespace ValveResourceFormat.Serialization.VfxEval
             UNKNOWN05,
             FUNC,               // 06
             FLOAT,              // 07
-            ASSIGN,             // 08
-            LOCALVAR,           // 09
+            STORE,             // 08
+            LOAD,           // 09
             UNKNOWN0A,
             UNKNOWN0B,
             NOT,                // 0C
@@ -105,11 +106,11 @@ namespace ValveResourceFormat.Serialization.VfxEval
             DIV,                // 16
             MODULO,             // 17
             NEGATE,             // 18
-            EXTVAR,             // 19
-            COND,               // 1A (inferred from the shader code)
+            ATTRIBUTE,             // 19
+            FEATURE,               // 1A (inferred from the shader code)
             UNKNOWN1B,
             UNKNOWN1C,
-            EVAL,               // 1D (inferred from the shader code)
+            MATERIAL_PARAM,               // 1D (inferred from the shader code)
             SWIZZLE,            // 1E
             EXISTS,             // 1F
             UNKNOWN20,
@@ -142,6 +143,9 @@ namespace ValveResourceFormat.Serialization.VfxEval
         private readonly Stack<uint> OffsetAtBranchExits = new();
         private readonly Dictionary<uint, string> LocalVariableNames = [];
 
+        public IReadOnlyList<string> RenderAttributesUsed { get; }
+
+
         // The 'return' keyword in the last line of a dynamic expression is optional (it is implied where absent)
         // OmitReturnStatement controls whether it is shown
         private readonly bool OmitReturnStatement;
@@ -159,6 +163,7 @@ namespace ValveResourceFormat.Serialization.VfxEval
         {
             OmitReturnStatement = omitReturnStatement;
             Features = features;
+            RenderAttributesUsed = renderAttributesUsed;
 
             StringToken.Store(renderAttributesUsed);
             ParseExpression(binaryBlob);
@@ -166,6 +171,8 @@ namespace ValveResourceFormat.Serialization.VfxEval
 
         private void ParseExpression(byte[] binaryBlob)
         {
+            DynamicExpressionBlob = binaryBlob;
+
             using var dataReader = new BinaryReader(new MemoryStream(binaryBlob));
 
             while (dataReader.BaseStream.Position < binaryBlob.Length)
@@ -314,7 +321,7 @@ namespace ValveResourceFormat.Serialization.VfxEval
             }
 
             // assignment is always to a local variable, and it terminates the line
-            if (op == OPCODE.ASSIGN)
+            if (op == OPCODE.STORE)
             {
                 var varId = dataReader.ReadByte();
                 var locVarname = GetLocalVarName(varId);
@@ -324,7 +331,7 @@ namespace ValveResourceFormat.Serialization.VfxEval
                 return;
             }
 
-            if (op == OPCODE.LOCALVAR)
+            if (op == OPCODE.LOAD)
             {
                 var varId = dataReader.ReadByte();
                 var locVarname = GetLocalVarName(varId);
@@ -358,33 +365,24 @@ namespace ValveResourceFormat.Serialization.VfxEval
                 return;
             }
 
-            if (op == OPCODE.EXTVAR)
+            if (op == OPCODE.ATTRIBUTE)
             {
-                var varId = dataReader.ReadUInt32();
-                var extVarname = GetExternalVarName(varId);
-                Expressions.Push(extVarname);
+                var token = dataReader.ReadUInt32();
+                Expressions.Push(StringToken.InvertedTable.GetValueOrDefault(token, $"ATTRIBUTE[{token:x08}]"));
                 return;
             }
 
-            if (op == OPCODE.COND)
+            if (op == OPCODE.FEATURE)
             {
-                uint expressionId = dataReader.ReadByte();
-                Expressions.Push((Features is null) ? $"COND[{expressionId}]" : Features[(int)expressionId]);
+                uint featureId = dataReader.ReadByte();
+                Expressions.Push((Features is null) ? $"FEAT[{featureId}]" : Features[(int)featureId]);
                 return;
             }
 
-            if (op == OPCODE.EVAL)
+            if (op == OPCODE.MATERIAL_PARAM)
             {
-                var intval = dataReader.ReadUInt32();
-                // if this reference exists in the vars-reference, then show it
-                if (StringToken.InvertedTable.TryGetValue(intval, out var externalVar))
-                {
-                    Expressions.Push(externalVar);
-                }
-                else
-                {
-                    Expressions.Push($"EVAL[{intval:x08}]");
-                }
+                var token = dataReader.ReadUInt32();
+                Expressions.Push(StringToken.InvertedTable.GetValueOrDefault(token, $"MATERIAL_PARAM[{token:x08}]"));
                 return;
             }
 
@@ -398,14 +396,14 @@ namespace ValveResourceFormat.Serialization.VfxEval
 
             if (op == OPCODE.EXISTS)
             {
-                var varId = dataReader.ReadUInt32();
-                var extVarname = GetExternalVarName(varId);
+                var token = dataReader.ReadUInt32();
+                var extVarname = StringToken.InvertedTable.GetValueOrDefault(token, $"ATTRIBUTE[{token:x08}]");
                 Expressions.Push($"exists({extVarname})");
                 return;
             }
 
             // parser terminates here
-            if (op == OPCODE.ENDOFDATA)
+            if (op == OPCODE.RETURN)
             {
                 if (dataReader.PeekChar() != -1)
                 {
@@ -482,20 +480,6 @@ namespace ValveResourceFormat.Serialization.VfxEval
         private static string Trimbrackets(string exp)
         {
             return exp[0] == '(' && exp[^1] == ')' ? exp[1..^1] : exp;
-        }
-
-        // if the variable reference is unknown return in the form UNKNOWN[e46d252d] (showing the murmur32)
-        private static string GetExternalVarName(uint varId)
-        {
-            StringToken.InvertedTable.TryGetValue(varId, out var varKnownName);
-            if (varKnownName != null)
-            {
-                return varKnownName;
-            }
-            else
-            {
-                return $"UNKNOWN[{varId:x08}]";
-            }
         }
 
         // naming local variables v0,v1,v2,..

@@ -2,7 +2,8 @@ using System.Diagnostics;
 using System.IO;
 using ValveResourceFormat.ResourceTypes.Choreo.Curves;
 using ValveResourceFormat.ResourceTypes.Choreo.Enums;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes.Choreo.Parser
 {

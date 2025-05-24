@@ -8,7 +8,6 @@ using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Utils;
 using VrfMaterial = ValveResourceFormat.ResourceTypes.Material;
 
 namespace GUI.Types.Renderer
@@ -19,9 +18,9 @@ namespace GUI.Types.Renderer
         private readonly Dictionary<string, RenderTexture> Textures = [];
         private readonly Dictionary<string, RenderTexture> TexturesSrgb = [];
         private readonly VrfGuiContext VrfGuiContext;
-        private RenderTexture ErrorTexture;
-        private RenderTexture DefaultNormal;
-        private RenderTexture DefaultMask;
+        private RenderTexture? ErrorTexture;
+        private RenderTexture? DefaultNormal;
+        private RenderTexture? DefaultMask;
         public static float MaxTextureMaxAnisotropy { get; set; }
         public int MaterialCount => Materials.Count;
 
@@ -41,7 +40,7 @@ namespace GUI.Types.Renderer
 
         private static readonly byte[] NewLineArray = "\n"u8.ToArray();
 
-        public RenderMaterial GetMaterial(string name, Dictionary<string, byte> shaderArguments)
+        public RenderMaterial GetMaterial(string name, Dictionary<string, byte>? shaderArguments)
         {
             // HL:VR has a world node that has a draw call with no material
             if (name == null)
@@ -78,14 +77,15 @@ namespace GUI.Types.Renderer
             return mat;
         }
 
-        public RenderMaterial LoadMaterial(Resource resource, Dictionary<string, byte> shaderArguments = null)
+        public RenderMaterial LoadMaterial(Resource resource, Dictionary<string, byte>? shaderArguments = null)
         {
             if (resource == null)
             {
                 return GetErrorMaterial();
             }
 
-            var vrfMaterial = (VrfMaterial)resource.DataBlock;
+            var vrfMaterial = (VrfMaterial?)resource.DataBlock;
+            Debug.Assert(vrfMaterial != null);
             var mat = new RenderMaterial(
                 vrfMaterial,
                 VrfGuiContext,
@@ -163,7 +163,9 @@ namespace GUI.Types.Renderer
         public RenderTexture LoadTexture(Resource textureResource, bool srgbRead = false, bool isViewerRequest = false)
 #pragma warning restore CA1822 // Mark members as static
         {
-            var data = (Texture)textureResource.DataBlock;
+            var data = (Texture?)textureResource.DataBlock;
+            Debug.Assert(data != null);
+
             var target = TextureTarget.Texture2D;
             var is3d = false;
             var clampModeS = (data.Flags & VTexFlags.SUGGEST_CLAMPS) != 0 ? TextureWrapMode.ClampToBorder : TextureWrapMode.Repeat;
@@ -193,14 +195,18 @@ namespace GUI.Types.Renderer
 
 #if DEBUG
             var textureName = System.IO.Path.GetFileName(textureResource.FileName);
-            GL.ObjectLabel(ObjectLabelIdentifier.Texture, tex.Handle, textureName.Length, textureName);
+
+            if (textureName != null)
+            {
+                GL.ObjectLabel(ObjectLabelIdentifier.Texture, tex.Handle, textureName.Length, textureName);
+            }
 #endif
 
-            var depth = data.Depth;
+            var texDepth = data.Depth;
 
             if (target == TextureTarget.TextureCubeMap || target == TextureTarget.TextureCubeMapArray)
             {
-                depth *= 6;
+                texDepth *= 6;
             }
 
             var minMipLevelAllowed = 0;
@@ -222,7 +228,7 @@ namespace GUI.Types.Renderer
 
             if (is3d && target != TextureTarget.TextureCubeMap)
             {
-                GL.TextureStorage3D(tex.Handle, data.NumMipLevels - minMipLevelAllowed, sizedInternalFormat, texWidth, texHeight, depth);
+                GL.TextureStorage3D(tex.Handle, data.NumMipLevels - minMipLevelAllowed, sizedInternalFormat, texWidth, texHeight, texDepth);
             }
             else
             {
@@ -233,9 +239,9 @@ namespace GUI.Types.Renderer
 
             try
             {
-                foreach (var (level, width, height, bufferSize) in data.GetEveryMipLevelTexture(buffer, minMipLevelAllowed))
+                foreach (var (level, width, height, depth, bufferSize) in data.GetEveryMipLevelTexture(buffer, minMipLevelAllowed))
                 {
-                    var realLevel = level - minMipLevelAllowed;
+                    var realLevel = (int)level - minMipLevelAllowed;
 
                     if (format.PixelType is not null)
                     {
@@ -334,22 +340,6 @@ namespace GUI.Types.Renderer
             _ => throw new NotImplementedException($"Unsupported texture format {vformat}")
         };
 
-        static readonly string[] NonMaterialUniforms =
-        [
-            "g_iRenderMode",
-            "g_flTime",
-            "g_flSunShadowBias",
-            "g_vCameraPositionWs",
-            "g_vLightmapUvScale",
-            "g_vEnvMapSizeConstants",
-            "g_vClearColor",
-            "g_vGradientFogBiasAndScale",
-            "g_vGradientFogColor_Opacity",
-            "g_vCubeFog_Offset_Scale_Bias_Exponent",
-            "g_vCubeFog_Height_Offset_Scale_Exponent_Log2Mip",
-            "g_vCubeFogCullingParams_ExposureBias_MaxOpacity",
-        ];
-
         static readonly string[] ReservedTextures = Enum.GetNames<ReservedTextureSlots>();
 
         public void SetDefaultMaterialParameters(RenderMaterial mat)
@@ -363,12 +353,6 @@ namespace GUI.Types.Renderer
                 var type = uniform.Type;
                 var index = uniform.Index;
                 var size = uniform.Size;
-
-                if (NonMaterialUniforms.Contains(name)
-                    || name.Contains("LightProbeVolume", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
 
                 if (!name.StartsWith("g_", StringComparison.Ordinal) && !name.StartsWith("F_", StringComparison.Ordinal))
                 {

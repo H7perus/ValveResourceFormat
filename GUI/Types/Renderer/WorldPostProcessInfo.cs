@@ -1,5 +1,7 @@
 namespace GUI.Types.Renderer;
 
+#nullable disable
+
 partial class Scene
 {
     public class WorldPostProcessInfo()
@@ -24,6 +26,7 @@ partial class Scene
 
         // Current post processing state
         public PostProcessState CurrentState = new();
+        public float CustomExposure = -1;
 
         public void AddPostProcessVolume(ScenePostProcessVolume postProcess)
         {
@@ -78,6 +81,11 @@ partial class Scene
         public float CalculateTonemapScalar()
         {
             var exposure = 1.0f;
+
+            if (CustomExposure != -1)
+            {
+                return CustomExposure;
+            }
 
             // Don't actually compute auto-exposure, but at least limit it to their bounds if the min/max excludes 1
             if (CurrentState.ExposureSettings.AutoExposureEnabled)

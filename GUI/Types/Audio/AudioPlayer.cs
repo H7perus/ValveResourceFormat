@@ -5,7 +5,6 @@ using NAudio.Wave;
 using NLayer.NAudioSupport;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Utils;
 
 namespace GUI.Types.Audio
 {
@@ -13,9 +12,9 @@ namespace GUI.Types.Audio
     {
         public AudioPlayer(Resource resource, TabPage tab, bool autoPlay)
         {
-            var soundData = (Sound)resource.DataBlock;
+            var soundData = (Sound?)resource.DataBlock;
 
-            if (soundData == null)
+            if (soundData == null || soundData.StreamingDataSize == 0)
             {
                 return;
             }
@@ -54,11 +53,13 @@ namespace GUI.Types.Audio
             }
         }
 
-        private void OnHandleCreated(object sender, EventArgs e)
+        private void OnHandleCreated(object? sender, EventArgs e)
         {
-            var audio = (AudioPlaybackPanel)sender;
-            audio.HandleCreated -= OnHandleCreated;
-            audio.Invoke(audio.Play);
+            if (sender is AudioPlaybackPanel audio)
+            {
+                audio.HandleCreated -= OnHandleCreated;
+                audio.Invoke(audio.Play);
+            }
         }
     }
 }

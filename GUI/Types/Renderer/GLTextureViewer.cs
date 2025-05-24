@@ -13,8 +13,9 @@ using ValveResourceFormat;
 using ValveResourceFormat.CompiledShader;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.TextureDecoders;
-using ValveResourceFormat.Utils;
 using static ValveResourceFormat.ResourceTypes.Texture;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -25,6 +26,19 @@ namespace GUI.Types.Renderer
             None,
             Equirectangular,
             Cubic,
+        }
+
+        enum ChannelSplitting
+        {
+            None,
+            Alpha,
+            FourChannels,
+        }
+
+        enum Filtering
+        {
+            Point,
+            Linear,
         }
 
         private VrfGuiContext GuiContext;
@@ -50,14 +64,19 @@ namespace GUI.Types.Renderer
         private int SelectedMip;
         private int SelectedDepth;
         private int SelectedCubeFace;
+        private bool VisualizeTiling;
         private ChannelMapping SelectedChannels = ChannelMapping.RGB;
-        private bool WantsSeparateAlpha;
+        private Filtering SelectedFiltering = Filtering.Point;
+        private ChannelSplitting ChannelSplitMode;
         private CubemapProjection CubemapProjectionType;
         private TextureCodec decodeFlags;
         private const TextureCodec softwareDecodeOnlyOptions = TextureCodec.ForceLDR;
         private Framebuffer SaveAsFbo;
 
         private CheckedListBox decodeFlagsListBox;
+        private readonly bool ShowLightBackground;
+
+        private int DisplayedImageCount => Math.Max(1 << (int)ChannelSplitMode, VisualizeTiling ? 2 : 1);
 
         private Vector2 ActualTextureSize
         {
@@ -72,11 +91,16 @@ namespace GUI.Types.Renderer
                     _ => new Vector2(1, 1),
                 };
 
-                if (WantsSeparateAlpha && CubemapProjectionType == CubemapProjection.None)
+                if (VisualizeTiling)
+                {
+                    size *= 2;
+                }
+
+                if (ChannelSplitMode > 0)
                 {
                     var mult = OriginalWidth > OriginalHeight
-                        ? new Vector2(1, 2)
-                        : new Vector2(2, 1);
+                        ? new Vector2(1, DisplayedImageCount)
+                        : new Vector2(DisplayedImageCount, 1);
 
                     size *= mult;
                 }
@@ -89,15 +113,19 @@ namespace GUI.Types.Renderer
         private bool IsZoomedIn;
         private bool MovedFromOrigin_Unzoomed;
 
+        private int LastRenderHash;
+        private int NumRendersLastHash;
+
         const int DefaultSelection = 3;
-        static readonly (ChannelMapping Channels, bool SplitAlpha, string ChoiceString)[] ChannelsComboBoxOrder = [
-            (ChannelMapping.R, false, "Red"),
-            (ChannelMapping.G, false, "Green"),
-            (ChannelMapping.B, false, "Blue"),
-            (ChannelMapping.RGB, false, "Opaque"),
-            (ChannelMapping.RGBA, false, "Transparent"),
-            (ChannelMapping.A, false, "Alpha"),
-            (ChannelMapping.RGBA, true, "Opaque with split Alpha"),
+        static readonly (ChannelMapping Channels, ChannelSplitting ChannelSplitMode, string ChoiceString)[] ChannelsComboBoxOrder = [
+            (ChannelMapping.R, ChannelSplitting.None, "Red"),
+            (ChannelMapping.G, ChannelSplitting.None, "Green"),
+            (ChannelMapping.B, ChannelSplitting.None, "Blue"),
+            (ChannelMapping.RGB, ChannelSplitting.None, "Opaque"),
+            (ChannelMapping.RGBA, ChannelSplitting.None, "Transparent"),
+            (ChannelMapping.A, ChannelSplitting.None, "Alpha"),
+            (ChannelMapping.RGBA, ChannelSplitting.Alpha, "Opaque with split Alpha"),
+            (ChannelMapping.RGBA, ChannelSplitting.FourChannels, "Four channel split"),
         ];
 
         private GLTextureViewer(VrfGuiContext guiContext) : base(guiContext)
@@ -106,6 +134,9 @@ namespace GUI.Types.Renderer
 
             GLLoad += OnLoad;
             GLControl.PreviewKeyDown += OnPreviewKeyDown;
+
+#pragma warning disable WFO5001
+            ShowLightBackground = !Application.IsDarkModeEnabled;
 
             SetZoomLabel();
 
@@ -117,6 +148,10 @@ namespace GUI.Types.Renderer
 
             resetButton.Click += (_, __) => ResetZoom();
 
+#if DEBUG
+            guiContext.ShaderLoader.ShaderHotReload.ReloadShader += (_, _) => InvalidateRender();
+#endif
+
             AddControl(resetButton);
         }
 
@@ -125,6 +160,13 @@ namespace GUI.Types.Renderer
             Bitmap = bitmap;
 
             AddChannelsComboBox();
+        }
+
+        public GLTextureViewer(VrfGuiContext guiContext, SKSvg svg) : this(guiContext)
+        {
+            AddChannelsComboBox();
+
+            SetSvg(svg);
         }
 
         public GLTextureViewer(VrfGuiContext guiContext, Resource resource) : this(guiContext)
@@ -165,11 +207,10 @@ namespace GUI.Types.Renderer
                 AddChannelsComboBox();
 
                 using var ms = new MemoryStream(((Panorama)resource.DataBlock).Data);
-                Svg = new SKSvg();
-                Svg.Load(ms);
+                var svg = new SKSvg();
+                svg.Load(ms);
 
-                OriginalWidth = Svg.Picture.CullRect.Width;
-                OriginalHeight = Svg.Picture.CullRect.Height;
+                SetSvg(svg);
 
                 return;
             }
@@ -189,12 +230,26 @@ namespace GUI.Types.Renderer
 
             ComboBox cubemapProjectionComboBox = null;
             CheckBox softwareDecodeCheckBox = null;
+            ComboBox depthComboBox = null;
 
             if (textureData.NumMipLevels > 1)
             {
                 var mipComboBox = AddSelection("Mip level", (name, index) =>
                 {
                     SelectedMip = index;
+
+                    // Depth levels are also mip mapped, so we have to remove incorrect levels
+                    if (depthComboBox != null && (textureData.Flags & VTexFlags.VOLUME_TEXTURE) != 0)
+                    {
+                        var depthMip = textureData.Depth >> SelectedMip;
+                        var newSelectedDepth = Math.Min(SelectedDepth, depthMip - 1);
+
+                        depthComboBox.BeginUpdate();
+                        depthComboBox.Items.Clear();
+                        depthComboBox.Items.AddRange(Enumerable.Range(0, depthMip).Select(x => $"#{x}").ToArray());
+                        depthComboBox.SelectedIndex = newSelectedDepth;
+                        depthComboBox.EndUpdate();
+                    }
 
                     if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
                     {
@@ -208,7 +263,7 @@ namespace GUI.Types.Renderer
 
             if (textureData.Depth > 1)
             {
-                var depthComboBox = AddSelection("Depth", (name, index) =>
+                depthComboBox = AddSelection("Depth", (name, index) =>
                 {
                     SelectedDepth = index;
 
@@ -264,6 +319,8 @@ namespace GUI.Types.Renderer
                 cubemapProjectionComboBox.SelectedIndex = (int)CubemapProjection.Equirectangular;
             }
 
+            decodeFlags = textureData.RetrieveCodecFromResourceEditInfo();
+
             decodeFlagsListBox = AddMultiSelection("Texture Conversion",
                 SetInitialDecodeFlagsState,
                 checkedItemNames =>
@@ -298,10 +355,27 @@ namespace GUI.Types.Renderer
                 SetupTexture(state);
             });
 
+            AddCheckBox("Show UV Tiling", false, (state) =>
+            {
+                var previousSize = ActualTextureSizeScaled;
+
+                VisualizeTiling = state;
+                SetTextureFiltering();
+
+                TextureDimensionsChanged(previousSize);
+            });
+
             if (forceSoftwareDecode)
             {
                 softwareDecodeCheckBox.Enabled = false;
             }
+        }
+
+        private void SetSvg(SKSvg svg)
+        {
+            Svg = svg;
+            OriginalWidth = Svg.Picture.CullRect.Width;
+            OriginalHeight = Svg.Picture.CullRect.Height;
         }
 
         private void AddChannelsComboBox()
@@ -313,22 +387,22 @@ namespace GUI.Types.Renderer
                     return;
                 }
 
-                var wasSeparateAlpha = WantsSeparateAlpha;
-                var oldTextureSize = ActualTextureSizeScaled;
 
                 SelectedChannels = ChannelsComboBoxOrder[index].Channels;
-                WantsSeparateAlpha = ChannelsComboBoxOrder[index].SplitAlpha;
+                var splitMode = ChannelsComboBoxOrder[index].ChannelSplitMode;
 
-                if (wasSeparateAlpha || WantsSeparateAlpha)
+                // do not split channels under these conditions
+                if (CubemapProjectionType != CubemapProjection.None || VisualizeTiling)
                 {
-                    TextureScaleChangeTime = 0f;
-                    TextureScaleOld = TextureScale;
+                    splitMode = 0;
+                }
 
-                    PositionOld = Position;
-                    Position -= oldTextureSize / 2f;
-                    Position += ActualTextureSizeScaled / 2f;
+                if (splitMode != ChannelSplitMode)
+                {
+                    var previousSize = ActualTextureSizeScaled;
 
-                    ClampPosition();
+                    ChannelSplitMode = splitMode;
+                    TextureDimensionsChanged(previousSize);
                 }
             });
 
@@ -338,6 +412,46 @@ namespace GUI.Types.Renderer
             }
 
             channelsComboBox.SelectedIndex = DefaultSelection;
+
+            var samplingComboBox = AddSelection("Sampling", (name, index) =>
+            {
+                SelectedFiltering = (Filtering)index;
+                SetTextureFiltering();
+            });
+
+            samplingComboBox.Items.AddRange(Enum.GetNames<Filtering>());
+            samplingComboBox.SelectedIndex = 0;
+        }
+
+        private void SetTextureFiltering()
+        {
+            if (texture != null)
+            {
+                var (min, mag) = SelectedFiltering switch
+                {
+                    Filtering.Point => (TextureMinFilter.NearestMipmapNearest, TextureMagFilter.Nearest),
+                    Filtering.Linear => (TextureMinFilter.LinearMipmapNearest, TextureMagFilter.Linear),
+                    _ => throw new UnreachableException(),
+                };
+
+                texture.SetFiltering(min, mag);
+                texture.SetWrapMode(VisualizeTiling ? TextureWrapMode.Repeat : TextureWrapMode.ClampToEdge);
+            }
+        }
+
+        /// <param name="oldTextureSize">The texture size before changing viewer state.</param>
+        private void TextureDimensionsChanged(Vector2 oldTextureSize)
+        {
+            TextureScaleChangeTime = 0f;
+            TextureScaleOld = TextureScale;
+
+            PositionOld = Position;
+
+            var imageCount = (float)DisplayedImageCount;
+            Position -= oldTextureSize / imageCount;
+            Position += ActualTextureSizeScaled / imageCount;
+
+            ClampPosition();
         }
 
         private void SetInitialDecodeFlagsState(CheckedListBox listBox)
@@ -703,18 +817,20 @@ namespace GUI.Types.Renderer
 
             Debug.Assert(texture != null);
 
-            if (decodeFlagsListBox != null)
-            {
-                SetInitialDecodeFlagsState(decodeFlagsListBox);
-            }
-
-            texture.SetWrapMode(TextureWrapMode.ClampToEdge);
-            texture.SetFiltering(TextureMinFilter.LinearMipmapLinear, TextureMagFilter.Nearest);
+            SetTextureFiltering();
 
             if (Svg == null)
             {
                 OriginalWidth = texture.Width;
                 OriginalHeight = texture.Height;
+
+                // Render software mips at full size
+                if (forceSoftwareDecode && SelectedMip > 0)
+                {
+                    var textureData = (Texture)Resource.DataBlock;
+                    OriginalWidth = textureData.Width;
+                    OriginalHeight = textureData.Height;
+                }
             }
 
             var textureType = GLTextureDecoder.GetTextureTypeDefine(texture.Target);
@@ -785,7 +901,7 @@ namespace GUI.Types.Renderer
             }
 
             texture = GuiContext.MaterialLoader.LoadTexture(Resource, isViewerRequest: true);
-            decodeFlags = textureData.RetrieveCodecFromResourceEditInfo() | swDecodeFlags;
+            InvalidateRender();
         }
 
         private void UploadBitmap(SKBitmap bitmap)
@@ -793,13 +909,14 @@ namespace GUI.Types.Renderer
             Debug.Assert(bitmap != null);
 
             texture = new RenderTexture(TextureTarget.Texture2D, bitmap.Width, bitmap.Height, 1, 1);
-            decodeFlags &= softwareDecodeOnlyOptions;
 
-            var isHdr = bitmap.ColorType == SKColorType.RgbaF32;
+            var isHdr = bitmap.ColorType == HdrBitmapColorType;
             var store = GLTextureDecoder.GetImageExportFormat(isHdr);
 
             GL.TextureStorage2D(texture.Handle, 1, store.SizedInternalFormat, texture.Width, texture.Height);
             GL.TextureSubImage2D(texture.Handle, 0, 0, 0, texture.Width, texture.Height, store.PixelFormat, store.PixelType, bitmap.GetPixels());
+
+            InvalidateRender();
         }
 
         private void GenerateNewSvgBitmap()
@@ -904,9 +1021,44 @@ namespace GUI.Types.Renderer
 
             TextureScaleChangeTime += e.FrameTime;
 
-            GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
-            MainFramebuffer.BindAndClear();
-            Draw(MainFramebuffer);
+            var renderHash = HashCode.Combine(
+                HashCode.Combine(
+                    GetCurrentPositionAndScale(),
+                    SelectedMip,
+                    SelectedDepth,
+                    SelectedCubeFace,
+                    SelectedChannels.PackedValue,
+                    ChannelSplitMode
+                ),
+                decodeFlags,
+                SelectedFiltering,
+                VisualizeTiling,
+                ShowLightBackground,
+                MainFramebuffer.Width,
+                MainFramebuffer.Height
+            );
+
+            if (renderHash != LastRenderHash)
+            {
+                InvalidateRender();
+            }
+
+            const int NumBackBuffers = 2;
+            if (NumRendersLastHash < NumBackBuffers)
+            {
+                GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
+                MainFramebuffer.BindAndClear();
+                Draw(MainFramebuffer);
+
+                LastRenderHash = renderHash;
+                NumRendersLastHash++;
+            }
+        }
+
+        private void InvalidateRender()
+        {
+            NumRendersLastHash = 0;
+            GLControl.Invalidate();
         }
 
         private void Draw(Framebuffer fbo, bool captureFullSizeImage = false)
@@ -917,6 +1069,7 @@ namespace GUI.Types.Renderer
             GL.UseProgram(shader.Program);
 
             shader.SetUniform1("g_bTextureViewer", true);
+            shader.SetUniform1("g_bShowLightBackground", ShowLightBackground);
             shader.SetUniform2("g_vViewportSize", new Vector2(fbo.Width, fbo.Height));
 
             var (scale, position) = captureFullSizeImage
@@ -933,7 +1086,8 @@ namespace GUI.Types.Renderer
             shader.SetUniform1("g_nSelectedDepth", SelectedDepth);
             shader.SetUniform1("g_nSelectedCubeFace", SelectedCubeFace);
             shader.SetUniform1("g_nSelectedChannels", SelectedChannels.PackedValue);
-            shader.SetUniform1("g_bWantsSeparateAlpha", WantsSeparateAlpha && CubemapProjectionType == CubemapProjection.None);
+            shader.SetUniform1("g_bVisualizeTiling", VisualizeTiling);
+            shader.SetUniform1("g_nChannelSplitMode", (int)ChannelSplitMode);
             shader.SetUniform1("g_nCubemapProjectionType", (int)CubemapProjectionType);
             shader.SetUniform1("g_nDecodeFlags", (int)decodeFlags);
 

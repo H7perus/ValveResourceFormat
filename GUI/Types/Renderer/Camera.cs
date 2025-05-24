@@ -34,6 +34,7 @@ namespace GUI.Types.Renderer
         public Camera()
         {
             Location = Vector3.One;
+            SetViewportSize(16, 9);
             LookAt(Vector3.Zero);
         }
 
@@ -157,6 +158,14 @@ namespace GUI.Types.Renderer
 
         public void Tick(float deltaTime, TrackedKeys keyboardState, Point mouseDelta)
         {
+            if ((keyboardState & TrackedKeys.Control) > 0)
+            {
+                // Disable camera movement while holding control
+                // This is used by single node viewer to change sun angle,
+                // and if you press Ctrl+W, the tab will close anyway
+                return;
+            }
+
             if ((keyboardState & TrackedKeys.Shift) > 0)
             {
                 // Camera truck and pedestal movement (blender calls this pan)

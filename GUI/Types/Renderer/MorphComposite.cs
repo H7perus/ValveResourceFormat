@@ -1,11 +1,11 @@
-using System.Buffers;
 using System.Globalization;
 using System.Linq;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -83,25 +83,7 @@ namespace GUI.Types.Renderer
         {
             var usedVerticesLength = usedRects.Count * 4 * VertexSize;
 
-            if (usedVerticesLength == allVertices.Length)
-            {
-                GL.NamedBufferData(bufferHandle, usedVerticesLength * sizeof(float), allVertices, BufferUsageHint.DynamicDraw);
-            }
-            else
-            {
-                var usedVertices = ArrayPool<float>.Shared.Rent(usedVerticesLength);
-
-                try
-                {
-                    BuildVertexBuffer(usedVertices);
-
-                    GL.NamedBufferData(bufferHandle, usedVerticesLength * sizeof(float), usedVertices, BufferUsageHint.DynamicDraw);
-                }
-                finally
-                {
-                    ArrayPool<float>.Shared.Return(usedVertices);
-                }
-            }
+            GL.NamedBufferData(bufferHandle, usedVerticesLength * sizeof(float), allVertices, BufferUsageHint.DynamicDraw);
 
             if (!renderTargetInitialized)
             {

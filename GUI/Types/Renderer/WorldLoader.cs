@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using GUI.Utils;
@@ -6,11 +5,12 @@ using OpenTK.Graphics.OpenGL;
 using SteamDatabase.ValvePak;
 using ValveResourceFormat;
 using ValveResourceFormat.IO;
+using ValveResourceFormat.NavMesh;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
-using ValveResourceFormat.Utils;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -29,6 +29,7 @@ namespace GUI.Types.Renderer
 
         public Scene SkyboxScene { get; set; }
         public SceneSkybox2D Skybox2D { get; set; }
+        public NavMeshFile NavMesh { get; set; }
 
         public Vector3 WorldOffset { get; set; } = Vector3.Zero;
         public float WorldScale { get; set; } = 1.0f;
@@ -101,6 +102,7 @@ namespace GUI.Types.Renderer
             }
 
             LoadWorldPhysics(scene);
+            LoadNavigationMesh();
         }
 
         public void LoadWorldPhysics(Scene scene)
@@ -140,7 +142,7 @@ namespace GUI.Types.Renderer
                 {
                     physSceneNode.LayerName = "world_layer_base";
 
-                    scene.Add(physSceneNode, false);
+                    scene.Add(physSceneNode, true);
                 }
             }
         }
@@ -204,7 +206,7 @@ namespace GUI.Types.Renderer
                 (6, 0) => false,
                 (8, 1) => LightmapSetV81.All(lightmapPresent),
                 (8, 2) => LightmapSetV82.All(lightmapPresent),
-                (8, 3) => LightmapSetV83.All(lightmapPresent),
+                (8, 3 or 4) => LightmapSetV83.All(lightmapPresent),
                 _ => false,
             };
 
@@ -291,7 +293,7 @@ namespace GUI.Types.Renderer
                     var lightNode = SceneLight.FromEntityProperties(scene, light.Type, entity);
                     lightNode.Transform = transformationMatrix;
                     lightNode.LayerName = layerName;
-                    scene.Add(lightNode, false);
+                    scene.Add(lightNode, true);
                 }
                 else if (classname == "point_template")
                 {
@@ -575,6 +577,8 @@ namespace GUI.Types.Renderer
                             IndoorOutdoorLevel = indoorOutdoorLevel,
                         };
 
+                        lightProbe.VoxelSize = entity.GetPropertyUnchecked<float>("voxel_size");
+
                         var dliName = entity.GetProperty<string>("lightprobetexture_dli");
                         var dlsName = entity.GetProperty<string>("lightprobetexture_dls");
                         var dlsdName = entity.GetProperty<string>("lightprobetexture_dlshd");
@@ -716,7 +720,7 @@ namespace GUI.Types.Renderer
 
                             postProcess.ModelVolume = ppModelResource;
 
-                            var ppModelNode = new ModelSceneNode(scene, ppModelResource, skin, optimizeForMapLoad: true)
+                            var ppModelNode = new ModelSceneNode(scene, ppModelResource, skin)
                             {
                                 Transform = transformationMatrix,
                                 LayerName = layerName,
@@ -726,7 +730,7 @@ namespace GUI.Types.Renderer
 
                             postProcessHasModel = true; // for collision we'd need to collect phys data within the class
 
-                            scene.Add(ppModelNode, false);
+                            scene.Add(ppModelNode, true);
                         }
                         else
                         {
@@ -784,7 +788,7 @@ namespace GUI.Types.Renderer
 
                     if (errorModelResource != null)
                     {
-                        var errorModel = new ModelSceneNode(scene, (Model)errorModelResource.DataBlock, skin, optimizeForMapLoad: true)
+                        var errorModel = new ModelSceneNode(scene, (Model)errorModelResource.DataBlock, skin)
                         {
                             Name = "error",
                             Transform = transformationMatrix,
@@ -792,7 +796,7 @@ namespace GUI.Types.Renderer
                             EntityData = entity,
                         };
 
-                        scene.Add(errorModel, false);
+                        scene.Add(errorModel, true);
                     }
 
                     return;
@@ -802,13 +806,18 @@ namespace GUI.Types.Renderer
                 var rendercolor = entity.GetColor32Property("rendercolor");
                 var renderamt = entity.GetPropertyUnchecked("renderamt", 1.0f);
 
+                if (renderamt > 1f)
+                {
+                    renderamt /= 255f;
+                }
+
                 rendercolor.X = MathF.Pow(rendercolor.X, 2.2f);
                 rendercolor.Y = MathF.Pow(rendercolor.Y, 2.2f);
                 rendercolor.Z = MathF.Pow(rendercolor.Z, 2.2f);
 
                 var newModel = (Model)newEntity.DataBlock;
 
-                var modelNode = new ModelSceneNode(scene, newModel, skin, optimizeForMapLoad: true)
+                var modelNode = new ModelSceneNode(scene, newModel, skin)
                 {
                     Transform = transformationMatrix,
                     Tint = new Vector4(rendercolor, renderamt),
@@ -835,7 +844,7 @@ namespace GUI.Types.Renderer
                     modelNode.SetActiveMeshGroups(groups.Skip((int)body).Take(1));
                 }
 
-                scene.Add(modelNode, isAnimated);
+                scene.Add(modelNode, true);
 
                 var phys = newModel.GetEmbeddedPhys();
                 if (phys == null)
@@ -856,11 +865,10 @@ namespace GUI.Types.Renderer
                     foreach (var physSceneNode in PhysSceneNode.CreatePhysSceneNodes(scene, phys, model, classname))
                     {
                         physSceneNode.Transform = transformationMatrix;
-                        physSceneNode.PhysGroupName = classname;
                         physSceneNode.LayerName = layerName;
                         physSceneNode.EntityData = entity;
 
-                        scene.Add(physSceneNode, false);
+                        scene.Add(physSceneNode, true);
                     }
                 }
             }
@@ -952,6 +960,7 @@ namespace GUI.Types.Renderer
             }
 
             SkyboxScene = new Scene(guiContext);
+            SkyboxScene.LightingInfo.LightingData.IsSkybox = 1u;
 
             var skyboxResult = new WorldLoader((World)skyboxWorld.DataBlock, SkyboxScene);
 
@@ -984,6 +993,25 @@ namespace GUI.Types.Renderer
             }
 
             guiContext.FileLoader.RemovePackageFromSearch(package);
+        }
+
+        public void LoadNavigationMesh()
+        {
+            var navFilePath = Path.ChangeExtension(guiContext.FileName, ".nav");
+            try
+            {
+                using var navFileStream = guiContext.FileLoader.GetFileStream(navFilePath);
+                if (navFileStream != null)
+                {
+                    NavMesh = new NavMeshFile();
+                    NavMesh.Read(navFileStream);
+                    Log.Info(nameof(WorldLoader), $"Navigation mesh loaded from '{navFilePath}'");
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(nameof(WorldLoader), $"Couldn't load navigation mesh from '{navFilePath}': {e}");
+            }
         }
 
         private void CreateDefaultEntity(Entity entity, string classname, Matrix4x4 transformationMatrix)
@@ -1021,11 +1049,11 @@ namespace GUI.Types.Renderer
                     Name = filename,
                     EntityData = entity,
                 };
-                scene.Add(boxNode, false);
+                scene.Add(boxNode, true);
             }
             else if (resource.ResourceType == ResourceType.Model)
             {
-                var modelNode = new ModelSceneNode(scene, (Model)resource.DataBlock, null, optimizeForMapLoad: true)
+                var modelNode = new ModelSceneNode(scene, (Model)resource.DataBlock, null)
                 {
                     Transform = transformationMatrix,
                     LayerName = "Entities",
@@ -1035,7 +1063,7 @@ namespace GUI.Types.Renderer
 
                 var isAnimated = modelNode.SetAnimationForWorldPreview("tools_preview");
 
-                scene.Add(modelNode, isAnimated);
+                scene.Add(modelNode, true);
             }
             else if (resource.ResourceType == ResourceType.Material)
             {
@@ -1045,7 +1073,7 @@ namespace GUI.Types.Renderer
                     Name = filename,
                     EntityData = entity,
                 };
-                scene.Add(spriteNode, false);
+                scene.Add(spriteNode, true);
             }
             else
             {
@@ -1097,7 +1125,7 @@ namespace GUI.Types.Renderer
                         LayerName = "Entities",
                         Transform = Matrix4x4.CreateTranslation(origin)
                     };
-                    scene.Add(lineNode, false);
+                    scene.Add(lineNode, true);
                 }
             }
         }

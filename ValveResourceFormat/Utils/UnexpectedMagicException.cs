@@ -15,31 +15,33 @@ namespace ValveResourceFormat.Utils
             ? base.Message
             : $"{base.Message} for variable '{MagicNameof}': {Magic}";
 
-        public UnexpectedMagicException(string message, int magic, string nameofMagic) : base(message)
+        public UnexpectedMagicException(string message, int magic, [CallerArgumentExpression(nameof(magic))] string? nameofMagic = null) : base(message)
         {
             Magic = $"{magic} (0x{magic:X})";
-            MagicNameof = nameofMagic;
+            MagicNameof = nameofMagic ?? string.Empty;
         }
 
-        public UnexpectedMagicException(string message, uint magic, string nameofMagic) : base(message)
+        public UnexpectedMagicException(string message, uint magic, [CallerArgumentExpression(nameof(magic))] string? nameofMagic = null) : base(message)
         {
             Magic = $"{magic} (0x{magic:X})";
-            MagicNameof = nameofMagic;
+            MagicNameof = nameofMagic ?? string.Empty;
         }
 
-        public UnexpectedMagicException(string message, string magic, string nameofMagic) : base(message)
+        public UnexpectedMagicException(string message, string magic, [CallerArgumentExpression(nameof(magic))] string? nameofMagic = null) : base(message)
         {
             Magic = magic;
-            MagicNameof = nameofMagic;
+            MagicNameof = nameofMagic ?? string.Empty;
         }
 
         private UnexpectedMagicException(string customAssertMessage) : base(customAssertMessage)
         {
+            Magic = string.Empty;
+            MagicNameof = string.Empty;
             IsAssertion = true;
         }
 
         public static void Assert<T>(bool condition, T actualMagic,
-            [CallerArgumentExpression(nameof(condition))] string conditionExpression = null)
+            [CallerArgumentExpression(nameof(condition))] string? conditionExpression = null)
         {
             if (!condition)
             {

@@ -1,9 +1,12 @@
+using OpenTK.Graphics.OpenGL;
+
 namespace GUI.Types.Renderer
 {
     class Octree<T>
         where T : class
     {
-        private const int MaximumElementsBeforeSubdivide = 4;
+        private const int OptimalElementCountLarge = 4;
+        private const int OptimalElementCountSmall = 32;
         private const float MinimumNodeSize = 64.0f;
 
         public struct Element
@@ -14,15 +17,20 @@ namespace GUI.Types.Renderer
 
         public class Node
         {
-            public Node Parent { get; }
+            public Node? Parent { get; }
             public AABB Region { get; }
 
-            public List<Element> Elements { get; private set; }
-            public Node[] Children { get; private set; }
+            public List<Element>? Elements { get; private set; }
+            public Node[] Children { get; private set; } = [];
+
+            public bool FrustumCulled { get; set; }
+            public int OcclusionQueryHandle { get; set; } = -1;
+            public bool OcculsionQuerySubmitted { get; set; }
+            public bool OcclusionCulled { get; set; }
 
             public void Subdivide()
             {
-                if (Children != null)
+                if (HasChildren)
                 {
                     // Already subdivided
                     return;
@@ -42,7 +50,7 @@ namespace GUI.Types.Renderer
                 Children[7] = new Node(this, new Vector3(myCenter.X, myCenter.Y, myCenter.Z), subregionSize);
 
                 var remainingElements = new List<Element>();
-                foreach (var element in Elements)
+                foreach (var element in Elements!)
                 {
                     var movedDown = false;
 
@@ -65,18 +73,18 @@ namespace GUI.Types.Renderer
                 Elements = remainingElements;
             }
 
-            public Node(Node parent, Vector3 regionMin, Vector3 regionSize)
+            public Node(Node? parent, Vector3 regionMin, Vector3 regionSize)
             {
                 Parent = parent;
                 Region = new AABB(regionMin, regionMin + regionSize);
             }
 
-            public bool HasChildren => Children != null;
+            public bool HasChildren => Children.Length > 0;
             public bool HasElements => Elements != null && Elements.Count > 0;
 
             public void Insert(Element element)
             {
-                if (!HasChildren && HasElements && Region.Size.X > MinimumNodeSize && Elements.Count >= MaximumElementsBeforeSubdivide)
+                if (!HasChildren && HasElements && ShouldSubdivide(Region.Size.X, Elements!.Count))
                 {
                     Subdivide();
                 }
@@ -86,6 +94,14 @@ namespace GUI.Types.Renderer
                 if (HasChildren)
                 {
                     var elementBB = element.BoundingBox;
+
+                    // Setting a minimum size prevents inserting element on wrong region
+                    const float MinimumSize = 0.05f;
+                    var adjustedSize = Vector3.Max(elementBB.Size, new Vector3(MinimumSize)) - elementBB.Size;
+                    if (adjustedSize.LengthSquared() > 0.0f)
+                    {
+                        elementBB = new AABB(elementBB.Min - adjustedSize * 0.5f, elementBB.Max + adjustedSize * 0.5f);
+                    }
 
                     foreach (var child in Children)
                     {
@@ -106,11 +122,24 @@ namespace GUI.Types.Renderer
                 }
             }
 
-            public (Node Node, int Index) Find(T clientObject, in AABB bounds)
+            private static bool ShouldSubdivide(float size, int count)
+            {
+                if (size <= MinimumNodeSize)
+                {
+                    return false;
+                }
+
+                var sizeNormalized = MathF.Pow(MinimumNodeSize / size, 4.0f);
+                var optimalCount = (int)float.Lerp(OptimalElementCountLarge, OptimalElementCountSmall, sizeNormalized);
+
+                return count >= optimalCount;
+            }
+
+            public (Node? Node, int Index) Find(T clientObject, in AABB bounds)
             {
                 if (HasElements)
                 {
-                    for (var i = 0; i < Elements.Count; ++i)
+                    for (var i = 0; i < Elements!.Count; ++i)
                     {
                         if (Elements[i].ClientObject == clientObject)
                         {
@@ -136,14 +165,24 @@ namespace GUI.Types.Renderer
             public void Clear()
             {
                 Elements = null;
-                Children = null;
+                Children = [];
+
+                if (OcclusionQueryHandle != -1)
+                {
+                    GL.DeleteQuery(OcclusionQueryHandle);
+                    OcclusionQueryHandle = -1;
+                }
+
+                FrustumCulled = false;
+                OcculsionQuerySubmitted = false;
+                OcclusionCulled = false;
             }
 
             public void Query(in AABB boundingBox, List<T> results)
             {
                 if (HasElements)
                 {
-                    foreach (var element in Elements)
+                    foreach (var element in Elements!)
                     {
                         if (element.BoundingBox.Intersects(boundingBox))
                         {
@@ -168,7 +207,7 @@ namespace GUI.Types.Renderer
             {
                 if (HasElements)
                 {
-                    foreach (var element in Elements)
+                    foreach (var element in Elements!)
                     {
                         if (frustum.Intersects(element.BoundingBox))
                         {
@@ -181,10 +220,14 @@ namespace GUI.Types.Renderer
                 {
                     foreach (var child in Children)
                     {
-                        if (frustum.Intersects(child.Region))
+                        child.FrustumCulled = !frustum.Intersects(child.Region);
+
+                        if (child.FrustumCulled || child.OcclusionCulled)
                         {
-                            child.Query(frustum, results);
+                            continue;
                         }
+
+                        child.Query(frustum, results);
                     }
                 }
             }
@@ -196,7 +239,7 @@ namespace GUI.Types.Renderer
 
                 if (HasElements)
                 {
-                    foreach (var element in Elements)
+                    foreach (var element in Elements!)
                     {
                         mins = Vector3.Min(mins, element.BoundingBox.Min);
                         maxs = Vector3.Max(maxs, element.BoundingBox.Max);
@@ -238,7 +281,7 @@ namespace GUI.Types.Renderer
             ArgumentNullException.ThrowIfNull(obj);
 
             var (node, index) = Root.Find(obj, bounds);
-            node?.Elements.RemoveAt(index);
+            node?.Elements?.RemoveAt(index);
         }
 
         public void Update(T obj, in AABB oldBounds, in AABB newBounds)
@@ -246,7 +289,7 @@ namespace GUI.Types.Renderer
             ArgumentNullException.ThrowIfNull(obj);
 
             var (node, index) = Root.Find(obj, oldBounds);
-            if (node != null)
+            if (node is { Elements: not null })
             {
                 // Locate the closest ancestor that the new bounds fit inside
                 var ancestor = node;

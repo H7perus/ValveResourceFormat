@@ -20,7 +20,7 @@ namespace ValveResourceFormat.Blocks
         public List<string> ChildResourceList { get; } = [];
         public KVObject SearchableUserData { get; } = new("m_SearchableUserData"); // Maybe these should be split..
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             var subBlock = 0;
 
@@ -48,7 +48,7 @@ namespace ValveResourceFormat.Blocks
                 }
             }
 
-            void ReadKeyValues<T>(KVObject kvObject, KVType valueType, Func<BinaryReader, T> valueReader)
+            void ReadKeyValues<T>(KVObject kvObject, Func<BinaryReader, T> valueReader)
             {
                 var count = AdvanceGetCount();
                 kvObject.Properties.EnsureCapacity(kvObject.Properties.Count + count);
@@ -59,7 +59,7 @@ namespace ValveResourceFormat.Blocks
                     var value = valueReader.Invoke(reader);
 
                     // Note: we may override existing keys
-                    kvObject.Properties[key] = new KVValue(valueType, value);
+                    kvObject.Properties[key] = new KVValue(value);
                 }
             }
 
@@ -84,9 +84,9 @@ namespace ValveResourceFormat.Blocks
                 return name; // Ignoring 'id' to match RED2
             });
 
-            ReadKeyValues(SearchableUserData, KVType.INT64, static (reader) => (long)reader.ReadInt32());
-            ReadKeyValues(SearchableUserData, KVType.FLOAT, static (reader) => (double)reader.ReadSingle());
-            ReadKeyValues(SearchableUserData, KVType.STRING, static (reader) => reader.ReadOffsetString(Encoding.UTF8));
+            ReadKeyValues(SearchableUserData, static (reader) => (long)reader.ReadInt32());
+            ReadKeyValues(SearchableUserData, static (reader) => (double)reader.ReadSingle());
+            ReadKeyValues(SearchableUserData, static (reader) => reader.ReadOffsetString(Encoding.UTF8));
         }
 
         public override void WriteText(IndentedTextWriter writer)

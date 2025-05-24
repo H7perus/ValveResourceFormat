@@ -1,5 +1,7 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes.Choreo
 {
     public class ChoreoEventFlex
@@ -16,7 +18,7 @@ namespace ValveResourceFormat.ResourceTypes.Choreo
 
             foreach (var track in Tracks)
             {
-                kv.AddProperty(null, new KVValue(KVType.OBJECT, track.ToKeyValues()));
+                kv.AddProperty(null, track.ToKeyValues());
             }
 
             return kv;

@@ -2,6 +2,8 @@ using System.IO;
 using ValveKeyValue;
 using ValveResourceFormat.Blocks;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes
 {
     public class BinaryKV1 : ResourceData
@@ -12,7 +14,7 @@ namespace ValveResourceFormat.ResourceTypes
 
         public KVObject KeyValues { get; private set; }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 

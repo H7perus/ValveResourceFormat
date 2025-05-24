@@ -1,7 +1,8 @@
 using System.Linq;
 using System.Runtime.InteropServices;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes.RubikonPhysics.Shapes
 {

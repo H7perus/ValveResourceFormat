@@ -1,8 +1,9 @@
 using System.Linq;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -28,9 +29,6 @@ namespace GUI.Types.Renderer
                 Name = parent.Name;
                 LayerName = parent.LayerName;
             }
-
-            public override void Render(Scene.RenderContext context) { }
-            public override void Update(Scene.UpdateContext context) { }
         }
 
         public SceneAggregate(Scene scene, Model model)
@@ -132,19 +130,7 @@ namespace GUI.Types.Renderer
             }
         }
 
-        public override void Render(Scene.RenderContext context)
-        {
-        }
-
-        public override void Update(Scene.UpdateContext context)
-        {
-        }
-
         public override IEnumerable<string> GetSupportedRenderModes() => RenderMesh.GetSupportedRenderModes();
-
-        public override void SetRenderMode(string renderMode)
-        {
-        }
 
 #if DEBUG
         public override void UpdateVertexArrayObjects() => RenderMesh.UpdateVertexArrayObjects();

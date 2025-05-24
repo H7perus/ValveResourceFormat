@@ -1,13 +1,15 @@
+using System.Diagnostics;
 using SteamDatabase.ValvePak;
 
 namespace GUI.Types.PackageViewer
 {
+    [DebuggerDisplay("{Name,nq} (created={CreatedNode is not null})")]
     public class VirtualPackageNode(string name, uint size, VirtualPackageNode parent)
     {
         /// <summary>
         /// Virtual node was converted to real nodes.
         /// </summary>
-        public BetterTreeNode CreatedNode { get; set; }
+        public BetterTreeNode? CreatedNode { get; set; }
 
         /// <summary>
         /// Folder name.

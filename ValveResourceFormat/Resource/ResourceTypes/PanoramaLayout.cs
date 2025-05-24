@@ -1,9 +1,9 @@
 using System.IO;
 using System.Linq;
 using System.Security;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -11,11 +11,11 @@ namespace ValveResourceFormat.ResourceTypes
     {
         private BinaryKV3 _layoutContent;
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
-            base.Read(reader, resource);
+            base.Read(reader);
 
-            _layoutContent = resource.GetBlockByType(BlockType.LaCo) as BinaryKV3;
+            _layoutContent = Resource.GetBlockByType(BlockType.LaCo) as BinaryKV3;
         }
 
         public override string ToString()
@@ -65,7 +65,7 @@ namespace ValveResourceFormat.ResourceTypes
                 case "SNIPPET": PrintSnippet(node, writer); break;
                 case "SNIPPETS": PrintPanelBase("snippets", node, writer); break;
                 default: throw new UnexpectedMagicException("Unknown node type", type, nameof(type));
-            };
+            }
         }
 
         private static void PrintPanel(KVObject node, IndentedTextWriter writer)

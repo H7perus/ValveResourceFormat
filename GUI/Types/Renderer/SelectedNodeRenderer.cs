@@ -1,4 +1,5 @@
 using System.Linq;
+using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 
 namespace GUI.Types.Renderer
@@ -49,12 +50,13 @@ namespace GUI.Types.Renderer
             UpdateBuffer();
         }
 
-        public void SelectNode(SceneNode node)
+        public void SelectNode(SceneNode? node)
         {
             selectedNodes.Clear();
 
             if (node == null)
             {
+                RemoveLightProbeDebugGrid();
                 vertexCount = 0;
                 return;
             }
@@ -69,7 +71,6 @@ namespace GUI.Types.Renderer
             foreach (var node in selectedNodes)
             {
                 node.LayerEnabled = !node.LayerEnabled;
-                node.Scene.UpdateOctrees();
             }
         }
 
@@ -77,13 +78,20 @@ namespace GUI.Types.Renderer
         {
             disableDepth = selectedNodes.Count > 1;
 
+            if (selectedNodes.Count == 0)
+            {
+                // We don't need to reupload an empty array
+                vertexCount = 0;
+                return;
+            }
+
             var vertices = new List<SimpleVertex>();
 
             foreach (var node in selectedNodes)
             {
                 OctreeDebugRenderer<SceneNode>.AddBox(vertices, node.Transform, node.LocalBoundingBox, new(1.0f, 1.0f, 0.0f, 1.0f));
 
-                if (debugCubeMaps)
+                if (debugCubeMaps && node.EnvMapIds != null)
                 {
                     var tiedEnvmaps = Scene.LightingInfo.CubemapType switch
                     {
@@ -115,6 +123,16 @@ namespace GUI.Types.Renderer
                 {
                     OctreeDebugRenderer<SceneNode>.AddBox(vertices, node.LightProbeBinding.Transform, node.LightProbeBinding.LocalBoundingBox, new(1.0f, 0.0f, 1.0f, 1.0f));
                     OctreeDebugRenderer<SceneNode>.AddLine(vertices, node.LightProbeBinding.Transform.Translation, node.BoundingBox.Center, new(1.0f, 0.0f, 1.0f, 1.0f));
+
+                    if (Scene.LightingInfo.LightingData.IsSkybox == 0u)
+                    {
+                        if (node.LightProbeBinding.DebugGridSpheres.Count == 0)
+                        {
+                            node.LightProbeBinding.CreateDebugGridSpheres();
+                        }
+
+                        node.LightProbeBinding.DebugGridSpheres.ForEach(sphere => sphere.LayerEnabled = true);
+                    }
                 }
 
                 if (node.EntityData != null)
@@ -142,12 +160,34 @@ namespace GUI.Types.Renderer
 
                         disableDepth = true;
                     }
+                    else if (classname is "light_barn" or "light_omni2")
+                    {
+                        var bounds = new AABB(
+                            EntityTransformHelper.ParseVector(node.EntityData.GetProperty<string>("precomputedboundsmins")),
+                            EntityTransformHelper.ParseVector(node.EntityData.GetProperty<string>("precomputedboundsmaxs"))
+                        );
+
+                        var origin = EntityTransformHelper.ParseVector(node.EntityData.GetProperty<string>("precomputedobbextent"));
+                        var extent = EntityTransformHelper.ParseVector(node.EntityData.GetProperty<string>("precomputedobborigin"));
+
+                        OctreeDebugRenderer<SceneNode>.AddBox(vertices, Matrix4x4.Identity, bounds, new(0.0f, 1.0f, 0.0f, 1.0f));
+
+                        OctreeDebugRenderer<SceneNode>.AddLine(vertices, node.Transform.Translation, origin, new(0.0f, 0.0f, 1.0f, 1.0f));
+                        OctreeDebugRenderer<SceneNode>.AddLine(vertices, node.Transform.Translation, extent, new(1.0f, 1.0f, 0.0f, 1.0f));
+
+                        disableDepth = true;
+                    }
                 }
             }
 
             vertexCount = vertices.Count;
 
-            GL.NamedBufferData(vboHandle, vertices.Count * SimpleVertex.SizeInBytes, vertices.ToArray(), BufferUsageHint.StaticDraw);
+            GL.NamedBufferData(vboHandle, vertices.Count * SimpleVertex.SizeInBytes, ListAccessors<SimpleVertex>.GetBackingArray(vertices), BufferUsageHint.StaticDraw);
+        }
+
+        private void RemoveLightProbeDebugGrid()
+        {
+            Scene.LightingInfo.LightProbes.ForEach(probe => probe.DebugGridSpheres.ForEach(sphere => sphere.LayerEnabled = false));
         }
 
         public override void Update(Scene.UpdateContext context)
@@ -215,6 +255,7 @@ namespace GUI.Types.Renderer
             debugCubeMaps = mode == "Cubemaps";
             debugLightProbes = mode == "Irradiance" || mode == "Illumination";
 
+            RemoveLightProbeDebugGrid();
             UpdateBuffer();
         }
     }

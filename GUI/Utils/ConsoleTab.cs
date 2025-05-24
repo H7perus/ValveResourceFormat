@@ -6,6 +6,8 @@ using System.Windows.Forms;
 using FastColoredTextBoxNS;
 using GUI.Controls;
 
+#nullable disable
+
 namespace GUI.Utils
 {
     internal class ConsoleTab : IDisposable
@@ -78,6 +80,8 @@ namespace GUI.Utils
                 _ => null,
             };
 
+            var queueEmpty = LogQueue.Count == 0;
+
             // If we happen to spam console text somewhere, appending every line to console bogs down performance (yay winforms)
             // so accumulate it into a buffer and append it all at once when visibility changes
             LogQueue.Enqueue(new LogLine
@@ -88,7 +92,7 @@ namespace GUI.Utils
                 Style = style
             });
 
-            if (control.Visible)
+            if (queueEmpty && control.Visible)
             {
                 control.BeginInvoke(DrainQueue);
             }
@@ -115,8 +119,8 @@ namespace GUI.Utils
                 }
 
                 control.AppendText(sb.ToString());
-                control.GoEnd();
                 control.EndUpdate();
+                ScrollToBottom();
                 return;
             }
 
@@ -129,13 +133,7 @@ namespace GUI.Utils
 
                 // Add fold for multi line strings
                 // TODO: For multiline strings, indent them with the time/component size
-                var index = -1;
-                var newLines = 0;
-
-                while (-1 != (index = line.Message.IndexOf('\n', index + 1)))
-                {
-                    newLines++;
-                }
+                var newLines = line.Message.AsSpan().Count('\n');
 
                 if (newLines > 0)
                 {
@@ -145,8 +143,20 @@ namespace GUI.Utils
                 }
             }
 
-            control.GoEnd();
             control.EndUpdate();
+            ScrollToBottom();
+        }
+
+        private void ScrollToBottom()
+        {
+            var selection = control.Selection;
+
+            if (selection.Start != selection.End)
+            {
+                return;
+            }
+
+            control.GoEnd();
         }
 
         public TabPage CreateTab()
@@ -178,6 +188,11 @@ namespace GUI.Utils
             Console.SetError(loggerError);
 
             return tab;
+        }
+
+        public void InitializeFont()
+        {
+            control.Font = CodeTextBox.GetMonospaceFont();
         }
 
         private void VisibleChanged(object sender, EventArgs e)

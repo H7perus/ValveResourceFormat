@@ -87,14 +87,18 @@ namespace GUI.Types.Renderer
             GL.BindVertexArray(vaoHandle);
 
             // Create billboarding rotation (always facing camera)
-            Matrix4x4.Decompose(context.Camera.CameraViewMatrix, out _, out var modelViewRotation, out _);
+            if (!Matrix4x4.Decompose(context.Camera.CameraViewMatrix, out _, out var modelViewRotation, out _))
+            {
+                throw new InvalidOperationException("Matrix decompose failed");
+            }
+
             modelViewRotation = Quaternion.Inverse(modelViewRotation);
             var billboardMatrix = Matrix4x4.CreateFromQuaternion(modelViewRotation);
 
             var transform = billboardMatrix * Transform;
             renderShader.SetUniform4x4("transform", transform);
 
-            renderShader.SetUniform1("bAnimated", 0.0f);
+            renderShader.SetBoneAnimationData(false);
             renderShader.SetUniform1("sceneObjectId", Id);
             renderShader.SetUniform1("shaderId", (uint)material.Shader.NameHash);
             renderShader.SetUniform1("shaderProgramId", (uint)material.Shader.Program);

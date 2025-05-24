@@ -1,7 +1,7 @@
-using Microsoft.Win32;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using Microsoft.Win32;
 using ValveKeyValue;
 
 namespace ValveResourceFormat.IO
@@ -17,12 +17,12 @@ namespace ValveResourceFormat.IO
         /// <param name="GamePath">Full path to the installation directory of the app. ("C:/Steam/steamapps/common/dota 2 beta")</param>
         public record struct SteamLibraryGameInfo(int AppID, string AppName, string SteamPath, string GamePath);
 
-        private static string steamPath;
+        private static string? steamPath;
 
         /// <summary>
         /// Path to the root of Steam installation. <c>null</c> if not found.
         /// </summary>
-        public static string SteamPath
+        public static string? SteamPath
         {
             get
             {
@@ -189,7 +189,10 @@ namespace ValveResourceFormat.IO
             var appID = appManifestKv["appid"].ToInt32(CultureInfo.InvariantCulture);
             var appName = appManifestKv["name"].ToString(CultureInfo.InvariantCulture);
             var installDir = appManifestKv["installdir"].ToString(CultureInfo.InvariantCulture);
-            var gamePath = Path.Combine(steamPath, "common", installDir);
+
+            // Intentionally append separator to the end to avoid issues when one game is a prefix of another game,
+            // e.g. "Artifact" and "Artifact 2.0"
+            var gamePath = Path.Combine(steamPath, "common", string.Concat(installDir, Path.DirectorySeparatorChar));
 
             return new SteamLibraryGameInfo(appID, appName, steamPath, gamePath);
         }

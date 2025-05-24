@@ -6,6 +6,8 @@ using GUI.Forms;
 using GUI.Utils;
 using SteamDatabase.ValvePak;
 
+#nullable disable
+
 namespace GUI.Types.PackageViewer
 {
     /// <summary>
@@ -15,6 +17,8 @@ namespace GUI.Types.PackageViewer
     /// </summary>
     partial class TreeViewWithSearchResults : UserControl
     {
+        private static readonly string[] Columns = ["Name", "Size", "Type"];
+
         private static int SplitterWidth;
 
         public bool DeletedFilesRecovered { get; private set; }
@@ -115,6 +119,9 @@ namespace GUI.Types.PackageViewer
             mainListView.BeginUpdate();
             mainListView.Items.Clear();
 
+            var sorter = mainListView.ListViewItemSorter;
+            mainListView.ListViewItemSorter = null;
+
             foreach (var (name, node) in pkgNode.Folders)
             {
                 AddFolderToListView(name, node);
@@ -125,7 +132,7 @@ namespace GUI.Types.PackageViewer
                 AddFileToListView(file);
             }
 
-            mainListView.Sort();
+            mainListView.ListViewItemSorter = sorter;
             mainListView.EndUpdate();
 
             if (updatePath)
@@ -172,8 +179,9 @@ namespace GUI.Types.PackageViewer
         {
             foreach (ColumnHeader col in mainListView.Columns)
             {
-                if (col.Text == "Name")
+                if (col.Index == 0)
                 {
+                    // Make name column fill in all the space
                     col.Width = mainListView.ClientSize.Width - (mainListView.Columns.Count - 1) * 100;
                 }
                 else
@@ -208,6 +216,7 @@ namespace GUI.Types.PackageViewer
             control.Dock = DockStyle.Fill;
             control.ImageList = MainForm.ImageList;
             control.BeforeExpand += Control_BeforeExpand;
+            control.AfterExpand += Control_AfterExpand;
             control.ShowRootLines = false;
 
             control.GenerateIconList([.. vrfGuiContext.CurrentPackage.Entries.Keys]);
@@ -254,6 +263,13 @@ namespace GUI.Types.PackageViewer
             var node = (BetterTreeNode)e.Node;
             CreateNodes(node);
 
+            mainTreeView.EndUpdate();
+        }
+
+        private void Control_AfterExpand(object sender, TreeViewEventArgs e)
+        {
+            var node = (BetterTreeNode)e.Node;
+
             // If the folder we just expanded contains a single folder, expand it too.
             if (node.Nodes.Count == 1)
             {
@@ -264,8 +280,6 @@ namespace GUI.Types.PackageViewer
                     node.Expand();
                 }
             }
-
-            mainTreeView.EndUpdate();
         }
 
         private void CreateNodes(BetterTreeNode realNode)
@@ -562,12 +576,16 @@ namespace GUI.Types.PackageViewer
             mainListView.BeginUpdate();
             mainListView.Items.Clear();
 
+            var sorter = mainListView.ListViewItemSorter;
+            mainListView.ListViewItemSorter = null;
+
             foreach (var entry in results)
             {
                 AddFileToListView(entry);
             }
 
-            mainListView.Sort();
+            mainListView.ListViewItemSorter = sorter;
+
             ResizeListViewColumns();
             DisplayMainListView();
             mainListView.EndUpdate();
@@ -590,10 +608,22 @@ namespace GUI.Types.PackageViewer
             }
             else
             {
+                mainListView.Columns[sorter.SortColumn].Text = Columns[sorter.SortColumn];
+
                 sorter.SortColumn = e.Column;
-                sorter.Order = SortOrder.Ascending;
+
+                // For size column, prefer descending first
+                sorter.Order = e.Column == 1 ? SortOrder.Descending : SortOrder.Ascending;
             }
 
+            var sortArrow = sorter.Order switch
+            {
+                SortOrder.Ascending => "▲",
+                SortOrder.Descending => "▼",
+                _ => string.Empty
+            };
+
+            mainListView.Columns[sorter.SortColumn].Text = $"{Columns[sorter.SortColumn]} {sortArrow}";
             mainListView.Sort();
         }
 
@@ -614,7 +644,7 @@ namespace GUI.Types.PackageViewer
                 return;
             }
 
-            // When left or right clicking a folder, expand it in the tree view
+            // When left or right clicking a folder, select it in the tree view and ensure it is visible
             if (item.PkgNode != null && mainListView.SelectedItems.Count == 1)
             {
                 mainTreeView.BeginUpdate();
@@ -631,11 +661,16 @@ namespace GUI.Types.PackageViewer
 
             if (item.PackageEntry != null)
             {
-                // When right clicking a file, expand it in the tree view
+                // When right clicking a file, select it in the tree view and ensure it is visible
                 if (mainListView.SelectedItems.Count == 1)
                 {
                     var pkgNode = mainTreeView.Root;
+                    var packageNodes = new List<VirtualPackageNode>(2)
+                    {
+                        mainTreeView.Root
+                    };
 
+                    // Walk up the directories in the file path to collect all the virtual nodes
                     if (!string.IsNullOrWhiteSpace(item.PackageEntry.DirectoryName))
                     {
                         foreach (var subPathSpan in item.PackageEntry.DirectoryName.AsSpan().Split([Package.DirectorySeparatorChar]))
@@ -648,19 +683,30 @@ namespace GUI.Types.PackageViewer
                             }
 
                             pkgNode = subNode;
+                            packageNodes.Add(subNode);
                         }
                     }
 
                     mainTreeView.BeginUpdate();
-                    var parentNode = CreateTreeNodes(pkgNode);
 
-                    foreach (BetterTreeNode node in parentNode.Nodes)
+                    // Walk all the virtual nodes down to create them if they don't exist yet
+                    for (var i = 0; i < packageNodes.Count; i++)
                     {
-                        if (node.PackageEntry == item.PackageEntry)
+                        pkgNode = packageNodes[i];
+                        var parentNode = CreateTreeNodes(pkgNode);
+
+                        // When deepest node is reached, select the actual file node
+                        if (i == packageNodes.Count - 1)
                         {
-                            node.EnsureVisible();
-                            mainTreeView.SelectedNode = node;
-                            break;
+                            foreach (BetterTreeNode node in parentNode.Nodes)
+                            {
+                                if (node.PackageEntry == item.PackageEntry)
+                                {
+                                    node.EnsureVisible();
+                                    mainTreeView.SelectedNode = node;
+                                    break;
+                                }
+                            }
                         }
                     }
 
@@ -728,9 +774,12 @@ namespace GUI.Types.PackageViewer
         /// <param name="e">Event data.</param>
         private void TreeViewWithSearchResults_Load(object sender, EventArgs e)
         {
-            mainListView.Columns.Add("Name");
-            mainListView.Columns.Add("Size");
-            mainListView.Columns.Add("Type");
+            for (var i = 0; i < Columns.Length; i++)
+            {
+                // If default column or sort order changes, this needs to be updated
+                mainListView.Columns.Add(i == 0 ? $"{Columns[i]} ▲" : Columns[i]);
+            }
+
             mainListView.SmallImageList = MainForm.ImageList;
         }
 
@@ -771,7 +820,7 @@ namespace GUI.Types.PackageViewer
         {
             mainListView.Visible = false;
 
-            var tabs = new TabControl
+            var tabs = new ThemedTabControl
             {
                 ImageList = MainForm.ImageList,
                 Dock = DockStyle.Fill

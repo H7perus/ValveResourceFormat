@@ -5,6 +5,8 @@ using ValveResourceFormat.ResourceTypes.Choreo;
 using ValveResourceFormat.ResourceTypes.Choreo.Parser;
 using LzmaDecoder = SevenZip.Compression.LZMA.Decoder;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes
 {
     public class ChoreoSceneFileData : ResourceData
@@ -13,7 +15,7 @@ namespace ValveResourceFormat.ResourceTypes
         public int Version { get; private set; }
         public ChoreoScene[] Scenes { get; private set; }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 

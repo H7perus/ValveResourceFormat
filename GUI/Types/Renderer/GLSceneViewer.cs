@@ -10,6 +10,8 @@ using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat;
 
+#nullable disable
+
 namespace GUI.Types.Renderer
 {
     internal abstract class GLSceneViewer : GLViewerControl, IDisposable
@@ -23,6 +25,7 @@ namespace GUI.Types.Renderer
         private bool ShowLightBackground;
         public bool ShowSkybox { get; set; } = true;
         public bool IsWireframe { get; set; }
+        public bool EnableOcclusionCulling { get; set; }
 
         public float Uptime { get; private set; }
 
@@ -48,6 +51,8 @@ namespace GUI.Types.Renderer
             Static,
             StaticAlphaTest,
             Animated,
+            AnimatedEightBones,
+            OcclusionQueryAABBProxy,
         }
         private readonly Shader[] depthOnlyShaders = new Shader[Enum.GetValues<DepthOnlyProgram>().Length];
         public Framebuffer ShadowDepthBuffer { get; private set; }
@@ -205,8 +210,9 @@ namespace GUI.Types.Renderer
                     blueNoiseResource.Read(blueNoiseStream);
                 }
 
-                // only needed here for now, move to GLSceneViewer
-                postProcessRenderer.BlueNoise = GuiContext.MaterialLoader.LoadTexture(blueNoiseResource);
+                var blueNoise = GuiContext.MaterialLoader.LoadTexture(blueNoiseResource);
+                postProcessRenderer.BlueNoise = blueNoise;
+                Textures.Add(new(ReservedTextureSlots.BlueNoise, "g_tBlueNoise", blueNoise));
             }
             finally
             {
@@ -288,6 +294,9 @@ namespace GUI.Types.Renderer
             depthOnlyShaders[(int)DepthOnlyProgram.Static] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only");
             //depthOnlyShaders[(int)DepthOnlyProgram.StaticAlphaTest] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only", new Dictionary<string, byte> { { "F_ALPHA_TEST", 1 } });
             depthOnlyShaders[(int)DepthOnlyProgram.Animated] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only", new Dictionary<string, byte> { { "D_ANIMATED", 1 } });
+            depthOnlyShaders[(int)DepthOnlyProgram.AnimatedEightBones] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only", new Dictionary<string, byte> { { "D_ANIMATED", 1 }, { "D_EIGHT_BONE_BLENDING", 1 } });
+
+            depthOnlyShaders[(int)DepthOnlyProgram.OcclusionQueryAABBProxy] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only_aabb");
 
             if (this is GLWorldViewer)
             {
@@ -319,6 +328,12 @@ namespace GUI.Types.Renderer
             GLPaint += OnPaint;
 
             GuiContext.ClearCache();
+
+            if (GuiContext.GLPostLoadAction != null)
+            {
+                GuiContext.GLPostLoadAction.Invoke(this);
+                GuiContext.GLPostLoadAction = null;
+            }
         }
 
         protected virtual void OnPaint(object sender, RenderEventArgs e)
@@ -445,6 +460,11 @@ namespace GUI.Types.Renderer
             {
                 renderContext.Scene = Scene;
                 Scene.RenderOpaqueLayer(renderContext);
+            }
+
+            using (new GLDebugGroup("Occlusion Tests"))
+            {
+                Scene.RenderOcclusionProxies(renderContext, depthOnlyShaders[(int)DepthOnlyProgram.OcclusionQueryAABBProxy]);
             }
 
             using (new GLDebugGroup("Sky Render"))
@@ -724,6 +744,8 @@ namespace GUI.Types.Renderer
                     node.UpdateVertexArrayObjects();
                 }
             }
+
+            GLControl.Invalidate();
         }
 #endif
     }

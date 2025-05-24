@@ -5,11 +5,7 @@
 #endif
 
 #include "common/utils.glsl"
-
-#if defined(csgo_environment_vfx)
-    #include "common/animation.glsl"
-#endif
-
+#include "common/animation.glsl"
 #include "common/features.glsl"
 #include "csgo_environment_features.glsl"
 
@@ -91,12 +87,7 @@ uniform vec4 g_vTexCoordScale1 = vec4(1.0);
 
 void main()
 {
-    mat4 skinTransform = transform;
-
-    #if defined(csgo_environment_vfx)
-        skinTransform *= getSkinMatrix();
-    #endif
-
+    mat4 skinTransform = transform * getSkinMatrix();
     vec4 fragPosition = skinTransform * vec4(vPOSITION, 1.0);
     gl_Position = g_matViewToProjection * fragPosition;
     vFragPosition = fragPosition.xyz / fragPosition.w;
@@ -105,7 +96,7 @@ void main()
     vec4 tangent;
     GetOptionallyCompressedNormalTangent(normal, tangent);
 
-    mat3 normalTransform = transpose(inverse(mat3(skinTransform)));
+    mat3 normalTransform = adjoint(skinTransform);
     vNormalOut = normalize(normalTransform * normal);
     vTangentOut = normalize(normalTransform * tangent.xyz);
     vBitangentOut = tangent.w * cross(vNormalOut, vTangentOut);
@@ -130,12 +121,7 @@ void main()
     vTintColor_ModelAmount.a = g_flModelTintAmount * (1.0 - flLowestPoint);
 
     vec3 vVertexPaint = vec3(1.0);
-
-    // TODO: ApplyVBIBDefaults
-    if (vCOLOR.rgba != vec4(0, 0, 0, 1))
-    {
-        vVertexPaint =  mix(vec3(1.0), vCOLOR.rgb, vec3(vCOLOR.a));
-    }
+    vVertexPaint =  mix(vec3(1.0), vCOLOR.rgb, vec3(vCOLOR.a));
 
     vVertexColor_Alpha = vec4(SrgbGammaToLinear(g_vColorTint.rgb) * vVertexPaint, vTint.a);
 

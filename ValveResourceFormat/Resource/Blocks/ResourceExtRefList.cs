@@ -2,6 +2,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
+#nullable disable
+
 namespace ValveResourceFormat.Blocks
 {
     /// <summary>
@@ -52,7 +54,7 @@ namespace ValveResourceFormat.Blocks
             ResourceRefInfoList = [];
         }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             reader.BaseStream.Position = Offset;
 

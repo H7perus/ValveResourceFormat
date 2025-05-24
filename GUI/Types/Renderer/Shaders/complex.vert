@@ -188,7 +188,7 @@ void main()
     vec4 tangent;
     GetOptionallyCompressedNormalTangent(normal, tangent);
 
-    mat3 normalTransform = transpose(inverse(mat3(skinTransform)));
+    mat3 normalTransform = adjoint(skinTransform);
     vNormalOut = normalize(normalTransform * normal);
     vTangentOut = normalize(normalTransform * tangent.xyz);
     vBitangentOut = tangent.w * cross(vNormalOut, vTangentOut);
@@ -221,11 +221,7 @@ void main()
     vVertexColorOut = GetTintColor();
 
 #if (F_PAINT_VERTEX_COLORS == 1)
-    // TODO: ApplyVBIBDefaults
-    if (vCOLOR.rgba != vec4(0, 0, 0, 1))
-    {
-        vVertexColorOut *= vCOLOR;
-    }
+    vVertexColorOut *= vCOLOR;
 #endif
 
 #if (F_SECONDARY_UV == 1) || (F_FORCE_UV2 == 1)

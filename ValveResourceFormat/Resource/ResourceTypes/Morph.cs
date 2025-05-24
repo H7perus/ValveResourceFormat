@@ -3,8 +3,9 @@ using System.Linq;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes.ModelFlex;
 using ValveResourceFormat.ResourceTypes.ModelFlex.FlexOps;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -42,6 +43,11 @@ namespace ValveResourceFormat.ResourceTypes
         public Dictionary<string, Vector3[]> GetFlexVertexData()
         {
             var flexData = new Dictionary<string, Vector3[]>();
+
+            if (Texture == null)
+            {
+                return flexData;
+            }
 
             var width = Data.GetInt32Property("m_nWidth");
             var height = Data.GetInt32Property("m_nHeight");
@@ -156,6 +162,7 @@ namespace ValveResourceFormat.ResourceTypes
                 .Select(kv => ParseFlexController(kv.Value))
                 .ToArray();
         }
+
         private static FlexController ParseFlexController(object obj)
         {
             if (obj is not KVObject kv)

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
@@ -7,6 +8,7 @@ namespace GUI.Types.Renderer
     enum ReservedTextureSlots
     {
         BRDFLookup = 0,
+        BlueNoise,
         FogCubeTexture,
         Lightmap1,
         Lightmap2,
@@ -31,7 +33,7 @@ namespace GUI.Types.Renderer
         private const int TextureUnitStart = (int)ReservedTextureSlots.Last + 1;
 
         public int SortId { get; }
-        public Shader Shader { get; set; }
+        public required Shader Shader { get; init; }
         public Material Material { get; }
         public Dictionary<string, RenderTexture> Textures { get; } = [];
         public bool IsTranslucent { get; }
@@ -45,7 +47,8 @@ namespace GUI.Types.Renderer
         private readonly bool hasDepthBias;
         private int textureUnit;
 
-        public RenderMaterial(Material material, VrfGuiContext guiContext, Dictionary<string, byte> shaderArguments)
+        [SetsRequiredMembers]
+        public RenderMaterial(Material material, VrfGuiContext guiContext, Dictionary<string, byte>? shaderArguments)
             : this(material)
         {
             var materialArguments = material.GetShaderArguments();
@@ -65,13 +68,13 @@ namespace GUI.Types.Renderer
 
                 if (shader.Features != null)
                 {
-                    foreach (var block in shader.Features.SfBlocks)
+                    foreach (var block in shader.Features.StaticComboArray)
                     {
                         if (block.Name.StartsWith("F_TEXTURE_FORMAT", StringComparison.Ordinal))
                         {
-                            for (byte i = 0; i < block.CheckboxNames.Count; i++)
+                            for (byte i = 0; i < block.Strings.Length; i++)
                             {
-                                var checkbox = block.CheckboxNames[i];
+                                var checkbox = block.Strings[i];
 
                                 switch (checkbox)
                                 {
@@ -91,6 +94,7 @@ namespace GUI.Types.Renderer
             SortId = GetSortId();
         }
 
+        [SetsRequiredMembers]
         public RenderMaterial(Shader shader) : this(new Material { ShaderName = shader.Name })
         {
             Shader = shader;
@@ -115,6 +119,8 @@ namespace GUI.Types.Renderer
             IsAlphaTest = material.IntParams.GetValueOrDefault("F_ALPHA_TEST") == 1;
             isAdditiveBlend = material.IntParams.GetValueOrDefault("F_ADDITIVE_BLEND") == 1;
             isRenderBackfaces = material.IntParams.GetValueOrDefault("F_RENDER_BACKFACES") == 1;
+
+            // :MaterialIsOverlay
             hasDepthBias = material.IntParams.GetValueOrDefault("F_DEPTHBIAS") == 1 || material.IntParams.GetValueOrDefault("F_DEPTH_BIAS") == 1;
             IsOverlay = (material.IntParams.GetValueOrDefault("F_OVERLAY") == 1)
                 || (IsTranslucent && hasDepthBias && material.ShaderName is "csgo_vertexlitgeneric.vfx" or "csgo_complex.vfx");
@@ -148,7 +154,7 @@ namespace GUI.Types.Renderer
             }
         }
 
-        public void Render(Shader shader = default)
+        public void Render(Shader? shader = default)
         {
             textureUnit = TextureUnitStart;
 

@@ -1,16 +1,25 @@
 using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using ValveKeyValue;
 using ValveResourceFormat.IO;
 
+#nullable disable
+
+#pragma warning disable WFO5001
 namespace GUI.Utils
 {
     static class Settings
     {
-        private const int SettingsFileCurrentVersion = 10;
+        private const int SettingsFileCurrentVersion = 11;
         private const int RecentFilesLimit = 20;
+
+        public enum AppTheme : int
+        {
+            System = 0,
+            Light = 1,
+            Dark = 2,
+        }
 
         [Flags]
         public enum QuickPreviewFlags : int
@@ -35,6 +44,7 @@ namespace GUI.Utils
             public List<string> BookmarkedFiles { get; set; }
             public List<string> RecentFiles { get; set; }
             public Dictionary<string, float[]> SavedCameras { get; set; }
+            public int Theme { get; set; }
             public int MaxTextureSize { get; set; }
             public int ShadowResolution { get; set; }
             public float FieldOfView { get; set; }
@@ -49,6 +59,7 @@ namespace GUI.Utils
             public int DisplayFps { get; set; }
             public int QuickFilePreview { get; set; }
             public int OpenExplorerOnStart { get; set; }
+            public int TextViewerFontSize { get; set; }
             public int _VERSION_DO_NOT_MODIFY { get; set; }
             public AppUpdateState Update { get; set; }
         }
@@ -169,8 +180,18 @@ namespace GUI.Utils
                 Config.FieldOfView = 120;
             }
 
+            if (Config.FieldOfView <= 0)
+            {
+                Config.FieldOfView = 60;
+            }
+            else if (Config.FieldOfView >= 120)
+            {
+                Config.FieldOfView = 120;
+            }
+
             Config.AntiAliasingSamples = Math.Clamp(Config.AntiAliasingSamples, 0, 64);
             Config.Volume = Math.Clamp(Config.Volume, 0f, 1f);
+            Config.TextViewerFontSize = Math.Clamp(Config.TextViewerFontSize, 8, 24);
 
             if (currentVersion < 2) // version 2: added anti aliasing samples
             {
@@ -200,6 +221,11 @@ namespace GUI.Utils
             if (currentVersion < 10) // version 10: added startup window
             {
                 IsFirstStartup = true;
+            }
+
+            if (currentVersion < 11) // version 11: added text viewer font size
+            {
+                Config.TextViewerFontSize = 10;
             }
 
             if (currentVersion > 0 && currentVersion != SettingsFileCurrentVersion)
@@ -248,5 +274,13 @@ namespace GUI.Utils
             Config.RecentFiles.Clear();
             Save();
         }
+
+        public static SystemColorMode GetSystemColor() =>
+            (AppTheme)Config.Theme switch
+            {
+                AppTheme.Light => SystemColorMode.Classic,
+                AppTheme.Dark => SystemColorMode.Dark,
+                _ => SystemColorMode.System,
+            };
     }
 }

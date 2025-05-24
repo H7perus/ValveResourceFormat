@@ -51,7 +51,7 @@ namespace GUI.Types.ParticleRenderer.Renderers
             // The same quad is reused for all particles
             vaoHandle = SetupQuadBuffer();
 
-            string textureName = null;
+            string? textureName = null;
 
             if (parse.Data.ContainsKey("m_hTexture"))
             {
@@ -129,7 +129,11 @@ namespace GUI.Types.ParticleRenderer.Renderers
         private void UpdateVertices(ParticleCollection particles, ParticleSystemRenderState systemRenderState, Matrix4x4 modelViewMatrix)
         {
             // Create billboarding rotation (always facing camera)
-            Matrix4x4.Decompose(modelViewMatrix, out _, out var modelViewRotation, out _);
+            if (!Matrix4x4.Decompose(modelViewMatrix, out _, out var modelViewRotation, out _))
+            {
+                throw new InvalidOperationException("Matrix decompose failed");
+            }
+
             modelViewRotation = Quaternion.Inverse(modelViewRotation);
             var billboardMatrix = Matrix4x4.CreateFromQuaternion(modelViewRotation);
 
@@ -144,9 +148,13 @@ namespace GUI.Types.ParticleRenderer.Renderers
                     var radiusScale = this.radiusScale.NextNumber(ref particle, systemRenderState);
 
                     // Positions
-                    var modelMatrix = orientationType == ParticleOrientation.PARTICLE_ORIENTATION_SCREEN_ALIGNED
-                        ? particle.GetRotationMatrix() * billboardMatrix * particle.GetTransformationMatrix(radiusScale)
-                        : particle.GetRotationMatrix() * particle.GetTransformationMatrix(radiusScale);
+                    var modelMatrix = orientationType switch
+                    {
+                        ParticleOrientation.PARTICLE_ORIENTATION_ALIGN_TO_PARTICLE_NORMAL or
+                        ParticleOrientation.PARTICLE_ORIENTATION_SCREENALIGN_TO_PARTICLE_NORMAL or
+                        ParticleOrientation.PARTICLE_ORIENTATION_SCREEN_ALIGNED => particle.GetRotationMatrix() * billboardMatrix * particle.GetTransformationMatrix(radiusScale),
+                        _ => particle.GetRotationMatrix() * particle.GetTransformationMatrix(radiusScale),
+                    };
 
                     var tl = Vector4.Transform(new Vector4(-1, -1, 0, 1), modelMatrix);
                     var bl = Vector4.Transform(new Vector4(-1, 1, 0, 1), modelMatrix);

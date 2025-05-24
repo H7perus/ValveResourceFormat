@@ -4,6 +4,8 @@ using ValveResourceFormat.Blocks.ResourceEditInfoStructs;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
+#nullable disable
+
 namespace ValveResourceFormat.Blocks
 {
     /// <summary>
@@ -24,20 +26,21 @@ namespace ValveResourceFormat.Blocks
             //
         }
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
             var kv3 = new BinaryKV3
             {
                 Offset = Offset,
                 Size = Size,
+                Resource = Resource,
             };
 
-            kv3.Read(reader, resource);
+            kv3.Read(reader);
             BackingData = kv3;
 
             static void ReadItems<T>(BinaryKV3 kv3, List<T> list, string key, Func<KVObject, T> constructor)
             {
-                var container = kv3.Data.Properties.GetValueOrDefault(key)?.Value as KVObject;
+                var container = kv3.Data.Properties.GetValueOrDefault(key).Value as KVObject;
                 ArgumentNullException.ThrowIfNull(container, key);
                 ArgumentOutOfRangeException.ThrowIfEqual(container.IsArray, false, key);
 

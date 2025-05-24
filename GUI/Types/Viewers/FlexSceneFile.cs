@@ -15,7 +15,7 @@ namespace GUI.Types.Viewers
         public TabPage Create(VrfGuiContext vrfGuiContext, Stream stream)
         {
             var tabOuterPage = new TabPage();
-            var tabControl = new TabControl
+            var tabControl = new ThemedTabControl
             {
                 Dock = DockStyle.Fill,
             };
@@ -32,7 +32,7 @@ namespace GUI.Types.Viewers
             }
 
             var tabPage = new TabPage("Text");
-            var textControl = new CodeTextBox(vfe.ToString());
+            var textControl = CodeTextBox.Create(vfe.ToString());
             tabPage.Controls.Add(textControl);
             tabControl.Controls.Add(tabPage);
 

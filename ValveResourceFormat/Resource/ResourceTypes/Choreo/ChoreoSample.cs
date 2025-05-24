@@ -1,6 +1,8 @@
 using ValveResourceFormat.ResourceTypes.Choreo.Curves;
 using ValveResourceFormat.Serialization.KeyValues;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes.Choreo
 {
     public class ChoreoSample
@@ -40,8 +42,8 @@ namespace ValveResourceFormat.ResourceTypes.Choreo
         {
             var kv = new KVObject(null);
 
-            kv.AddProperty("time", new KVValue(KVType.FLOAT, Time));
-            kv.AddProperty("value", new KVValue(KVType.FLOAT, Value));
+            kv.AddProperty("time", Time);
+            kv.AddProperty("value", Value);
 
             if (Curve != null)
             {

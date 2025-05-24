@@ -1,9 +1,10 @@
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using ValveKeyValue;
 using ValveResourceFormat;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Serialization.KeyValues;
 
 namespace Tests
 {
@@ -20,7 +21,9 @@ namespace Tests
             };
             resource.Read(file);
 
-            var entityLump = (EntityLump)resource.DataBlock;
+            var entityLump = (EntityLump?)resource.DataBlock;
+
+            Debug.Assert(entityLump != null);
 
             var entities = entityLump.GetEntities().ToList();
 
@@ -32,10 +35,9 @@ namespace Tests
             });
 
             var classname = entities[0].GetProperty("classname");
-            Assert.That(classname, Is.Not.Null);
             Assert.Multiple(() =>
             {
-                Assert.That(classname.Type, Is.EqualTo(KVType.STRING));
+                Assert.That(classname.Type, Is.EqualTo(KVValueType.String));
                 Assert.That(classname.Value, Is.EqualTo("worldspawn"));
             });
 
@@ -43,12 +45,15 @@ namespace Tests
             Assert.That(classnameString, Is.EqualTo("worldspawn"));
 
             var worldname = entities[0].GetProperty("worldname");
-            Assert.That(worldname, Is.Not.Null);
             Assert.That(worldname.Value, Is.EqualTo("blackmap"));
 
             var entityString = entityLump.ToEntityDumpString();
 
             Assert.That(entityString, Is.Not.Empty);
+
+            var fgdString = entityLump.ToForgeGameData();
+
+            Assert.That(fgdString, Is.Not.Empty);
         }
     }
 }

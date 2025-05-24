@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace ValveResourceFormat.FlexSceneFile
 {

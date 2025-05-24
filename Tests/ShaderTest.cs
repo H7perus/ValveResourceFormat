@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using NUnit.Framework;
@@ -20,21 +21,18 @@ namespace Tests
 
             foreach (var file in files)
             {
-                using var shader = new ShaderFile();
+                using var shader = new VfxProgramData();
 
-                using var sw = new StringWriter(CultureInfo.InvariantCulture);
-                var originalOutput = Console.Out;
-                Console.SetOut(sw);
+                using var sw = new IndentedTextWriter();
 
                 shader.Read(file);
                 shader.PrintSummary();
 
-                Console.SetOut(originalOutput);
-
-                if (shader.ZframesLookup.Count > 0)
+                foreach (var zframe in shader.StaticComboEntries)
                 {
-                    var zframe = shader.GetDecompressedZFrame(0);
-                    Assert.That(zframe, Is.Not.Empty);
+                    var value = zframe.Value.Unserialize();
+                    Assert.That(value, Is.Not.Null);
+                    var zframeSummary = new PrintZFrameSummary(value, sw);
                 }
             }
         }
@@ -79,6 +77,8 @@ namespace Tests
 
             var ex = Assert.Throws<InvalidDataException>(() => resource.Read(path));
 
+            Debug.Assert(ex != null);
+            Assert.That(ex, Is.Not.Null);
             Assert.That(ex.Message, Does.Contain("Use ShaderFile"));
         }
 
@@ -86,12 +86,12 @@ namespace Tests
         public void TestZFrameWriteSequences()
         {
             var path = Path.Combine(ShadersDir, "vcs64_error_pcgl_40_ps.vcs");
-            using var shader = new ShaderFile();
+            using var shader = new VfxProgramData();
             shader.Read(path);
 
-            using var zFrameFile = shader.GetZFrameFile(0);
-            using var sw = new StringWriter();
-            var zframeSummary = new PrintZFrameSummary(shader, zFrameFile, sw.Write, true);
+            var zFrameFile = shader.GetStaticCombo(0);
+            using var sw = new IndentedTextWriter();
+            var zframeSummary = new PrintZFrameSummary(zFrameFile, sw);
 
             var wsCount = zframeSummary.GetUniqueWriteSequences().Count;
             Assert.That(wsCount, Is.EqualTo(1));
@@ -166,11 +166,13 @@ namespace Tests
         public void VfxShaderExtract_Invalid()
         {
             var path = Path.Combine(ShadersDir, "vcs64_error_pcgl_40_ps.vcs");
-            using var shader = new ShaderFile();
+            using var shader = new VfxProgramData();
             shader.Read(path);
 
             var ex = Assert.Throws<InvalidOperationException>(() => new ShaderExtract(ShaderCollection.FromEnumerable([shader])));
 
+            Debug.Assert(ex != null);
+            Assert.That(ex, Is.Not.Null);
             Assert.That(ex.Message, Does.Contain("cannot continue without at least a features file"));
         }
 
@@ -178,7 +180,7 @@ namespace Tests
         public void VfxShaderExtract_Minimal()
         {
             var path = Path.Combine(ShadersDir, "vcs64_error_pc_40_features.vcs");
-            using var shader = new ShaderFile();
+            using var shader = new VfxProgramData();
             shader.Read(path);
 
             var extract = new ShaderExtract(ShaderCollection.FromEnumerable([shader]));
@@ -196,7 +198,7 @@ namespace Tests
             using var collection = new ShaderCollection();
             foreach (var file in Directory.GetFiles(ShadersDir, "vcs64_error_pc_40_*.vcs"))
             {
-                var shader = new ShaderFile();
+                var shader = new VfxProgramData();
 
                 try
                 {
@@ -218,9 +220,9 @@ namespace Tests
                 ShaderExtract.ShaderExtractParams.Export,
                 new ShaderExtract.ShaderExtractParams { },
                 new ShaderExtract.ShaderExtractParams { CollapseBuffers_InInclude = true },
-                new ShaderExtract.ShaderExtractParams { ZFrameReadingCap = -1 },
-                new ShaderExtract.ShaderExtractParams { ZFrameReadingCap = 0 },
-                new ShaderExtract.ShaderExtractParams { ZFrameReadingCap = 1 },
+                new ShaderExtract.ShaderExtractParams { StaticComboReadingCap = -1 },
+                new ShaderExtract.ShaderExtractParams { StaticComboReadingCap = 0 },
+                new ShaderExtract.ShaderExtractParams { StaticComboReadingCap = 1 },
                 new ShaderExtract.ShaderExtractParams { StaticComboAttributes_NoSeparateGlobals = true },
                 new ShaderExtract.ShaderExtractParams { StaticComboAttributes_NoConditionalReduce = true },
             };

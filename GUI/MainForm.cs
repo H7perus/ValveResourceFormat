@@ -18,7 +18,8 @@ using GUI.Types.Renderer;
 using GUI.Utils;
 using SteamDatabase.ValvePak;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Utils;
+
+#nullable disable
 
 namespace GUI
 {
@@ -99,6 +100,15 @@ namespace GUI
             searchForm = new SearchForm();
 
             Settings.Load();
+            consoleTab.InitializeFont();
+
+#pragma warning disable WFO5001
+            Application.SetColorMode(Settings.GetSystemColor());
+
+            if (Application.IsDarkModeEnabled)
+            {
+                Log.Warn(nameof(Application), "Dark mode is EXPERIMENTAL. Some controls may have less than ideal colors which will be improved in a future .NET update.");
+            }
 
             HardwareAcceleratedTextureDecoder.Decoder = new GLTextureDecoder();
 
@@ -146,6 +156,7 @@ namespace GUI
                         file = dirFile;
                     }
 
+                    file = Path.GetFullPath(file);
                     Log.Info(nameof(MainForm), $"Opening {file}");
 
                     var package = new Package();
@@ -203,6 +214,7 @@ namespace GUI
                     continue;
                 }
 
+                file = Path.GetFullPath(file);
                 OpenFile(file);
             }
 
@@ -531,7 +543,7 @@ namespace GUI
             Settings.TrackRecentFile(fileName);
         }
 
-        public Task<TabPage> OpenFile(VrfGuiContext vrfGuiContext, PackageEntry file, TreeViewWithSearchResults packageTreeView = null)
+        public void OpenFile(VrfGuiContext vrfGuiContext, PackageEntry file, TreeViewWithSearchResults packageTreeView = null)
         {
             var isPreview = packageTreeView != null;
             var tabTemp = new TabPage(Path.GetFileName(vrfGuiContext.FileName))
@@ -570,14 +582,30 @@ namespace GUI
                     parentContext = parentContext.ParentGuiContext;
                 }
 
-                var extension = Path.GetExtension(tab.Text);
+                var extension = Path.GetExtension(vrfGuiContext.FileName.AsSpan());
 
-                if (extension.Length > 0)
+                if (MemoryExtensions.Equals(extension, ".vpk", StringComparison.OrdinalIgnoreCase))
                 {
-                    extension = extension[1..];
+                    foreach (var game in ExplorerControl.SteamGames)
+                    {
+                        if (vrfGuiContext.FileName.StartsWith(game.GamePath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            tab.ImageIndex = ImageList.Images.IndexOfKey($"@app{game.AppID}");
+
+                            break;
+                        }
+                    }
                 }
 
-                tab.ImageIndex = GetImageIndexForExtension(extension);
+                if (tab.ImageIndex < 0)
+                {
+                    if (extension.Length > 0)
+                    {
+                        extension = extension[1..];
+                    }
+
+                    tab.ImageIndex = GetImageIndexForExtension(extension);
+                }
 
                 mainTabs.TabPages.Insert(mainTabs.SelectedIndex + 1, tab);
 
@@ -601,9 +629,11 @@ namespace GUI
             task.ContinueWith(
                 t =>
                 {
+                    vrfGuiContext.GLPostLoadAction = null;
+
                     t.Exception?.Flatten().Handle(ex =>
                     {
-                        var control = new CodeTextBox(ex.ToString());
+                        var control = CodeTextBox.CreateFromException(ex);
 
                         tab.Controls.Add(control);
 
@@ -662,8 +692,6 @@ namespace GUI
                 CancellationToken.None,
                 TaskContinuationOptions.None,
                 TaskScheduler.FromCurrentSynchronizationContext());
-
-            return task;
         }
 
         private static TabPage ProcessFile(VrfGuiContext vrfGuiContext, PackageEntry entry, bool isPreview)
@@ -723,9 +751,21 @@ namespace GUI
             {
                 return new Types.Viewers.ToolsAssetInfo().Create(vrfGuiContext, stream);
             }
-            else if (Types.Viewers.BinaryKeyValues.IsAccepted(magic))
+            else if (Types.Viewers.FlexSceneFile.IsAccepted(magic))
             {
-                return new Types.Viewers.BinaryKeyValues().Create(vrfGuiContext, stream);
+                return new Types.Viewers.FlexSceneFile().Create(vrfGuiContext, stream);
+            }
+            else if (Types.Viewers.NavView.IsAccepted(magic))
+            {
+                return new Types.Viewers.NavView().Create(vrfGuiContext, stream);
+            }
+            else if (Types.Viewers.BinaryKeyValues3.IsAccepted(magic))
+            {
+                return new Types.Viewers.BinaryKeyValues3().Create(vrfGuiContext, stream);
+            }
+            else if (Types.Viewers.BinaryKeyValues2.IsAccepted(magic, vrfGuiContext.FileName))
+            {
+                return new Types.Viewers.BinaryKeyValues2().Create(vrfGuiContext, stream);
             }
             else if (Types.Viewers.BinaryKeyValues1.IsAccepted(magic))
             {
@@ -733,19 +773,22 @@ namespace GUI
             }
             else if (Types.Viewers.Resource.IsAccepted(magicResourceVersion))
             {
-                return new Types.Viewers.Resource().Create(vrfGuiContext, stream, isPreview);
+                return new Types.Viewers.Resource().Create(vrfGuiContext, stream, isPreview, verifyFileSize: entry == null || entry.CRC32 > 0);
             }
+            // Raw images and audio files do not really appear in Source 2 projects, but we support viewing them anyway.
+            // As some detections rely on the file extension instead of magic bytes,
+            // they should be detected at the bottom here, after failing to detect a proper resource file.
             else if (Types.Viewers.Image.IsAccepted(magic))
             {
                 return new Types.Viewers.Image().Create(vrfGuiContext, stream);
             }
+            else if (Types.Viewers.Image.IsAcceptedVector(vrfGuiContext.FileName))
+            {
+                return new Types.Viewers.Image().CreateVector(vrfGuiContext, stream);
+            }
             else if (Types.Viewers.Audio.IsAccepted(magic, vrfGuiContext.FileName))
             {
                 return new Types.Viewers.Audio().Create(vrfGuiContext, stream, isPreview);
-            }
-            else if (Types.Viewers.FlexSceneFile.IsAccepted(magic))
-            {
-                return new Types.Viewers.FlexSceneFile().Create(vrfGuiContext, stream);
             }
 
             return new Types.Viewers.ByteViewer().Create(vrfGuiContext, stream);
@@ -753,11 +796,25 @@ namespace GUI
 
         private void MainForm_DragDrop(object sender, DragEventArgs e)
         {
-            var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-
-            foreach (var fileName in files)
+            // Despite us setting drag effect only on FileDrop this can still be null on drop
+            if (e.Data.GetData(DataFormats.FileDrop) is string[] files)
             {
-                OpenFile(fileName);
+                foreach (var fileName in files)
+                {
+                    OpenFile(fileName);
+                }
+            }
+            else if (e.Data.GetData(DataFormats.UnicodeText) is string text) // Dropping files from web based apps such as VS code
+            {
+                foreach (var line in text.AsSpan().EnumerateLines())
+                {
+                    var fileName = line.ToString();
+
+                    if (File.Exists(fileName))
+                    {
+                        OpenFile(fileName);
+                    }
+                }
             }
         }
 
@@ -849,19 +906,21 @@ namespace GUI
             }
         }
 
-        public static int GetImageIndexForExtension(string extension)
+        public static int GetImageIndexForExtension(ReadOnlySpan<char> extension)
         {
             if (extension.EndsWith(GameFileLoader.CompiledFileSuffix, StringComparison.Ordinal))
             {
                 extension = extension[0..^2];
             }
 
-            if (ImageListLookup.TryGetValue(extension, out var image))
+            var lookup = ImageListLookup.GetAlternateLookup<ReadOnlySpan<char>>();
+
+            if (lookup.TryGetValue(extension, out var image))
             {
                 return image;
             }
 
-            if (extension.Length > 0 && extension[0] == 'v' && ImageListLookup.TryGetValue(extension[1..], out image))
+            if (extension.Length > 0 && extension[0] == 'v' && lookup.TryGetValue(extension[1..], out image))
             {
                 return image;
             }

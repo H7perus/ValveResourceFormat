@@ -1,5 +1,7 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
+#nullable disable
+
 namespace ValveResourceFormat.ResourceTypes.Choreo
 {
     public class ChoreoChannel
@@ -17,16 +19,16 @@ namespace ValveResourceFormat.ResourceTypes.Choreo
         public KVObject ToKeyValues()
         {
             var kv = new KVObject(null);
-            kv.AddProperty("name", new KVValue(KVType.STRING, Name));
+            kv.AddProperty("name", Name);
 
             var events = new KVObject(null, isArray: true);
             foreach (var choreoEvent in Events)
             {
-                events.AddProperty(null, new KVValue(KVType.OBJECT, choreoEvent.ToKeyValues()));
+                events.AddItem(choreoEvent.ToKeyValues());
             }
-            kv.AddProperty("events", new KVValue(KVType.ARRAY, events));
 
-            kv.AddProperty("active", new KVValue(KVType.BOOLEAN, IsActive));
+            kv.AddProperty("events", events);
+            kv.AddProperty("active", IsActive);
 
             return kv;
         }

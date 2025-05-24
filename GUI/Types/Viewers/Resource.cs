@@ -11,6 +11,8 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes;
 
+#nullable disable
+
 namespace GUI.Types.Viewers
 {
     class Resource : IViewer
@@ -25,7 +27,7 @@ namespace GUI.Types.Viewers
             throw new NotImplementedException();
         }
 
-        public TabPage Create(VrfGuiContext vrfGuiContext, Stream stream, bool isPreview)
+        public TabPage Create(VrfGuiContext vrfGuiContext, Stream stream, bool isPreview, bool verifyFileSize)
         {
             var resourceTemp = new ValveResourceFormat.Resource
             {
@@ -37,7 +39,7 @@ namespace GUI.Types.Viewers
             {
                 if (stream != null)
                 {
-                    resource.Read(stream);
+                    resource.Read(stream, verifyFileSize);
                 }
                 else
                 {
@@ -52,7 +54,7 @@ namespace GUI.Types.Viewers
                 resourceTemp?.Dispose();
             }
 
-            var resTabs = new TabControl
+            var resTabs = new ThemedTabControl
             {
                 Dock = DockStyle.Fill,
             };
@@ -101,12 +103,13 @@ namespace GUI.Types.Viewers
                         }
 
                     case ResourceType.Sound:
+                        if (resource.ContainsBlockType(BlockType.DATA))
                         {
                             specialTabPage = new TabPage("SOUND");
                             var autoPlay = ((Settings.QuickPreviewFlags)Settings.Config.QuickFilePreview & Settings.QuickPreviewFlags.AutoPlaySounds) != 0;
                             var ap = new AudioPlayer(resource, specialTabPage, isPreview && autoPlay);
-                            break;
                         }
+                        break;
 
                     case ResourceType.Map:
                         {
@@ -203,7 +206,7 @@ namespace GUI.Types.Viewers
             }
             catch (Exception ex)
             {
-                var control = new CodeTextBox(ex.ToString());
+                var control = CodeTextBox.CreateFromException(ex);
 
                 var tabEx = new TabPage("Error");
                 tabEx.Controls.Add(control);
@@ -320,7 +323,7 @@ namespace GUI.Types.Viewers
             }
             catch (Exception ex)
             {
-                var control = new CodeTextBox(ex.ToString());
+                var control = CodeTextBox.CreateFromException(ex);
 
                 var tabEx = new TabPage("Decompile Error");
                 tabEx.Controls.Add(control);
@@ -398,14 +401,19 @@ namespace GUI.Types.Viewers
 
                 try
                 {
-                    var shaderTabs = viewer.SetResourceBlockTabControl(blockTab, shaderBlock.Shaders);
+                    var tabPage = viewer.Create(
+                        shaderBlock.Shaders,
+                        Path.GetFileNameWithoutExtension(resource.FileName.AsSpan()),
+                        ValveResourceFormat.CompiledShader.VcsProgramType.Features
+                    );
 
-                    foreach (var shaderFile in shaderBlock.Shaders)
+                    foreach (Control control in tabPage.Controls)
                     {
-                        shaderTabs.CreateShaderFileTab(shaderBlock.Shaders, shaderFile.VcsProgramType);
+                        blockTab.Controls.Add(control);
                     }
 
                     viewer = null;
+                    tabPage.Dispose();
                 }
                 finally
                 {
@@ -415,6 +423,7 @@ namespace GUI.Types.Viewers
                 return;
             }
 
+            var text = block.ToString();
             var language = CodeTextBox.HighlightLanguage.KeyValues;
 
             if (resource.ResourceType == ResourceType.PanoramaLayout && block.Type == BlockType.DATA)
@@ -430,7 +439,7 @@ namespace GUI.Types.Viewers
                 language = CodeTextBox.HighlightLanguage.JS;
             }
 
-            var textBox = new CodeTextBox(block.ToString(), language);
+            var textBox = CodeTextBox.Create(text, language);
             blockTab.Controls.Add(textBox);
         }
 
@@ -441,7 +450,7 @@ namespace GUI.Types.Viewers
                 case ResourceType.Material:
                     var vmatTab = IViewer.AddContentTab(resTabs, "Reconstructed vmat", new MaterialExtract(resource).ToValveMaterial());
                     var textBox = (CodeTextBox)vmatTab.Controls[0];
-                    Task.Run(() => textBox.Text = new MaterialExtract(resource, vrfGuiContext.FileLoader).ToValveMaterial().ReplaceLineEndings());
+                    Task.Run(() => textBox.Text = new MaterialExtract(resource, vrfGuiContext.FileLoader).ToValveMaterial());
                     break;
 
                 case ResourceType.EntityLump:
@@ -481,21 +490,6 @@ namespace GUI.Types.Viewers
                             IViewer.AddContentTab(resTabs, "Reconstructed vsnap", new SnapshotExtract(resource).ToValveSnap());
                         }
 
-                        break;
-                    }
-
-                case ResourceType.Shader:
-                    {
-                        var collectionBlock = resource.GetBlockByType(BlockType.SPRV)
-                            ?? resource.GetBlockByType(BlockType.DXBC)
-                            ?? resource.GetBlockByType(BlockType.DATA);
-
-                        var extract = new ShaderExtract((SboxShader)collectionBlock)
-                        {
-                            SpirvCompiler = CompiledShader.SpvToHlsl
-                        };
-
-                        IViewer.AddContentTab<Func<string>>(resTabs, extract.GetVfxFileName(), extract.ToVFX, true);
                         break;
                     }
             }

@@ -4,7 +4,6 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Blocks.ResourceEditInfoStructs;
 using ValveResourceFormat.CompiledShader;
 using ValveResourceFormat.ResourceTypes;
-using ValveResourceFormat.Utils;
 
 namespace ValveResourceFormat
 {
@@ -15,19 +14,19 @@ namespace ValveResourceFormat
     {
         public const ushort KnownHeaderVersion = 12;
 
-        private FileStream FileStream;
+        private FileStream? FileStream;
 
         /// <summary>
         /// Gets the binary reader. USE AT YOUR OWN RISK!
         /// It is exposed publicly to ease of reading the same file.
         /// </summary>
         /// <value>The binary reader.</value>
-        public BinaryReader Reader { get; private set; }
+        public BinaryReader? Reader { get; private set; }
 
         /// <summary>
         /// Gets or sets the file name this resource was parsed from.
         /// </summary>
-        public string FileName { get; set; }
+        public string? FileName { get; set; }
 
         /// <summary>
         /// Gets the resource size.
@@ -58,17 +57,17 @@ namespace ValveResourceFormat
         /// <summary>
         /// Gets the ResourceEditInfo block.
         /// </summary>
-        public ResourceEditInfo EditInfo { get; private set; }
+        public ResourceEditInfo? EditInfo { get; private set; }
 
         /// <summary>
         /// Gets the ResourceExtRefList block.
         /// </summary>
-        public ResourceExtRefList ExternalReferences => (ResourceExtRefList)GetBlockByType(BlockType.RERL);
+        public ResourceExtRefList? ExternalReferences => (ResourceExtRefList?)GetBlockByType(BlockType.RERL);
 
         /// <summary>
         /// Gets the generic DATA block.
         /// </summary>
-        public ResourceData DataBlock => (ResourceData)GetBlockByType(BlockType.DATA);
+        public ResourceData? DataBlock => (ResourceData?)GetBlockByType(BlockType.DATA);
 
         /// <summary>
         /// Resource files have a FileSize in the metadata, however
@@ -87,15 +86,13 @@ namespace ValveResourceFormat
                     return size;
                 }
 
-                if (ResourceType == ResourceType.Sound)
+                if (ResourceType == ResourceType.Sound && DataBlock is Sound dataSound)
                 {
-                    var data = (Sound)DataBlock;
-                    size += data.StreamingDataSize;
+                    size += dataSound.StreamingDataSize;
                 }
-                else if (ResourceType == ResourceType.Texture)
+                else if (ResourceType == ResourceType.Texture && DataBlock is Texture dataTexture)
                 {
-                    var data = (Texture)DataBlock;
-                    size += (uint)data.CalculateTextureDataSize();
+                    size += (uint)dataTexture.CalculateTextureDataSize();
                 }
 
                 return size;
@@ -167,7 +164,7 @@ namespace ValveResourceFormat
                 throw new InvalidDataException("Use ValvePak library to parse VPK files.\nSee https://github.com/ValveResourceFormat/ValvePak");
             }
 
-            if (FileSize == ShaderFile.MAGIC)
+            if (FileSize == VfxProgramData.MAGIC)
             {
                 throw new InvalidDataException("Use ShaderFile() class to parse compiled shader files.");
             }
@@ -195,12 +192,12 @@ namespace ValveResourceFormat
 
             for (var i = 0; i < blockCount; i++)
             {
-                var blockType = Encoding.UTF8.GetString(Reader.ReadBytes(4));
+                var blockType = (BlockType)Reader.ReadUInt32();
 
                 var position = Reader.BaseStream.Position;
                 var offset = (uint)position + Reader.ReadUInt32();
                 var size = Reader.ReadUInt32();
-                Block block = null;
+                Block? block = null;
 
                 if (size == 0)
                 {
@@ -210,7 +207,7 @@ namespace ValveResourceFormat
                 // Peek data to detect VKV3
                 // Valve has deprecated NTRO as reported by resourceinfo.exe
                 // TODO: Find a better way without checking against resource type
-                if (size >= 4 && blockType == nameof(BlockType.DATA) && !IsHandledResourceType(ResourceType))
+                if (size >= 4 && blockType == BlockType.DATA && !IsHandledResourceType(ResourceType))
                 {
                     Reader.BaseStream.Position = offset;
 
@@ -232,28 +229,32 @@ namespace ValveResourceFormat
 
                 block.Offset = offset;
                 block.Size = size;
+                block.Resource = this;
 
                 Blocks.Add(block);
 
-                switch (block.Type)
+                if (block.Type is BlockType.NTRO)
                 {
-                    case BlockType.REDI:
-                    case BlockType.RED2:
-                        block.Read(Reader, this);
+                    block.Read(Reader);
+                }
 
-                        EditInfo = (ResourceEditInfo)block;
+                if (block.Type is BlockType.RED2 or BlockType.REDI)
+                {
+                    block.Read(Reader);
+                    EditInfo = (ResourceEditInfo)block;
 
-                        // Try to determine resource type by looking at the compiler indentifiers
-                        if (ResourceType == ResourceType.Unknown)
+                    // Try to determine resource type by looking at the compiler indentifiers
+                    // This must be done right after reading EditInfo because future DATA block
+                    // will depend on knowing the resource type to construct the correct block in ConstructResourceType()
+                    if (ResourceType == ResourceType.Unknown)
+                    {
+                        foreach (var specialDep in EditInfo.SpecialDependencies)
                         {
-                            foreach (var specialDep in EditInfo.SpecialDependencies)
-                            {
-                                ResourceType = DetermineResourceTypeByCompilerIdentifier(specialDep);
+                            ResourceType = DetermineResourceTypeByCompilerIdentifier(specialDep);
 
-                                if (ResourceType != ResourceType.Unknown)
-                                {
-                                    break;
-                                }
+                            if (ResourceType != ResourceType.Unknown)
+                            {
+                                break;
                             }
                         }
 
@@ -262,12 +263,7 @@ namespace ValveResourceFormat
                         {
                             ResourceType = ResourceTypeExtensions.DetermineByFileExtension(Path.GetExtension(EditInfo.InputDependencies[0].ContentRelativeFilename));
                         }
-
-                        break;
-
-                    case BlockType.NTRO:
-                        block.Read(Reader, this);
-                        break;
+                    }
                 }
 
                 Reader.BaseStream.Position = position + 8;
@@ -277,15 +273,21 @@ namespace ValveResourceFormat
             {
                 if (block.Type is not BlockType.REDI and not BlockType.RED2 and not BlockType.NTRO)
                 {
-                    block.Read(Reader, this);
+                    block.Read(Reader);
                 }
             }
 
             if (ResourceType == ResourceType.Sound && ContainsBlockType(BlockType.CTRL)) // Version >= 5, but other ctrl-type sounds have version 0
             {
-                var block = new Sound();
-                block.ConstructFromCtrl(Reader, this);
-                Blocks.Add(block);
+                var block = new Sound
+                {
+                    Resource = this,
+                };
+
+                if (block.ConstructFromCtrl())
+                {
+                    Blocks.Add(block);
+                }
             }
 
             var fullFileSize = FullFileSize;
@@ -294,11 +296,11 @@ namespace ValveResourceFormat
             {
                 if (ResourceType == ResourceType.Texture)
                 {
-                    var data = (Texture)DataBlock;
+                    var data = (Texture?)DataBlock;
 
                     // TODO: We do not currently have a way of calculating buffer size for these types
                     // Texture.GenerateBitmap also just reads until end of the buffer
-                    if (data.IsRawJpeg)
+                    if (data == null || data.IsRawJpeg)
                     {
                         return;
                     }
@@ -320,48 +322,67 @@ namespace ValveResourceFormat
 
         public Block GetBlockByIndex(int index)
         {
+            ArgumentOutOfRangeException.ThrowIfNegative(index);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Blocks.Count);
+
             return Blocks[index];
         }
 
-        public Block GetBlockByType(BlockType type)
+        public Block? GetBlockByType(BlockType type)
         {
-            return Blocks.Find(b => b.Type == type);
+            foreach (var block in Blocks)
+            {
+                if (block.Type == type)
+                {
+                    return block;
+                }
+            }
+
+            return null;
         }
 
         public bool ContainsBlockType(BlockType type)
         {
-            return Blocks.Exists(b => b.Type == type);
+            foreach (var block in Blocks)
+            {
+                if (block.Type == type)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
-        private Block ConstructFromType(string input)
+        private Block ConstructFromType(BlockType blockType)
         {
-            return input switch
+            return blockType switch
             {
-                nameof(BlockType.DATA) => ConstructResourceType(),
-                nameof(BlockType.REDI) => new ResourceEditInfo(),
-                nameof(BlockType.RED2) => new ResourceEditInfo2(),
-                nameof(BlockType.RERL) => new ResourceExtRefList(),
-                nameof(BlockType.NTRO) => new ResourceIntrospectionManifest(),
-                nameof(BlockType.VBIB) => new VBIB(),
-                nameof(BlockType.VXVS) => new VXVS(),
-                nameof(BlockType.SNAP) => new SNAP(),
-                nameof(BlockType.MBUF) => new MBUF(),
-                nameof(BlockType.CTRL) => new BinaryKV3(BlockType.CTRL),
-                nameof(BlockType.MDAT) => new Mesh(BlockType.MDAT),
-                nameof(BlockType.INSG) => new BinaryKV3(BlockType.INSG),
-                nameof(BlockType.SrMa) => new BinaryKV3(BlockType.SrMa), // SourceMap
-                nameof(BlockType.LaCo) => new BinaryKV3(BlockType.LaCo), // vxml ast
-                nameof(BlockType.STAT) => new BinaryKV3(BlockType.STAT),
-                nameof(BlockType.FLCI) => new BinaryKV3(BlockType.FLCI),
-                nameof(BlockType.DSTF) => new BinaryKV3(BlockType.DSTF),
-                nameof(BlockType.MRPH) => new Morph(BlockType.MRPH),
-                nameof(BlockType.ANIM) => new KeyValuesOrNTRO(BlockType.ANIM, "AnimationResourceData_t"),
-                nameof(BlockType.ASEQ) => new KeyValuesOrNTRO(BlockType.ASEQ, "SequenceGroupResourceData_t"),
-                nameof(BlockType.AGRP) => new KeyValuesOrNTRO(BlockType.AGRP, "AnimationGroupResourceData_t"),
-                nameof(BlockType.PHYS) => new PhysAggregateData(BlockType.PHYS),
-                nameof(BlockType.DXBC) => new SboxShader(BlockType.DXBC),
-                nameof(BlockType.SPRV) => new SboxShader(BlockType.SPRV),
-                _ => throw new ArgumentException($"Unrecognized block type '{input}'"),
+                BlockType.DATA => ConstructResourceType(),
+                BlockType.REDI => new ResourceEditInfo(),
+                BlockType.RED2 => new ResourceEditInfo2(),
+                BlockType.RERL => new ResourceExtRefList(),
+                BlockType.NTRO => new ResourceIntrospectionManifest(),
+                BlockType.VBIB => new VBIB(),
+                BlockType.VXVS => new VXVS(),
+                BlockType.SNAP => new SNAP(),
+                BlockType.MBUF => new MBUF(),
+                BlockType.TBUF => new TBUF(),
+                BlockType.CTRL => new BinaryKV3(BlockType.CTRL),
+                BlockType.MDAT => new Mesh(BlockType.MDAT),
+                BlockType.INSG => new BinaryKV3(BlockType.INSG),
+                BlockType.SrMa => new BinaryKV3(BlockType.SrMa), // SourceMap
+                BlockType.LaCo => new BinaryKV3(BlockType.LaCo), // vxml ast
+                BlockType.STAT => new BinaryKV3(BlockType.STAT),
+                BlockType.FLCI => new BinaryKV3(BlockType.FLCI),
+                BlockType.DSTF => new BinaryKV3(BlockType.DSTF),
+                BlockType.MRPH => new Morph(BlockType.MRPH),
+                BlockType.ANIM => new KeyValuesOrNTRO(BlockType.ANIM, "AnimationResourceData_t"),
+                BlockType.ASEQ => new KeyValuesOrNTRO(BlockType.ASEQ, "SequenceGroupResourceData_t"),
+                BlockType.AGRP => new KeyValuesOrNTRO(BlockType.AGRP, "AnimationGroupResourceData_t"),
+                BlockType.PHYS => new PhysAggregateData(BlockType.PHYS),
+                BlockType.DXBC => new SboxShader(BlockType.DXBC),
+                BlockType.SPRV => new SboxShader(BlockType.SPRV),
+                _ => throw new ArgumentException($"Unrecognized block type '{Encoding.ASCII.GetString(BitConverter.GetBytes((uint)blockType))}'"),
             };
         }
 

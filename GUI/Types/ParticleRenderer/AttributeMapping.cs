@@ -1,6 +1,6 @@
 using GUI.Types.ParticleRenderer.Utils;
 using GUI.Utils;
-using ValveResourceFormat.Serialization;
+using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Types.ParticleRenderer
 {
@@ -40,7 +40,7 @@ namespace GUI.Types.ParticleRenderer
         //private readonly ParticleFloatBiasType biasType;
         //private readonly float biasParameter;
 
-        private readonly PiecewiseCurve curve;
+        private readonly PiecewiseCurve? curve;
 
 
         public AttributeMapping(ParticleDefinitionParser parse)
@@ -113,7 +113,7 @@ namespace GUI.Types.ParticleRenderer
                     };
                     var remappedTo0_1Range = MathUtils.Remap(valueIn, input0, input1);
 
-                    return MathUtils.Lerp(remappedTo0_1Range, output0, output1);
+                    return float.Lerp(output0, output1, remappedTo0_1Range);
 
                 case PfMapType.RemapBiased:
                     var remappedTo0_1RangeBiased = MathUtils.Remap(value, input0, input1);
@@ -122,10 +122,10 @@ namespace GUI.Types.ParticleRenderer
 
                     // TODO: Insert bias processing here. Shared with randombiased mode in INumberProvider
 
-                    return MathUtils.Lerp(remappedTo0_1RangeBiased, output0, output1);
+                    return float.Lerp(output0, output1, remappedTo0_1RangeBiased);
 
                 case PfMapType.Curve:
-                    return curve.Evaluate(value);
+                    return curve!.Evaluate(value);
 
                 default:
                     return value;

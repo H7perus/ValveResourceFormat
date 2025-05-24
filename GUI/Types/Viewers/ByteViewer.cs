@@ -12,7 +12,7 @@ namespace GUI.Types.Viewers
         public TabPage Create(VrfGuiContext vrfGuiContext, Stream stream)
         {
             var tab = new TabPage();
-            var resTabs = new TabControl
+            var resTabs = new ThemedTabControl
             {
                 Dock = DockStyle.Fill,
             };
@@ -30,7 +30,7 @@ namespace GUI.Types.Viewers
 
             if (stream == null)
             {
-                input = File.ReadAllBytes(vrfGuiContext.FileName);
+                input = File.ReadAllBytes(vrfGuiContext.FileName!);
             }
             else
             {
@@ -65,7 +65,7 @@ namespace GUI.Types.Viewers
             if (!hasNullBytes)
             {
                 var textTab = new TabPage("Text");
-                var text = new CodeTextBox(System.Text.Encoding.UTF8.GetString(span));
+                var text = CodeTextBox.Create(System.Text.Encoding.UTF8.GetString(span));
                 textTab.Controls.Add(text);
                 resTabs.TabPages.Add(textTab);
                 resTabs.SelectedTab = textTab;

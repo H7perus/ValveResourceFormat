@@ -1,11 +1,11 @@
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
-using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Blocks.ResourceEditInfoStructs;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
 using ValveResourceFormat.Serialization.VfxEval;
+
+#nullable disable
 
 namespace ValveResourceFormat.ResourceTypes
 {
@@ -40,9 +40,9 @@ namespace ValveResourceFormat.ResourceTypes
         }
 
 
-        public override void Read(BinaryReader reader, Resource resource)
+        public override void Read(BinaryReader reader)
         {
-            base.Read(reader, resource);
+            base.Read(reader);
 
             Name = Data.GetProperty<string>("m_materialName");
             ShaderName = Data.GetProperty<string>("m_shaderName");
@@ -173,10 +173,11 @@ namespace ValveResourceFormat.ResourceTypes
 
             public VsInputSignature(KVObject data)
             {
-                Elements = data.GetArray("m_elems").Select(x => new InputSignatureElement(x)).ToArray();
+                Elements = [.. data.GetArray("m_elems").Select(x => new InputSignatureElement(x))];
             }
         }
 
+        [DebuggerDisplay("{Name,nq} ({Semantic,nq})")]
         public readonly struct InputSignatureElement
         {
             public string Name { get; }
@@ -190,6 +191,14 @@ namespace ValveResourceFormat.ResourceTypes
                 Semantic = data.GetProperty<string>("m_pSemantic");
                 D3DSemanticName = data.GetProperty<string>("m_pD3DSemanticName");
                 D3DSemanticIndex = (int)data.GetIntegerProperty("m_nD3DSemanticIndex");
+            }
+
+            public InputSignatureElement(string name, string semantic, string d3dSemanticName, int d3dSemanticIndex)
+            {
+                Name = name;
+                Semantic = semantic;
+                D3DSemanticName = d3dSemanticName;
+                D3DSemanticIndex = d3dSemanticIndex;
             }
         }
 

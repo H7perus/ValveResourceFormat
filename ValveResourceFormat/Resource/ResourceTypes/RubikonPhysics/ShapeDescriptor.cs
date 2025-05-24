@@ -1,6 +1,5 @@
 using System.IO;
 using ValveResourceFormat.ResourceTypes.RubikonPhysics.Shapes;
-using ValveResourceFormat.Serialization;
 using ValveResourceFormat.Serialization.KeyValues;
 
 namespace ValveResourceFormat.ResourceTypes.RubikonPhysics
@@ -9,7 +8,7 @@ namespace ValveResourceFormat.ResourceTypes.RubikonPhysics
     {
         public int CollisionAttributeIndex { get; set; }
         public int SurfacePropertyIndex { get; set; }
-        public string UserFriendlyName { get; set; }
+        public string? UserFriendlyName { get; set; }
 
         public T Shape { get; set; }
 

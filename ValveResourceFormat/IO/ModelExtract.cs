@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text;
 using ValveResourceFormat.ResourceTypes;
 
+#nullable disable
 
 namespace ValveResourceFormat.IO;
 
@@ -82,9 +83,15 @@ public partial class ModelExtract
 
         foreach (var renderMesh in RenderMeshesToExtract)
         {
+            var options = new DatamodelRenderMeshExtractOptions
+            {
+                MaterialInputSignatures = MaterialInputSignatures,
+                BoneRemapTable = renderMesh.BoneRemapTable,
+            };
+
             vmdl.AddSubFile(
                 Path.GetFileName(renderMesh.FileName),
-                () => ToDmxMesh(renderMesh.Mesh, Path.GetFileNameWithoutExtension(renderMesh.FileName), new() { MaterialInputSignatures = MaterialInputSignatures })
+                () => ToDmxMesh(renderMesh.Mesh, Path.GetFileNameWithoutExtension(renderMesh.FileName), options)
             );
         }
 
