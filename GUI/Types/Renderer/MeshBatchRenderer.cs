@@ -193,6 +193,12 @@ namespace GUI.Types.Renderer
 
                     material = requestMaterial;
                     material.Render(shader);
+
+                    // material.render has bug where it resets viewcontext textures to default texture
+                    foreach (var (slot, name, texture) in context.View.Textures)
+                    {
+                        shader.SetTexture((int)slot, name, texture);
+                    }
                 }
 
 
