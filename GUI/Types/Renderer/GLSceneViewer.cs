@@ -291,8 +291,8 @@ namespace GUI.Types.Renderer
             ShadowDepthBuffer.Depth.SetWrapMode(TextureWrapMode.ClampToBorder);
 
             FramebufferCopy = Framebuffer.Prepare(4, 4, 0,
-                new Framebuffer.AttachmentFormat(PixelInternalFormat.Srgb8, PixelFormat.Rgb, PixelType.UnsignedByte),
-                new Framebuffer.DepthAttachmentFormat(PixelInternalFormat.DepthComponent16, PixelType.UnsignedShort)
+                new Framebuffer.AttachmentFormat(PixelInternalFormat.R11fG11fB10f, PixelFormat.Rgb, PixelType.HalfFloat),
+                new Framebuffer.DepthAttachmentFormat(PixelInternalFormat.DepthComponent32f, PixelType.Float)
             );
 
             FramebufferCopy.Initialize();
@@ -571,13 +571,12 @@ namespace GUI.Types.Renderer
                 0, 0, framebuffer.Width, framebuffer.Height,
                 0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
 
-            framebuffer.Bind(FramebufferTarget.Framebuffer);
-
             // copy current depth to framebuffer copy
-            //GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, renderContext.View.FramebufferCopy.FboHandle,
-            //    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-            //    0, 0, renderContext.View.FramebufferCopy.Width, renderContext.View.FramebufferCopy.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+            GL.BlitNamedFramebuffer(framebuffer.FboHandle, FramebufferCopy.FboHandle,
+                0, 0, framebuffer.Width, framebuffer.Height,
+                0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
 
+            framebuffer.Bind(FramebufferTarget.Framebuffer);
         }
 
         protected void AddBaseGridControl()

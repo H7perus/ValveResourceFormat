@@ -78,10 +78,10 @@ float fModulo(float value, float divisor);
 double dModulo(double value, double divisor);
 vec2 resolution;
 vec2 uv;
-vec3 normal;
+vec3 normal = vec3(0, 0, 1);
 vec2 distortion_direction;
 
-float fov = 50;
+float fov = 75;
 
 float IOR = 15; //fake IOR !!!
 vec3 waterBaseAbsorption = pow(g_vWaterDecayColor.rgb, vec3(0.002)); //this works fine, essentiall: taking the 1000th root for beers law. At 1000 units it will have exactly this color.
@@ -102,25 +102,17 @@ float flTime = mod(g_flTime , 5 * 3 * 31); //so I can test stuff.
 //Main entry point
 void main()
 {
-    resolution = textureSize(g_tSsrColor, 0);
+    resolution = textureSize(g_tSceneColor, 0);
     float focal_length = resolution.y / 2 / tan(radians(fov/2));
 
     uv = gl_FragCoord.xy / resolution;
     outputColor.w = 1.0; //I am sorry, transparency fans
 
 
-    world_depth = (1.0 /   (texture(g_tSsrDepth, uv).r -0.05) ) * 0.95;
+    world_depth = (1.0 /   (texture(g_tSceneDepth, uv).r -0.05) ) * 0.95;
     local_depth = (1.0 / (gl_FragCoord.z - 0.05)) * 0.95;
 
-    //outputColor = vec4(resolution.yyy / 5, 1.0);
-    //return;
-
-    //float water_depth = world_depth - local_depth; //needed for some fancy stuff
-
-
     vec3 viewDirection = normalize(g_vCameraPositionWs - vFragPosition);
-
-    //normal = normalize( vec3(normal_offset, 1));
 
     float fresnel = clamp(1.0 - pow( viewDirection.z, 0.5), 0.2, 1.0); //Only used for reflection, fog will be done better now :^)
 
@@ -163,7 +155,7 @@ void main()
         local_depth += length(local_pos - vFragPosition);
         if(world_depth < local_depth)
         {
-            outputColor.rgb = texture(g_tSsrColor, uv).rgb;
+            outputColor.rgb = texture(g_tSceneColor, uv).rgb;
             return;
         }
         vec2 flat_normal = -(vec2(water_height(vec2(local_pos.x + 0.1, local_pos.y)),   water_height(vec2(local_pos.x, local_pos.y + 0.1))) - water_height(local_pos.xy)) * 10;
@@ -221,7 +213,7 @@ void main()
 
     MaterialProperties_t material;
     InitProperties(material, normal);
-    material.Roughness = 0.0001;
+    material.Roughness.x = 0.0001;
     material.AmbientNormal = normal;
     material.SpecularColor = vec3(1.0);
 
@@ -239,7 +231,9 @@ void main()
         //distance_multiplier = 1 / c * local_depth * sample_accuracy;
         //distance_multiplier = pow(length(persistent_trace_coords), 0.4);
 
-		trace_coordinates = persistent_trace_coords + ray_dir * distance_multiplier * Random2D(gl_FragCoord.xy); //the rand is necessary to cut back on raymarching artifacts (visible banding).
+        float bluenoiserand = texelFetch(g_tBlueNoise, ivec2(mod(ivec2( gl_FragCoord.xy), ivec2(textureSize(g_tBlueNoise, 0)) )), 0)[0];
+
+		trace_coordinates = persistent_trace_coords + ray_dir * distance_multiplier * bluenoiserand; //the rand is necessary to cut back on raymarching artifacts (visible banding).
         persistent_trace_coords = persistent_trace_coords + ray_dir * distance_multiplier; //persistent is required so we don't get wildly varying sampling resolutions
 
 		float local_depth = trace_coordinates.z;
@@ -254,11 +248,15 @@ void main()
             break;
         }
 
-		float distance_to_depth = local_depth - (1.0 / (texture(g_tSsrDepth, depth_uv).r - 0.05)) * 0.95;
+		float distance_to_depth = local_depth - (1.0 / (texture(g_tSceneDepth, depth_uv).r - 0.05)) * 0.95;
 		if(distance_to_depth < distance_multiplier * sample_accuracy && distance_to_depth > 0)
 		{
-            reflectionColor =  reflectionColor * (1 - fade_out) + vec3(texture(g_tSsrColor, depth_uv).rgb) * fade_out; //would a mix() be cleaner?
+            vec3 ssr_reflection =  vec3(texture(g_tSceneColor, depth_uv).rgb);
+            //ssr_reflect = pow(ssr_reflect, vec3(1/2.2));
 
+            reflectionColor =  mix(reflectionColor, ssr_reflection, fade_out); //would a mix() be cleaner?
+
+            //reflectionColor = pow(reflectionColor, vec3(1/6.2));
             ////debugging stuff
             //vec3 hsv = vec3(0.33333 - float(index) / 500, 1.0, 1.0);
             //outputColor.rgb = hsv2rgb(hsv);
@@ -270,6 +268,7 @@ void main()
          index++;
 	}
 	while(run_traverse);
+    //reflectionColor = pow(reflectionColor, vec3(1/2.2));
     ApplyFog(outputColor.rgb, vFragPosition);
     //outputColor = vec4(0,0,0,1);
     outputColor.rgb =  mix(outputColor.rgb, reflectionColor  * 1,  fresnel);
@@ -283,14 +282,13 @@ vec3 refraction_func(float IOR) //still fake IOR, physical accuracy be damned
     vec2 distortion_direction = normal.xy * IOR;
     distortion_direction *= 1 / max(local_depth, 10) * fade_out *     clamp(water_depth / 20, 0, 1 );
 
-    float waterdepth_at_distortion = (1.0 / (texture(g_tSsrDepth, uv + distortion_direction).r - 0.05)) * 0.95 - local_depth;
+    float waterdepth_at_distortion = (1.0 / (texture(g_tSceneDepth, uv + distortion_direction).r - 0.05)) * 0.95 - local_depth;
     if(waterdepth_at_distortion - water_depth < -10)
     {
         waterdepth_at_distortion = water_depth;
         distortion_direction = vec2(0);
     }
-    vec3 ret = texture(g_tSsrColor, uv + distortion_direction).rgb;
-
+    vec3 ret = texture(g_tSceneColor, uv + distortion_direction).rgb;
     return (ret + (vec3(1) - pow(waterParticulateColor, pow(vec3(waterdepth_at_distortion), vec3(2)) * 0.05))  ) * pow(waterBaseAbsorption.rgb, vec3(waterdepth_at_distortion * 20));
 }
 
