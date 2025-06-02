@@ -499,7 +499,8 @@ namespace GUI.Types.Renderer
                 }
 
                 // grab framebuffer copy
-                GrabFramebufferCopy(renderContext.Framebuffer);
+                if(this is GLWorldViewer)
+                    GrabFramebufferCopy(renderContext.Framebuffer);
 
                 if (render3DSkybox)
                 {
@@ -518,18 +519,18 @@ namespace GUI.Types.Renderer
             }
 
             {
-                //float[] Color = [1.0f, 0.0f, 1.0f, 1.0f];
-                SsrFramebuffer.Resize(renderContext.Framebuffer.Width, renderContext.Framebuffer.Height);
-                //GL.ClearBuffer(ClearBuffer.Color, SsrFramebuffer.FboHandle, Color);
+                ////float[] Color = [1.0f, 0.0f, 1.0f, 1.0f];
+                //SsrFramebuffer.Resize(renderContext.Framebuffer.Width, renderContext.Framebuffer.Height);
+                ////GL.ClearBuffer(ClearBuffer.Color, SsrFramebuffer.FboHandle, Color);
 
-                // copy current color to ssr framebuffer
-                GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
-                    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-                    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
+                //// copy current color to ssr framebuffer
+                //GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
+                //    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
+                //    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
 
-                GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
-                    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-                    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+                //GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
+                //    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
+                //    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
             }
 
             using (new GLDebugGroup("Main Scene Translucent Render"))

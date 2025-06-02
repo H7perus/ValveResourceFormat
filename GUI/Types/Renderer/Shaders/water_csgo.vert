@@ -13,6 +13,8 @@ out vec3 vTangentOut;
 out vec3 vBitangentOut;
 out vec4 vColorBlendValues;
 
+uniform float g_flWaterPlaneOffset;
+
 #include "common/features.glsl"
 
 #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
@@ -27,7 +29,8 @@ uniform mat4 transform;
 
 void main()
 {
-    vec4 fragPosition = transform * vec4(vPOSITION, 1.0);
+    vec4 fragPosition = transform * vec4(vPOSITION + vec3(0, 0, g_flWaterPlaneOffset), 1.0);
+
     gl_Position = g_matViewToProjection * fragPosition;
     vFragPosition = fragPosition.xyz / fragPosition.w;
 
