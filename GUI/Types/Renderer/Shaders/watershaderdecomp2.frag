@@ -404,14 +404,14 @@ void main()
 
     vec2 unbiasedUV = (trueWorldPos.xy - _Globals_.g_vMapUVMin) / (_Globals_.g_vMapUVMax - _Globals_.g_vMapUVMin);
     unbiasedUV.y = 1.0 - unbiasedUV.y;
-    float finalWaterRoughness;
+    float currentWaterRoughness;
     if (isSkybox)
     {
-        finalWaterRoughness = _Globals_.g_flWaterRoughnessMax;
+        currentWaterRoughness = _Globals_.g_flWaterRoughnessMax;
     }
     else
     {
-        finalWaterRoughness = max(0.0, mix(_Globals_.g_flWaterRoughnessMin, _Globals_.g_flWaterRoughnessMax, BLENDVALUES.x));
+        currentWaterRoughness = max(0.0, mix(_Globals_.g_flWaterRoughnessMin, _Globals_.g_flWaterRoughnessMax, BLENDVALUES.x));
     }
     float currentDebrisVisibility = isSkybox ? 0.0 : max(0.0, mix(_Globals_.g_flDebrisMin, _Globals_.g_flDebrisMax, BLENDVALUES.z));
     float currentFoamAmount = isSkybox ? 0.0 : max(0.0, mix(_Globals_.g_flFoamMin, _Globals_.g_flFoamMax, BLENDVALUES.y));
@@ -484,7 +484,7 @@ void main()
 
         float freqWeight = mix(
         lowMedWeighedAmplitude
-        _Globals_.g_flHighFreqWeight * finalWaterRoughness + quarterDisturbanceStrength),
+        _Globals_.g_flHighFreqWeight * currentWaterRoughness + quarterDisturbanceStrength),
         medHighBlend);
 
         vec2 waveAnimOffset = vec2(sin(flWaterDirection), cos(flWaterDirection)) * ((g_flTime * _Globals_.g_flWavesSpeed) * 0.5);
@@ -498,7 +498,7 @@ void main()
 
         vec2 scaledWaveNormalXY = vec2(waveNormalXY.x * min(1.0, currentWaveOctaveScale.y / currentWaveOctaveScale.x), waveNormalXY.y * min(1.0, currentWaveOctaveScale.x / currentWaveOctaveScale.y)).xy * (freqWeight * 0.1);
 
-        accumulatedWaveUVOffset.xy += ((((-viewShiftedUV) * (waveSampleHeight * 0.01)) * _Globals_.g_flWavesHeightOffset) * finalWaterRoughness);
+        accumulatedWaveUVOffset.xy += ((((-viewShiftedUV) * (waveSampleHeight * 0.01)) * _Globals_.g_flWavesHeightOffset) * currentWaterRoughness);
 
         phaseOffsetSum.xy += (((scaledWaveNormalXY.xy * _Globals_.g_flWavesSharpness) * currentWaveOctaveScale) * _Globals_.g_flWavesPhaseOffset);
         waveHeightSum += waveSampleHeight * 0.01;
@@ -511,8 +511,8 @@ void main()
         continue;
     }
     vec2 finalWavePhaseOffset = phaseOffsetSum * 0.1;
-    vec3 roughedWaveNormal = scaledNormalSum * finalWaterRoughness;
-    float scaledAccumulatedWaveHeight = (waveHeightSum * finalWaterRoughness) * 60.0;
+    vec3 roughedWaveNormal = scaledNormalSum * currentWaterRoughness;
+    float scaledAccumulatedWaveHeight = (waveHeightSum * currentWaterRoughness) * 60.0;
     
     
 
@@ -649,9 +649,9 @@ void main()
     float finalDebrisVisibility = fma(-currentDebrisVisibility, clamp(1.4 - (finalFoam / mix(1.0, 0.4, debrisColorHeightSample.w)), 0.0, 1.0), 1.0);
     float debrisEdgeFactor = clamp((debrisColorHeightSample.w - finalDebrisVisibility) * _Globals_.g_flDebrisEdgeSharpness, 0.0, 1.0);
 
-    float _10350 = max(0.0, fma(2.0, finalFoamPow1_5, debrisHeightVal * (-2.0)));
+    float noClue = max(0.0, fma(2.0, finalFoamPow1_5, debrisHeightVal * (-2.0)));
 
-    float debrisVisibilityMask = clamp(fma(-_10350, 10.0, 1.0), 0.0, 1.0);
+    float debrisVisibilityMask = clamp(fma(-noClue, 10.0, 1.0), 0.0, 1.0);
     float finalDebrisFactor = debrisVisibilityMask * debrisEdgeFactor;
 
     vec3 debrisNormalSample = texture(g_tDebrisNormal, debrisFinalUV).xyz - vec3(0.5);
@@ -719,11 +719,12 @@ void main()
     vec3 finalFoamColor = _Globals_.g_vFoamColor.xyz * fma(combinedfinalFoamIntensity, 0.5, 1.0);
 
 
-    float _6414;
-    vec4 _13142;
-    float _13618;
-    vec3 _16311;
-    float _17126;
+    float postCausticsWaterColumnDepth;
+
+    vec4 causticsDebrisTotal;
+    float foamSiltStrength;
+    vec3 combinedRefractedColor;
+    float causticsEffectsZ;
     if (!isSkybox)
     {
         vec2 refractionUVOffsetRaw = (vec2(dot(finalPerturbedSurfaceNormal.xy, cross(invPixelDir.xyz, vec3(0.0, 0.0, -1.0)).xy), dot(finalPerturbedSurfaceNormal.xy, horizontalInvPixelDir)) + ((blueNoiseOffset * 0.002) * _Globals_.g_flWaterFogStrength)).xy * min(_Globals_.g_flRefractionLimit, finalWaterColumnDepthForRefract);
@@ -734,65 +735,60 @@ void main()
         float finalRefractedNormalizedDepth = clamp((textureLod(g_tSceneDepth, gbufferUV + finalRefractionUVOffset.xy, 0.0).x - PerViewConstantBuffer_t.g_flViewportMinZ) / depthBufferRange, 0.0, 1.0);
         vec4 finalRefractedColor = texture(g_tRefractionMap, clamp(gbufferUV.xy + finalRefractionUVOffset.xy, 1.0, 0.0).xy);
 
-        // ------ TRUE TO DECOMPILE UP TO THIS POINT (with minor differences)-------
+        
 
         vec3 darkenedRefractedColor = pow(finalRefractedColor.xyz, vec3(1.1)) * _Globals_.g_flUnderwaterDarkening;
-        float foamSiltStrength = fma(foamSiltFactor, 2.0, _Globals_.g_flWaterFogStrength);
+        foamSiltStrength = fma(foamSiltFactor, 2.0, _Globals_.g_flWaterFogStrength);
         float causticVisibility = clamp((dot(darkenedRefractedColor.xyz, vec3(0.2125, 0.7154, 0.0721)) - _Globals_.g_flCausticShadowCutOff) * (2.0 + _Globals_.g_flCausticShadowCutOff), 0.0, 1.0);
+        
 
-        vec4 _13141;
-        vec3 _16381;
-        float _16479;
         if (causticVisibility > 0.0)
         {
             vec3 refractedViewDir = (-normalize((invPixelDir + ((PerViewConstantBuffer_t.g_vCameraUpDirWs * finalRefractionUVOffset.y) * 2.0)) + ((cross(PerViewConstantBuffer_t.g_vCameraDirWs, PerViewConstantBuffer_t.g_vCameraUpDirWs) * (-finalRefractionUVOffset.x)) * 2.0))).xyz;
             vec3 refractedSceneHitPosWs = PerViewConstantBuffer_t.g_vCameraPositionWs.xyz + (refractedViewDir * (1.0 / (fma(finalRefractedNormalizedDepth, PerViewConstantBuffer_t.g_vInvProjRow3.z, PerViewConstantBuffer_t.g_vInvProjRow3.w) * dot(PerViewConstantBuffer_t.g_vCameraDirWs.xyz, refractedViewDir))));
             bool useTriplanarCaustics = _Globals_.g_bUseTriplanarCaustics != 0;
-            vec3 causticsLightColor;
+            vec3 causticsLightDir;
             if (useTriplanarCaustics)
             {
                 vec3 ditheredNormalExtent = abs(ditheredNormal);
-                causticsLightColor = mix(undetermined._m2.xyz, mix(mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.0, 1.0), bvec3(ditheredNormalExtent.y < ditheredNormalExtent.x)), vec3(0.0, 0.0, 1.0), bvec3(ditheredNormalExtent.z > max(ditheredNormalExtent.x, ditheredNormalExtent.y))), vec3(0.64999997615814208984375));
+                causticsLightDir = mix(undetermined._m2.xyz, mix(mix(vec3(0.0, 1.0, 1.0), vec3(1.0, 0.0, 1.0), bvec3(ditheredNormalExtent.y < ditheredNormalExtent.x)), vec3(0.0, 0.0, 1.0), bvec3(ditheredNormalExtent.z > max(ditheredNormalExtent.x, ditheredNormalExtent.y))), vec3(0.64999997615814208984375));
             }
             else
             {
-                causticsLightColor = undetermined._m2.xyz;
+                causticsLightDir = undetermined._m2.xyz;
             }
 
             float causticsDepth = worldPosForFoamAndDebrisBase.z - refractedSceneHitPosWs.z;
-
-            vec3 causticRayTarget = mix(refractedSceneHitPosWs + ((causticsLightColor.xyz * causticsLightColor.z) * causticsDepth), finalSurfacePos.xyz, vec3(clamp((pow(NoiseValue.x, 2.0) * foamSiltStrength) * 0.0125, 0.0, 1.0)));
-
+            vec3 causticRayTarget = mix(refractedSceneHitPosWs + ((causticsLightDir.xyz * causticsLightDir.z) * causticsDepth), finalSurfacePos.xyz, vec3(clamp((pow(NoiseValue.x, 2.0) * foamSiltStrength) * 0.0125, 0.0, 1.0)));
             float distToCausticTarget = distance(causticRayTarget, refractedSceneHitPosWs);
 
             vec2 causticDebrisUV = causticRayTarget.xy / _Globals_.g_flDebrisScale;
-            vec4 causticDebrisSample = texture(g_tDebris, mix(causticDebrisUV, (((causticDebrisUV + (debrisWobbleOffset * finalDebrisVisibility)) + ((viewShiftedUV * _10350) * 0.1)) + ((foamWobbleAnim * 0.1) * 0.04)) - dominantFoamSiltNorm, depthFactorCoarse).xy, causticsDepth * 0.05);
+            vec4 causticDebrisSample = texture(g_tDebris, mix(causticDebrisUV, (((causticDebrisUV + (debrisWobbleOffset * finalDebrisVisibility)) + ((viewShiftedUV * noClue) * 0.1)) + ((foamWobbleAnim * 0.1) * 0.04)) - dominantFoamSiltNorm, depthFactorCoarse).xy, causticsDepth * 0.05);
             float causticDebrisCoverage = clamp((fma(-finalDebrisVisibility, 0.9, causticDebrisSample.w) - debrisEdgeFactor) * 1.1, 0.0, 1.0);
 
 
             vec4 _16121;
             _16121.w = causticDebrisCoverage;
-
-            float causticDepthFalloff = clamp(1.0 - distToCausticTarget / _Globals_.g_flCausticDepthFallOffDistance, 0.0, 1.0);
+            float causticDepthFalloffPre = distToCausticTarget / _Globals_.g_flCausticDepthFallOffDistance;
+            float causticDepthFalloff = clamp(1.0 - causticDepthFalloffPre, 0.0, 1.0);
 
             float causticBaseIntensity = (causticVisibility * clamp(distToCausticTarget * 0.05, 0.0, 1.0)) * causticDepthFalloff;
-            float causticBaseIntensity;
+
+            
+
             if (!useTriplanarCaustics)
             {
-                causticBaseIntensity *= clamp(dot(ditheredNormal, causticsLightColor.xyz), 0.0, 1.0);
+                causticBaseIntensity *= clamp(dot(ditheredNormal, causticsLightDir.xyz), 0.0, 1.0);
             }
 
+            
 
             vec2 causticWaveUVBase = (causticRayTarget.xy * vec2(1.0 / 30)) * _Globals_.g_flCausticUVScaleMultiple;
             vec2 currWaveScale = _Globals_.g_vWaveScale;
             vec2 currWaveNormalXY = vec2(0.0);
-
-            uint _7275;
-            vec2 _9859;
-            float _10149;
-            vec2 _17662;
             float currWaveDir = _Globals_.g_flWaterInitialDirection;
-            uint _17018 = 0u;
+
+            uint iter = 0u;
             SPIRV_CROSS_UNROLL
             for (;;)
             {
@@ -800,19 +796,27 @@ void main()
                 {
                     break;
                 }
-                currWaveNormalXY.xy += (((((texture(g_tWavesNormalHeight, fma(vec2(sin(currWaveDir), cos(currWaveDir)) * ((g_flTime * _Globals_.g_flWavesSpeed) * 0.5), sqrt(vec2(1.0) / currWaveScale), (causticWaveUVBase.xy + currWaveNormalXY) / currWaveScale).xy, fma(-_Globals_.g_flCausticSharpness, 1.0 - clamp(causticDepthFalloff, 0.0, 1.0), 1.0) * 6.0).xyz - vec3(0.5)).xy * 0.5) * _Globals_.g_flCausticDistortion) * (vec2(1.0) + currWaveScale)) * (0.25 + causticDepthFalloff));
+                currWaveNormalXY.xy += (((((texture(g_tWavesNormalHeight, fma(vec2(sin(currWaveDir), cos(currWaveDir)) * ((g_flTime * _Globals_.g_flWavesSpeed) * 0.5), sqrt(vec2(1.0) / currWaveScale), (causticWaveUVBase.xy + currWaveNormalXY) / currWaveScale).xy, fma(-_Globals_.g_flCausticSharpness, 1.0 - clamp(causticDepthFalloff, 0.0, 1.0), 1.0) * 6.0).xyz - vec3(0.5)).xy * 0.5) * _Globals_.g_flCausticDistortion) * (vec2(1.0) + currWaveScale)) * (0.25 + causticDepthFalloffPre));
                 currWaveScale *= _Globals_.g_flWavesPhaseOffset;
-                currWaveDir += (3.5 / float(_7275));
 
                 iter++;
+                currWaveDir += (3.5 / float(iter));
+
+                
                 continue;
             }
+
+            
+
             vec2 currWaveScale1 = _Globals_.g_vWaveScale;
+            float currWaveDir1 = _Globals_.g_flWaterInitialDirection;
             vec3 currWaveSampleSum1 = vec3(0.0);
             uint _7276;
             vec2 _9860;
             float _10150;
-            float currWaveDir1 = _Globals_.g_flWaterInitialDirection;
+
+
+            //I DON'T THINK THE DECOMP IS TRUSTWORTHY ON THIS ANYMORE, waveSampleCausticDepthFalloff needs to be compared to another clean decomp
             uint causticIter1 = 0u;
             SPIRV_CROSS_UNROLL
             for (;;)
@@ -823,10 +827,10 @@ void main()
                 }
                 float causticIterProgress = float(causticIter1) / (float(_19857) - 1.0);
 
-                float waveSampleCausticDepthFalloff = 1.0 - clamp(causticDepthFalloff, 0.0, 1.0);
+                float waveSampleCausticDepthFalloff = causticDepthFalloff;
 
                 float waveSampleCausticDepthFalloff = _Globals_.g_flCausticSharpness * waveSampleCausticDepthFalloff;
-                currWaveSampleSum1 += (((((pow(vec3(texture(g_tWavesNormalHeight, fma(vec2(sin(currWaveDir1), cos(currWaveDir1)) * ((g_flTime * _Globals_.g_flWavesSpeed) * 0.5), sqrt(vec2(1.0) / currWaveScale1), (causticWaveUVBase.xy + currWaveNormalXY) / currWaveScale1).xy, fma(-_Globals_.g_flCausticSharpness, waveSampleCausticDepthFalloff, 1.0) * 6.0).z), vec3(waveSampleCausticDepthFalloff * 5.0)) * clamp(mix(mix(fma(disturbanceWeightedFoamAmount, 0.1, _Globals_.g_flLowFreqWeight), _Globals_.g_flMedFreqWeight + disturbanceWeightedFoamAmount, clamp(causticIterProgress * 2.0, 0.0, 1.0)), fma(_Globals_.g_flHighFreqWeight, finalWaterRoughness, disturbanceWeightedFoamAmount), clamp(fma(causticIterProgress, 2.0, -1.0), 0.0, 1.0)), 0.1, 0.4000000059604644775390625)) * (vec3(1.0) + (currWaveSampleSum1 * 2.0))) * causticDepthFalloff) * waveSampleCausticDepthFalloff) * 2.0);
+                currWaveSampleSum1 += (((((pow(vec3(texture(g_tWavesNormalHeight, fma(vec2(sin(currWaveDir1), cos(currWaveDir1)) * ((g_flTime * _Globals_.g_flWavesSpeed) * 0.5), sqrt(vec2(1.0) / currWaveScale1), (causticWaveUVBase.xy + currWaveNormalXY) / currWaveScale1).xy, fma(-_Globals_.g_flCausticSharpness, waveSampleCausticDepthFalloff, 1.0) * 6.0).z), vec3(waveSampleCausticDepthFalloff * 5.0)) * clamp(mix(mix(fma(disturbanceWeightedFoamAmount, 0.1, _Globals_.g_flLowFreqWeight), _Globals_.g_flMedFreqWeight + disturbanceWeightedFoamAmount, clamp(causticIterProgress * 2.0, 0.0, 1.0)), fma(_Globals_.g_flHighFreqWeight, currentWaterRoughness, disturbanceWeightedFoamAmount), clamp(fma(causticIterProgress, 2.0, -1.0), 0.0, 1.0)), 0.1, 0.4000000059604644775390625)) * (vec3(1.0) + (currWaveSampleSum1 * 2.0))) * causticDepthFalloff) * waveSampleCausticDepthFalloff) * 2.0);
                 currWaveScale1 *= _Globals_.g_flWavesPhaseOffset;
                 causticIter1 += 1u;
                 currWaveDir1 += (3.5 / float(causticIter1));
@@ -834,190 +838,180 @@ void main()
             }
             vec4 causticsClipPos = (vec4((causticRayTarget.xyz + ((vec3(currWaveNormalXY, 0.0) * 60.0) * currWaveSampleSum1.x)).xyz, 1.0) + (PerViewConstantBuffer_t.g_vWorldToCameraOffset * 1.0)).xyzw * transpose(g_matWorldToProjection);
             vec2 causticsNdc = causticsClipPos.xy / vec2(causticsClipPos.w);
+
+
             vec2 causticsUV = (vec2(causticsNdc.x, -causticsNdc.y) * 0.5) + vec2(0.5);
             vec4 causticsEffectsSampleRaw = texture(sampler2D(g_tWaterEffectsMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), (causticsUV.xy * PerViewConstantBuffer_t.g_vViewportToGBufferRatio.xy).xy) - vec4(0.5);
+
             vec2 _20390 = clamp(causticsEffectsSampleRaw.yz * 2.0, vec2(0.0), vec2(1.0));
             vec4 finalCausticsEffectsSample = causticsEffectsSampleRaw;
             finalCausticsEffectsSample.y = _20390.x;
             finalCausticsEffectsSample.z = _20390.y;
 
+            
+
             vec4 fadedCausticsEffects = finalCausticsEffectsSample * clamp((((causticsUV.y * (1.0 - causticsUV.y)) * causticsUV.x) * (1.0 - causticsUV.x)) * 40.0, 0.0, 1.0);
 
             float causticsXOverChangerate = fadedCausticsEffects.x + (fadedCausticsEffects.x / fma(fwidth(fadedCausticsEffects.x), 1000.0, 0.5));
             vec3 causticsModifier = (currWaveSampleSum1 + vec3(fma(clamp(causticsXOverChangerate, 0.0, 1.0) * 4.0, _Globals_.g_flWaterEffectCausticStrength, -((clamp(-causticsXOverChangerate, 0.0, 1.0) * 0.15) * _Globals_.g_flWaterEffectCausticStrength)))) * mix(1.0, 0.0, clamp(fma(causticDebrisCoverage, 2.0, fadedCausticsEffects.y * 0.4), 0.0, 1.0));
-
             float causticsModifierX = causticsModifier.x;
+            
 
-            vec3 _4046 = darkenedRefractedColor * (vec3(1.0) + (((((pow(max(causticsModifier * (vec3(1.0) + (vec3(1.25, -0.25, -1.0) * (clamp(dFdxFine(causticsModifierX) * 200.0, -1.0, 1.0) * clamp(fma(-causticsModifierX, 3.0, 1.0), 0.0, 1.0)))), vec3(0.001)) * 8.0, vec3(2.5)) * causticBaseIntensity) * undetermined._m3.xyz) * _Globals_.g_vCausticsTint.xyz) * _Globals_.g_flCausticsStrength) * 0.1));
-            float _16517 = pow(dot(_4046.xyz, vec3(0.2125, 0.7154, 0.0721)), 0.2);
+            vec3 modifiedCausticsRefractColor = darkenedRefractedColor * (vec3(1.0) + (((((pow(max(causticsModifier * (vec3(1.0) + (vec3(1.25, -0.25, -1.0) * (clamp(dFdxFine(causticsModifierX) * 200.0, -1.0, 1.0) * clamp(fma(-causticsModifierX, 3.0, 1.0), 0.0, 1.0)))), vec3(0.001)) * 8.0, vec3(2.5)) * causticBaseIntensity) * undetermined._m3.xyz) * _Globals_.g_vCausticsTint.xyz) * _Globals_.g_flCausticsStrength) * 0.1));
+            float _16517 = pow(dot(modifiedCausticsRefractColor.xyz, vec3(0.2125, 0.7154, 0.0721)), 0.2);
             float _14717 = clamp(dFdxFine(_16517), -1.0, 1.0) + clamp(dFdyFine(_16517), -1.0, 1.0);
-            _13141 = _16121;
-            _16381 = mix(_4046, _4046 * (vec3(1.0) + (vec3(2.5, 0.0, -2.0) * float(int(sign(_14717 * clamp(abs(_14717) - 0.1, 0.0, 1.0)))))), vec3(clamp(200.0 / scaledPixelRelativePos, 0.0, 1.0) * 0.1));
-            _16479 = fadedCausticsEffects.z;
+            causticsDebrisTotal = _16121;
+            combinedRefractedColor = mix(modifiedCausticsRefractColor, modifiedCausticsRefractColor * (vec3(1.0) + (vec3(2.5, 0.0, -2.0) * float(int(sign(_14717 * clamp(abs(_14717) - 0.1, 0.0, 1.0)))))), vec3(clamp(200.0 / scaledPixelRelativePos, 0.0, 1.0) * 0.1));
+            causticsEffectsZ = fadedCausticsEffects.z;
         }
         else
         {
-            _13141 = vec4(0.0);
-            _16381 = darkenedRefractedColor;
-            _16479 = 0.0;
+            causticsDebrisTotal = vec4(0.0);
+            combinedRefractedColor = darkenedRefractedColor;
+            causticsEffectsZ = 0.0;
         }
-        _13142 = _13141;
-        _16311 = _16381;
-        _17126 = _16479;
-        _13618 = foamSiltStrength;
-        _6414 = fma(max((-(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.x / fma(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.y, finalRefractedNormalizedDepth, PerViewConstantBuffer_t.g_vDepthPsToVsConversion.z))) - surfaceDepth, 0.0), 0.01, refractionDistortionFactor);
+        postCausticsWaterColumnDepth = fma(max((-(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.x / fma(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.y, finalRefractedNormalizedDepth, PerViewConstantBuffer_t.g_vDepthPsToVsConversion.z))) - surfaceDepth, 0.0), 0.01, refractionDistortionFactor);
     }
     else
     {
-        _13142 = vec4(0.0);
-        _16311 = vec3(0.0);
-        _17126 = 0.0;
-        _13618 = _Globals_.g_flWaterFogStrength;
-        _6414 = finalWaterColumnDepthForRefract;
+        causticsDebrisTotal = vec4(0.0);
+        combinedRefractedColor = vec3(0.0);
+        causticsEffectsZ = 0.0;
+        foamSiltStrength = _Globals_.g_flWaterFogStrength;
+        postCausticsWaterColumnDepth = finalWaterColumnDepthForRefract;
     }
-    float _17582 = min(_Globals_.g_flWaterMaxDepth, _6414);
-    vec3 _11466 = exp(((_Globals_.g_vWaterDecayColor - vec3(1.0)) * vec3(_Globals_.g_flWaterDecayStrength)) * _17582);
-    float _8790 = max(_13618, _17126);
-    float _5578 = finalFoamIntensity + clamp(_17126 - 0.5, 0.0, 1.0);
-    float _4632 = fma(fma(-clamp(NoiseValue.x, 0.0, 1.0), 0.25, _5578), 0.1, 1.0 - exp((-_17582) * _8790));
-    vec3 _5353 = mix(_Globals_.g_vWaterFogColor, finalFoamColor, vec3(_5578 * 0.1)) * mix(_11466, vec3(1.0), vec3(clamp(_8790 * 0.04, 0.0, 1.0)));
-    vec3 _6892 = -normalize(finalSurfacePos.xyz - PerViewConstantBuffer_t.g_vCameraPositionWs.xyz);
-    float _16838 = clamp(dot(-undetermined._m2.xyz, reflect(_6892, normalize(mix(normalize(usedvNormal).xyz, finalPerturbedSurfaceNormal.xyz, vec3(_Globals_.g_flSpecularNormalMultiple * fma(scaledPixelRelativePos, 0.0005000000237487256526947021484375, 1.0)))))), 0.0, 1.0);
-    float _3579 = mix(_Globals_.g_flSpecularPower, _Globals_.g_flDebrisReflectance * 8.0, debrisEdgeFactor) * mix(2.0, 0.2, clamp(finalWaterRoughness, 0.0, 1.0));
-    float _16583 = fma(pow(_16838, _3579), 0.1, pow(_16838, _3579 * 10.0));
-    float _6965 = -combinedfinalFoamIntensity;
-    float _9615 = 1.0 - _4632;
-    float _3039 = (clamp((1.0 - debrisEdgeFactor) + _10350, 0.0, 1.0) * clamp(fma(_6965, 4.0, 1.0), 0.0, 1.0)) * _9615;
-    vec3 _13711 = offsetWorldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalDebFoamHeightContrib * (-1.0)) + (((mix(NoiseValue.xxx, vec3(NoiseValue.xy, 0.0), vec3(0.1)) * 90.0) * pow(_3039, 2.0)) + vec3(_Globals_.g_flWaterPlaneOffset)))) * mix(1.0, _17582 * 2.0, 0.75));
-    vec4 _23875 = vec4(finalSurfaceNormal.xyz, 1.0);
-    vec3 _19477 = vec3(dot(undetermined._m0._m0[0].xyzw, _23875), dot(undetermined._m0._m0[1].xyzw, _23875), dot(undetermined._m0._m0[2].xyzw, _23875));
-    float _25086;
-    if (undetermined._m7 != 0)
+
+
+    float effectiveWaterDepthForFog = min(_Globals_.g_flWaterMaxDepth, postCausticsWaterColumnDepth);
+    vec3 waterDecayColorFactor = exp(((_Globals_.g_vWaterDecayColor - vec3(1.0)) * vec3(_Globals_.g_flWaterDecayStrength)) * effectiveWaterDepthForFog);
+    float totalFogStrength = max(foamSiltStrength, causticsEffectsZ);
+    float foamDebrisForFogMix = finalFoamIntensity + clamp(causticsEffectsZ - 0.5, 0.0, 1.0);
+    float waterFogAlpha = fma(fma(-clamp(NoiseValue.x, 0.0, 1.0), 0.25, foamDebrisForFogMix), 0.1, 1.0 - exp((-effectiveWaterDepthForFog) * totalFogStrength));
+    vec3 baseFogColor = mix(_Globals_.g_vWaterFogColor, finalFoamColor, vec3(foamDebrisForFogMix * 0.1)) * mix(waterDecayColorFactor, vec3(1.0), vec3(clamp(totalFogStrength * 0.04, 0.0, 1.0)));
+
+    
+
+    vec3 finalDirToCam = -normalize(finalSurfacePos.xyz - PerViewConstantBuffer_t.g_vCameraPositionWs.xyz);
+    float specularCosAlpha = clamp(dot(-undetermined._m2.xyz, reflect(finalDirToCam, normalize(mix(normalize(usedvNormal).xyz, finalPerturbedSurfaceNormal.xyz, vec3(_Globals_.g_flSpecularNormalMultiple * fma(scaledPixelRelativePos, 0.0005, 1.0)))))), 0.0, 1.0);
+    float specularExponent = mix(_Globals_.g_flSpecularPower, _Globals_.g_flDebrisReflectance * 8.0, debrisEdgeFactor) * mix(2.0, 0.2, clamp(currentWaterRoughness, 0.0, 1.0));
+    float specularFactor = fma(pow(specularCosAlpha, specularExponent), 0.1, pow(specularCosAlpha, specularExponent * 10.0));
+
+    // ------ TRUE TO DECOMPILE UP TO THIS POINT (with minor differences)-------
+
+
+    float inverseWaterFogAlpha = 1.0 - waterFogAlpha;
+    float waterOpacity = (clamp((1.0 - debrisEdgeFactor) + noClue, 0.0, 1.0) * clamp(fma(-combinedfinalFoamIntensity, 4.0, 1.0), 0.0, 1.0)) * inverseWaterFogAlpha;
+    vec3 lightingSamplePos = offsetWorldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalDebFoamHeightContrib * (-1.0)) + (((mix(NoiseValue.xxx, vec3(NoiseValue.xy, 0.0), vec3(0.1)) * 90.0) * pow(waterOpacity, 2.0)) + vec3(_Globals_.g_flWaterPlaneOffset)))) * mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75));
+    vec4 surfaceNormal4f = vec4(finalSurfaceNormal.xyz, 1.0);
+    vec3 ambientTerm = vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
+    float finalShadowCoverage = 1.0;
+
+
+    // ---DETERMINE CORRECT CASCADE TO SAMPLE---
+    //undetermined._m7
+    int NumOfCascades = 3;
+
+    if (NumOfCascades != 0)
     {
-        vec4 _20786 = vec4(_13711.xyz, 1.0);
-        int _23989;
-        int _10191;
-        float _13143;
-        vec3 _14975;
-        int _13039 = 0;
+        vec4 lightSamplePos4f = vec4(lightingSamplePos.xyz, 1.0);
+        int finalCascadeIndex;
+        float shadowCascadeLerpFactor;
+        vec3 shadowSpaceFragCoord;
+        int iterator = 0;
         for (;;)
         {
-            if (!(_13039 < undetermined._m7))
+            if (!(iterator < NumOfCascades))
             {
-                _13143 = 1.0;
-                _14975 = vec3(0.0);
-                _10191 = -1;
+                shadowCascadeLerpFactor = 1.0;
+                shadowSpaceFragCoord = vec3(0.0);
+                finalCascadeIndex = -1;
                 break;
             }
-            vec4 _22357 = _20786 * mat4(vec4(undetermined._m14._m0[_13039]._m0[0].x, undetermined._m14._m0[_13039]._m0[1].x, undetermined._m14._m0[_13039]._m0[2].x, undetermined._m14._m0[_13039]._m0[3].x), vec4(undetermined._m14._m0[_13039]._m0[0].y, undetermined._m14._m0[_13039]._m0[1].y, undetermined._m14._m0[_13039]._m0[2].y, undetermined._m14._m0[_13039]._m0[3].y), vec4(undetermined._m14._m0[_13039]._m0[0].z, undetermined._m14._m0[_13039]._m0[1].z, undetermined._m14._m0[_13039]._m0[2].z, undetermined._m14._m0[_13039]._m0[3].z), vec4(undetermined._m14._m0[_13039]._m0[0].w, undetermined._m14._m0[_13039]._m0[1].w, undetermined._m14._m0[_13039]._m0[2].w, undetermined._m14._m0[_13039]._m0[3].w));
-            float _12779 = _22357.x;
-            if (max(abs(_12779), abs(_22357.y)) < undetermined._m9[_13039])
+            vec4 lightSpaceCoord = lightSamplePos4f * mat4(vec4(undetermined._m14._m0[iterator]._m0[0].x, undetermined._m14._m0[iterator]._m0[1].x, undetermined._m14._m0[iterator]._m0[2].x, undetermined._m14._m0[iterator]._m0[3].x), vec4(undetermined._m14._m0[iterator]._m0[0].y, undetermined._m14._m0[iterator]._m0[1].y, undetermined._m14._m0[iterator]._m0[2].y, undetermined._m14._m0[iterator]._m0[3].y), vec4(undetermined._m14._m0[iterator]._m0[0].z, undetermined._m14._m0[iterator]._m0[1].z, undetermined._m14._m0[iterator]._m0[2].z, undetermined._m14._m0[iterator]._m0[3].z), vec4(undetermined._m14._m0[iterator]._m0[0].w, undetermined._m14._m0[iterator]._m0[1].w, undetermined._m14._m0[iterator]._m0[2].w, undetermined._m14._m0[iterator]._m0[3].w));
+            if (max(abs(lightSpaceCoord.x), abs(lightSpaceCoord.y)) < undetermined._m9[iterator])
             {
-                vec3 _19470 = vec3(_12779, _22357.yz);
-                vec2 _24729 = _19470.xy;
-                vec2 _21013 = vec2(1.0) - clamp(fma(abs(_24729), vec2(undetermined._m11), vec2(undetermined._m10)), vec2(0.0), vec2(1.0));
-                vec2 _13662 = fma(_24729, undetermined._m15._m0[_13039].zw, undetermined._m15._m0[_13039].xy);
-                vec3 _19310 = _19470;
-                _19310.x = _13662.x;
-                _19310.y = _13662.y;
-                _13143 = clamp(_21013.x * _21013.y, 0.0, 1.0);
-                _14975 = _19310;
-                _10191 = _13039;
+                shadowSpaceFragCoord = vec3(lightSpaceCoord.xyz);
+                vec2 lerpXYComponents = vec2(1.0) - clamp(fma(abs(shadowSpaceFragCoord.xy), vec2(undetermined._m11), vec2(undetermined._m10)), vec2(0.0), vec2(1.0));
+                shadowSpaceFragCoord.xy = fma(shadowSpaceFragCoord.xy, undetermined._m15._m0[iterator].zw, undetermined._m15._m0[iterator].xy);
+                shadowCascadeLerpFactor = clamp(lerpXYComponents.x * lerpXYComponents.y, 0.0, 1.0);
+                finalCascadeIndex = iterator;
                 break;
             }
-            _23989 = _13039 + 1;
-            _13039 = _23989;
+            iterator += 1;
             continue;
         }
-        float _7182;
-        if (_10191 >= 0)
+        float finalCsmCoverage = 1.0;
+        if (finalCascadeIndex >= 0)
         {
-            float _18270 = textureLod(sampler2DShadow(g_tShadowDepthBufferDepth, AddressU_2_AddressV_2_Filter_149_ComparisonFunc_3), vec3(_14975.xy, clamp(_14975.z + undetermined._m8, 0.0, 1.0)), 0.0);
-            float _12501;
-            if (_13143 < 1.0)
+            float shadowCoverage = textureLod(sampler2DShadow(g_tShadowDepthBufferDepth,s_ShadowSamplerComparison), vec3(shadowSpaceFragCoord.xy, clamp(shadowSpaceFragCoord.z + g_flShadowCascadeReceiverDepthBias, 0.0, 1.0)), 0.0);
+            if (shadowCascadeLerpFactor < 1.0)
             {
-                float _7934;
-                if (_10191 < (undetermined._m7 - 1))
+                float secondCascadeShadowCoverage;
+                if (finalCascadeIndex < (undetermined._m7 - 1))
                 {
-                    int _14126 = _10191 + 1;
-                    vec4 _23706 = _20786 * mat4(vec4(undetermined._m14._m0[_14126]._m0[0].x, undetermined._m14._m0[_14126]._m0[1].x, undetermined._m14._m0[_14126]._m0[2].x, undetermined._m14._m0[_14126]._m0[3].x), vec4(undetermined._m14._m0[_14126]._m0[0].y, undetermined._m14._m0[_14126]._m0[1].y, undetermined._m14._m0[_14126]._m0[2].y, undetermined._m14._m0[_14126]._m0[3].y), vec4(undetermined._m14._m0[_14126]._m0[0].z, undetermined._m14._m0[_14126]._m0[1].z, undetermined._m14._m0[_14126]._m0[2].z, undetermined._m14._m0[_14126]._m0[3].z), vec4(undetermined._m14._m0[_14126]._m0[0].w, undetermined._m14._m0[_14126]._m0[1].w, undetermined._m14._m0[_14126]._m0[2].w, undetermined._m14._m0[_14126]._m0[3].w));
-                    vec2 _13663 = fma(_23706.xy, undetermined._m15._m0[_14126].zw, undetermined._m15._m0[_14126].xy);
-                    vec3 _19311;
-                    _19311.x = _13663.x;
-                    _19311.y = _13663.y;
-                    _7934 = textureLod(sampler2DShadow(g_tShadowDepthBufferDepth, AddressU_2_AddressV_2_Filter_149_ComparisonFunc_3), vec3(_19311.xy, clamp(_23706.z + undetermined._m8, 0.0, 1.0)), 0.0);
+                    int secondCascadeIndex = finalCascadeIndex + 1;
+                    vec4 secondCascadeShadowSpaceFragCoord = lightSamplePos4f * mat4(vec4(undetermined._m14._m0[secondCascadeIndex]._m0[0].x, undetermined._m14._m0[secondCascadeIndex]._m0[1].x, undetermined._m14._m0[secondCascadeIndex]._m0[2].x, undetermined._m14._m0[secondCascadeIndex]._m0[3].x), vec4(undetermined._m14._m0[secondCascadeIndex]._m0[0].y, undetermined._m14._m0[secondCascadeIndex]._m0[1].y, undetermined._m14._m0[secondCascadeIndex]._m0[2].y, undetermined._m14._m0[secondCascadeIndex]._m0[3].y), vec4(undetermined._m14._m0[secondCascadeIndex]._m0[0].z, undetermined._m14._m0[secondCascadeIndex]._m0[1].z, undetermined._m14._m0[secondCascadeIndex]._m0[2].z, undetermined._m14._m0[secondCascadeIndex]._m0[3].z), vec4(undetermined._m14._m0[secondCascadeIndex]._m0[0].w, undetermined._m14._m0[secondCascadeIndex]._m0[1].w, undetermined._m14._m0[secondCascadeIndex]._m0[2].w, undetermined._m14._m0[secondCascadeIndex]._m0[3].w));
+                    secondCascadeShadowSpaceFragCoord.xy = fma(secondCascadeShadowSpaceFragCoord.xy, undetermined._m15._m0[secondCascadeIndex].zw, undetermined._m15._m0[secondCascadeIndex].xy);
+                    secondCascadeShadowCoverage = textureLod(g_tShadowDepthBufferDepth, vec3(secondCascadeShadowSpaceFragCoord.xy, clamp(secondCascadeShadowSpaceFragCoord.z + g_flShadowCascadeReceiverDepthBias, 0.0, 1.0)), 0.0);
                 }
                 else
                 {
-                    _7934 = 1.0;
+                    secondCascadeShadowCoverage = 1.0;
                 }
-                _12501 = mix(_7934, _18270, _13143);
+                finalCsmCoverage = mix(secondCascadeShadowCoverage, shadowCoverage, shadowCascadeLerpFactor);
             }
             else
             {
-                _12501 = _18270;
+                finalCsmCoverage = shadowCoverage;
             }
-            _7182 = _12501;
         }
-        else
-        {
-            _7182 = 1.0;
-        }
-        float _14115 = mix(_7182, 1.0, clamp(fma(distance(trueWorldPos, PerViewConstantBuffer_t.g_vCameraPositionWs), undetermined._m13, undetermined._m12), 0.0, 1.0));
-        float _12502;
+
+        float finalFadedCsmCoverage = mix(finalCsmCoverage, 1.0, clamp(fma(distance(trueWorldPos, PerViewConstantBuffer_t.g_vCameraPositionWs), g_flShadowCascadeZLerpFactorScale, g_flShadowCascadeZLerpFactorOffset), 0.0, 1.0));
+        finalShadowCoverage = finalFadedCsmCoverage;
+
         if (notEqual(PerViewConstantBufferCsgo_t.g_bOtherFxEnabled, ivec4(0)).y)
         {
-            _12502 = min(_14115, textureLod(sampler2D(g_tParticleShadowBuffer, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), (FragCoordWInverse.xy * PerViewConstantBuffer_t.g_vInvGBufferSize.xy).xy, 0.0).z);
+            finalShadowCoverage = min(finalFadedCsmCoverage, textureLod(sampler2D(g_tParticleShadowBuffer, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), (FragCoordWInverse.xy * PerViewConstantBuffer_t.g_vInvGBufferSize.xy).xy, 0.0).z);
         }
-        else
-        {
-            _12502 = _14115;
-        }
-        _25086 = _12502;
+    }
+
+    float finalShadowingEffect = mix(finalShadowCoverage, 1.0, waterOpacity * 0.5);
+    vec3 lightingFactor;
+    if ((dot(g_vFastPathSunLightDir.xyz, finalSurfaceNormal.xyz) * finalShadowingEffect) > 0.0)
+    {
+        lightingFactor = fma(vec3(max(0.0, dot(finalSurfaceNormal.xyz, g_vFastPathSunLightDir.xyz))).xyz, (g_vFastPathSunLightColor.xyz * finalShadowingEffect).xyz, g_vToolsAmbientLighting.xyz);
     }
     else
     {
-        _25086 = 1.0;
-    }
-    float _12256 = mix(_25086, 1.0, _3039 * 0.5);
-    vec3 _21709;
-    if ((dot(undetermined._m2.xyz, finalSurfaceNormal.xyz) * _12256) > 0.0)
-    {
-        _21709 = fma(vec3(max(0.0, dot(finalSurfaceNormal.xyz, undetermined._m2.xyz))).xyz, (undetermined._m3.xyz * _12256).xyz, undetermined._m1.xyz);
-    }
-    else
-    {
-        _21709 = undetermined._m1.xyz;
+        lightingFactor = g_vToolsAmbientLighting.xyz;
     }
     bvec4 _24465 = notEqual(PerViewConstantBufferCsgo_t.g_bOtherEnabled2, ivec4(0));
     bool _20060 = _24465.x;
-    vec4 _20617;
-    if (_20060)
+    vec4 pixelCoordInvW = FragCoordWInverse;
+    //this "if" used _20060 before, I am guessing they are identical but I am leaving both here for good measure.
+    if (PerViewConstantBufferCsgo_t.g_bOtherEnabled2.x)
     {
-        vec4 _24261 = vec4(trueWorldPos, 1.0).xyzw * mat4(vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].x), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].y), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].z), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].w));
-        float _20181 = _24261.w;
-        vec2 _11414 = _24261.xy / vec2(_20181);
+        //vec4 _24261 = vec4(trueWorldPos, 1.0).xyzw * mat4(vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].x, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].x), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].y, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].y), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].z, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].z), vec4(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[0].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[1].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[2].w, PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0[3].w));
+        vec4 _24261 = vec4(trueWorldPos, 1.0).xyzw * transpose(PerViewConstantBufferCsgo_t.g_matPrimaryViewWorldToProjection._m0);
+        vec2 ndcXY = _24261.xy / _24261.w;
         vec4 _6654;
-        _6654.x = clamp(((_11414.x + 1.0) * PerViewConstantBuffer_t.g_vViewportSize.x) * 0.5, 0.0, PerViewConstantBuffer_t.g_vViewportSize.x - 1.0);
-        _6654.y = clamp(((1.0 - _11414.y) * PerViewConstantBuffer_t.g_vViewportSize.y) * 0.5, 0.0, PerViewConstantBuffer_t.g_vViewportSize.y - 1.0);
+        _6654.x = clamp(((ndcXY.x + 1.0) * PerViewConstantBuffer_t.g_vViewportSize.x) * 0.5, 0.0, PerViewConstantBuffer_t.g_vViewportSize.x - 1.0);
+        _6654.y = clamp(((1.0 - ndcXY.y) * PerViewConstantBuffer_t.g_vViewportSize.y) * 0.5, 0.0, PerViewConstantBuffer_t.g_vViewportSize.y - 1.0);
         _6654.w = _20181;
-        _20617 = _6654;
+        pixelCoordInvW = _6654;
     }
-    else
-    {
-        _20617 = FragCoordWInverse;
-    }
-    uvec2 _12083 = uvec2(_20617.xy - PerViewConstantBuffer_t.g_vViewportOffset.xy) >> uvec2(undetermined._m5.x);
-    uint _10838 = undetermined._m4.y + (((_12083.y * undetermined._m5.y) + _12083.x) * undetermined._m4.z);
-    uint _23393 = undetermined._m4.x + (uint(clamp(_20617.w * undetermined._m6.x, 0.0, undetermined._m6.y)) * undetermined._m4.z);
+
+    uvec2 _12083 = uvec2(pixelCoordInvW.xy - PerViewConstantBuffer_t.g_vViewportOffset.xy) >> uvec2(g_vTileCullParams.x);
+    uint _10838 = g_vLightCullParams.y + (((_12083.y * g_vTileCullParams.y) + _12083.x) * g_vLightCullParams.z);
+    uint _23393 = g_vLightCullParams.x + (uint(clamp(pixelCoordInvW.w * undetermined._m6.x, 0.0, undetermined._m6.y)) * g_vLightCullParams.z);
     vec3 _13155;
-    _13155 = _21709;
+    _13155 = lightingFactor;
     uint _7172;
     vec3 _13156;
     uint _16208 = 0u;
     for (;;)
     {
-        if (!(_16208 < undetermined._m4.z))
+        if (!(_16208 < g_vLightCullParams.z))
         {
             break;
         }
@@ -1038,8 +1032,8 @@ void main()
             _20344 = _16209 & (_16209 - 1u);
             do
             {
-                vec3 _14644 = _13711.xyz;
-                vec4 _15817 = mat4(vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].x, g_BarnLights_1._m0[_11281]._m0._m0[1].x, g_BarnLights_1._m0[_11281]._m0._m0[2].x, g_BarnLights_1._m0[_11281]._m0._m0[3].x), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].y, g_BarnLights_1._m0[_11281]._m0._m0[1].y, g_BarnLights_1._m0[_11281]._m0._m0[2].y, g_BarnLights_1._m0[_11281]._m0._m0[3].y), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].z, g_BarnLights_1._m0[_11281]._m0._m0[1].z, g_BarnLights_1._m0[_11281]._m0._m0[2].z, g_BarnLights_1._m0[_11281]._m0._m0[3].z), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].w, g_BarnLights_1._m0[_11281]._m0._m0[1].w, g_BarnLights_1._m0[_11281]._m0._m0[2].w, g_BarnLights_1._m0[_11281]._m0._m0[3].w)) * vec4(_13711.xyz, 1.0);
+                vec3 _14644 = lightingSamplePos.xyz;
+                vec4 _15817 = mat4(vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].x, g_BarnLights_1._m0[_11281]._m0._m0[1].x, g_BarnLights_1._m0[_11281]._m0._m0[2].x, g_BarnLights_1._m0[_11281]._m0._m0[3].x), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].y, g_BarnLights_1._m0[_11281]._m0._m0[1].y, g_BarnLights_1._m0[_11281]._m0._m0[2].y, g_BarnLights_1._m0[_11281]._m0._m0[3].y), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].z, g_BarnLights_1._m0[_11281]._m0._m0[1].z, g_BarnLights_1._m0[_11281]._m0._m0[2].z, g_BarnLights_1._m0[_11281]._m0._m0[3].z), vec4(g_BarnLights_1._m0[_11281]._m0._m0[0].w, g_BarnLights_1._m0[_11281]._m0._m0[1].w, g_BarnLights_1._m0[_11281]._m0._m0[2].w, g_BarnLights_1._m0[_11281]._m0._m0[3].w)) * vec4(lightingSamplePos.xyz, 1.0);
                 vec3 _10521 = _15817.xyz / vec3(_15817.w);
                 vec4 _22905;
                 _22905.x = _10521.x;
@@ -1246,208 +1240,195 @@ void main()
         _16208 = _7172;
         continue;
     }
-    vec3 _20780 = _19477.xyz;
-    vec3 _22686 = (_13155.xyz + _20780) * mix(mix((_5353 * _4632) * _Globals_.g_flWaterFogShadowStrength, finalFoamColor.xyz, vec3(combinedfinalFoamIntensity)), vec4(debrisColorHeightSample.xyz * fma(finalDebrisFactor, 0.5, 0.5), debrisEdgeFactor).xyz * _Globals_.g_vDebrisTint, vec3(clamp(debrisEdgeFactor - _10350, 0.0, 1.0))).xyz;
+
+    vec3 _22686 = (_13155.xyz + ambientTerm) * mix(mix((baseFogColor * waterFogAlpha) * _Globals_.g_flWaterFogShadowStrength, finalFoamColor.xyz, vec3(combinedfinalFoamIntensity)), vec4(debrisColorHeightSample.xyz * fma(finalDebrisFactor, 0.5, 0.5), debrisEdgeFactor).xyz * _Globals_.g_vDebrisTint, vec3(clamp(debrisEdgeFactor - noClue, 0.0, 1.0))).xyz;
     vec4 _11206 = vec4(_22686, _21011);
-    _11206.x = _22686.x;
-    _11206.y = _22686.y;
-    _11206.z = _22686.z;
-    vec3 _25191 = mix(_11206.xyz, _16311 * _11466, vec3(_3039));
-    vec4 _17842 = _11206;
-    _17842.x = _25191.x;
-    _17842.y = _25191.y;
-    _17842.z = _25191.z;
-    vec3 _10929 = mix(_17842.xyz, (_5353 * 4.0) * _20780, vec3((_4632 * clamp((1.0 - surfaceCoverageAlpha) + _10350, 0.0, 1.0)) * (1.0 - _Globals_.g_flWaterFogShadowStrength)));
-    vec4 _17843 = _17842;
-    _17843.x = _10929.x;
-    _17843.y = _10929.y;
-    _17843.z = _10929.z;
-    vec3 _4003 = (textureLod(samplerCube(g_tLowEndCubeMap, DefaultSamplerState_0_1), (-reflect(_6892, finalSurfaceNormal).xyz).xyz, sqrt(dot(mix(_Globals_.g_vRoughness, vec2(1.0), vec2(clamp(reflectionsLodFactor, 0.0, 0.3499999940395355224609375))).xy, vec2(0.5))) * 6.0).xyz * (dot(_19477.xyz, vec3(0.2125000059604644775390625, 0.7153999805450439453125, 0.07209999859333038330078125)) * _Globals_.g_flLowEndCubeMapIntensity)) * _Globals_.g_flEnvironmentMapBrightness;
+    _11206.xyz = _22686.xyz;
+
+    //LETS GET HERE TODAY UURAAA
+    vec3 returnColor0 = mix(_11206.xyz, combinedRefractedColor * waterDecayColorFactor, vec3(waterOpacity));
+
+    vec4 returnColor1 = _11206;
+    returnColor1.x = returnColor0.x;
+    returnColor1.y = returnColor0.y;
+    returnColor1.z = returnColor0.z;
+    vec3 _10929 = mix(returnColor1.xyz, (baseFogColor * 4.0) * ambientTerm, vec3((waterFogAlpha * clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0)) * (1.0 - _Globals_.g_flWaterFogShadowStrength)));
+    vec4 returnColor2 = returnColor1;
+    returnColor2.x = _10929.x;
+    returnColor2.y = _10929.y;
+    returnColor2.z = _10929.z;
+
+    vec3 onePart = (dot(ambientTerm.xyz, vec3(0.2125000059604644775390625, 0.7153999805450439453125, 0.07209999859333038330078125)) * _Globals_.g_flLowEndCubeMapIntensity)
+    float anotherPart = sqrt(dot(mix(_Globals_.g_vRoughness, vec2(1.0), vec2(clamp(reflectionsLodFactor, 0.0, 0.3499999940395355224609375))).xy, vec2(0.5))
+    vec3 cubemapReflection = (textureLod(samplerCube(g_tLowEndCubeMap, DefaultSamplerState_0_1),       (-reflect(finalDirToCam, finalSurfaceNormal).xyz).xyz,        anotherPart ) * 6.0).xyz * onePart) * _Globals_.g_flEnvironmentMapBrightness;
     float _9473 = clamp((PerViewConstantBuffer_t.g_vCameraDirWs.z + 0.75) * 4.0, 0.0, 1.0);
     float _13437 = float(isSkybox);
     uint _4344 = uint((float(_Globals_.g_nSSRMaxForwardSteps) * mix(1.0, 0.5, _13437)) * _9473);
-    vec3 _21517;
+    vec3 finalReflectionColor;
     if (_4344 > 0u)
     {
-        float _4799 = fma(blueNoiseDitherFactor, _Globals_.g_flSSRSampleJitter, _Globals_.g_flSSRMaxThickness);
-        mat4 _15579 = mat4(vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].x, PerViewConstantBuffer_t.g_matWorldToView._m0[1].x, PerViewConstantBuffer_t.g_matWorldToView._m0[2].x, PerViewConstantBuffer_t.g_matWorldToView._m0[3].x), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].y, PerViewConstantBuffer_t.g_matWorldToView._m0[1].y, PerViewConstantBuffer_t.g_matWorldToView._m0[2].y, PerViewConstantBuffer_t.g_matWorldToView._m0[3].y), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].z, PerViewConstantBuffer_t.g_matWorldToView._m0[1].z, PerViewConstantBuffer_t.g_matWorldToView._m0[2].z, PerViewConstantBuffer_t.g_matWorldToView._m0[3].z), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].w, PerViewConstantBuffer_t.g_matWorldToView._m0[1].w, PerViewConstantBuffer_t.g_matWorldToView._m0[2].w, PerViewConstantBuffer_t.g_matWorldToView._m0[3].w));
-        vec4 _24221 = vec4(normalize(vec3((finalSurfaceNormal.xy * 3.0) * mix(2.0, 8.0, _13437), finalSurfaceNormal.z)).xyz, 0.0).xyzw * _15579;
-        vec3 _15169 = _24221.xyz;
-        vec2 _23669 = _24221.yz * 2.0;
-        _15169.y = _23669.x;
-        _15169.z = _23669.y;
-        vec3 _22729 = (vec4(finalSurfacePos.xyz, 1.0).xyzw * _15579).xyz;
-        mat4 _21991 = mat4(vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].x), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].y), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].z), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].w));
-        vec4 _15818 = _21991 * vec4(-_22729, 1.0);
-        vec3 _10509 = _15818.xyz / vec3(_15818.w);
-        vec2 _21671 = (vec2(_10509.x, -_10509.y) * 0.5) + vec2(0.5);
+        float SsrHitThickness = fma(blueNoiseDitherFactor, _Globals_.g_flSSRSampleJitter, _Globals_.g_flSSRMaxThickness);
+        mat4 transWorldToView = mat4(vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].x, PerViewConstantBuffer_t.g_matWorldToView._m0[1].x, PerViewConstantBuffer_t.g_matWorldToView._m0[2].x, PerViewConstantBuffer_t.g_matWorldToView._m0[3].x), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].y, PerViewConstantBuffer_t.g_matWorldToView._m0[1].y, PerViewConstantBuffer_t.g_matWorldToView._m0[2].y, PerViewConstantBuffer_t.g_matWorldToView._m0[3].y), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].z, PerViewConstantBuffer_t.g_matWorldToView._m0[1].z, PerViewConstantBuffer_t.g_matWorldToView._m0[2].z, PerViewConstantBuffer_t.g_matWorldToView._m0[3].z), vec4(PerViewConstantBuffer_t.g_matWorldToView._m0[0].w, PerViewConstantBuffer_t.g_matWorldToView._m0[1].w, PerViewConstantBuffer_t.g_matWorldToView._m0[2].w, PerViewConstantBuffer_t.g_matWorldToView._m0[3].w));
+        vec4 SSNormal4f = vec4(normalize(vec3((finalSurfaceNormal.xy * 3.0) * mix(2.0, 8.0, _13437), finalSurfaceNormal.z)).xyz, 0.0).xyzw * transWorldToView;
+        vec3 SSNormal = SSNormal4f.xyz;
+        vec2 _23669 = SSNormal4f.yz * 2.0;
+        SSNormal.y = _23669.x;
+        SSNormal.z = _23669.y;
+        vec3 viewSpacePos = (vec4(finalSurfacePos.xyz, 1.0).xyzw * transWorldToView).xyz;
+        mat4 transViewToProj = mat4(vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].x, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].x), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].y, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].y), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].z, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].z), vec4(PerViewConstantBuffer_t.g_matViewToProjection._m0[0].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[1].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[2].w, PerViewConstantBuffer_t.g_matViewToProjection._m0[3].w));
+        vec4 _15818 = transViewToProj * vec4(-viewSpacePos, 1.0);
+        vec3 SsrNdcCoords = _15818.xyz / vec3(_15818.w);
+        vec2 _21671 = (vec2(SsrNdcCoords.x, -SsrNdcCoords.y) * 0.5) + vec2(0.5);
         vec4 _20492;
         _20492.x = _21671.x;
         _20492.y = _21671.y;
         float _9277 = (fma(blueNoiseDitherFactor, _Globals_.g_flSSRSampleJitter, _Globals_.g_flSSRStepSize) / fma(reflectionsLodFactor, 2.0, 1.0)) * mix(20.0, 1.0, cosNormAng);
-        float _14946;
+        float SsrBaseStepsize;
         if (isSkybox)
         {
-            _14946 = _9277 * (scaledPixelRelativePos * 0.002);
+            SsrBaseStepsize = _9277 * (scaledPixelRelativePos * 0.002);
         }
         else
         {
-            _14946 = _9277;
+            SsrBaseStepsize = _9277;
         }
-        vec3 _25073 = normalize(reflect(normalize(_22729), normalize(_15169))).xyz;
-        vec3 _16312;
+        vec3 SSReflectDir = normalize(reflect(normalize(viewSpacePos), normalize(SSNormal))).xyz;
+        vec3 prevSamplePos = viewSpacePos;
         vec4 _17127;
-        uint _17136;
-        _16312 = _22729;
+        uint iterator;
         _17127 = _20492;
-        _17136 = 1u;
-        float _3353;
-        float _3746;
-        vec3 _5027;
+        iterator = 1u;
+        float currStepSize;
+        float currSampleWorldDepth;
+        vec3 currSamplePos;
         vec4 _19411;
-        float _22492;
-        uint _23990;
+        float currSampleWorldDepth;
         float _9985;
         vec4 _23824;
-        float _13144 = 0.0;
-        float _17020 = 0.0;
-        float _17128 = _14946;
+        float prevWorldDepth = 0.0;
+        float finalPrevCurrFrac = 0.0;
+        float prevStepSize = SsrBaseStepsize;
         for (;;)
         {
-            if (!(_17136 <= _4344))
+            if (!(iterator <= _4344))
             {
-                _9985 = _17020;
+                _9985 = finalPrevCurrFrac;
                 _23824 = _17127;
                 break;
             }
-            _3353 = _17128 * 1.14999997615814208984375;
-            _5027 = _16312 + (_25073 * _3353);
-            vec4 _18209 = _21991 * vec4(-_5027, 1.0);
-            vec3 _10510 = _18209.xyz / vec3(_18209.w);
-            vec2 _21672 = (vec2(_10510.x, -_10510.y) * 0.5) + vec2(0.5);
-            vec4 _20493;
-            _20493.x = _21672.x;
-            _19411 = _20493;
-            _19411.y = _21672.y;
-            _3746 = (PerViewConstantBuffer_t.g_vDepthPsToVsConversion.x / fma(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.y, clamp((textureLod(sampler2D(g_tSceneDepth, AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2_Filter_0_AddressW_2), _19411.xy * PerViewConstantBuffer_t.g_vViewportToGBufferRatio.xy, 0.0).x - PerViewConstantBuffer_t.g_flViewportMinZ) / (PerViewConstantBuffer_t.g_flViewportMaxZ - PerViewConstantBuffer_t.g_flViewportMinZ), 0.0, 1.0), PerViewConstantBuffer_t.g_vDepthPsToVsConversion.z)) - _5027.z;
-            _22492 = clamp(_3746 / (_3746 - _13144), 0.0, 1.0);
-            bool _12887;
-            if (_3746 >= 0.0)
+            currStepSize = prevStepSize * 1.14999997615814208984375;
+            currSamplePos = prevSamplePos + (SSReflectDir * currStepSize);
+            vec4 currViewSpacePos = transViewToProj * vec4(-currSamplePos, 1.0);
+            vec3 _10510 = currViewSpacePos.xyz / vec3(currViewSpacePos.w);
+            vec2 currSsrUV = (vec2(_10510.x, -_10510.y) * 0.5) + vec2(0.5);
+            _19411.xy = currSsrUV.xy;
+            currSampleWorldDepth = (PerViewConstantBuffer_t.g_vDepthPsToVsConversion.x / fma(PerViewConstantBuffer_t.g_vDepthPsToVsConversion.y, clamp((textureLod(sampler2D(g_tSceneDepth, AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2_Filter_0_AddressW_2), _19411.xy * PerViewConstantBuffer_t.g_vViewportToGBufferRatio.xy, 0.0).x - PerViewConstantBuffer_t.g_flViewportMinZ) / (PerViewConstantBuffer_t.g_flViewportMaxZ - PerViewConstantBuffer_t.g_flViewportMinZ), 0.0, 1.0), PerViewConstantBuffer_t.g_vDepthPsToVsConversion.z)) - currSamplePos.z;
+            prevCurrFrac = clamp(currSampleWorldDepth / (currSampleWorldDepth - prevWorldDepth), 0.0, 1.0);
+            if (currSampleWorldDepth >= 0.0)
             {
-                _12887 = _3746 < (_4799 * _3353);
-            }
-            else
-            {
-                _12887 = false;
-            }
-            if (_12887)
-            {
-                _9985 = _22492;
-                _23824 = mix(_19411, _17127, vec4(_22492));
+                if(currSampleWorldDepth < (SsrHitThickness * currStepSize))
+                {
+                    _9985 = prevCurrFrac;
+                    _23824 = mix(_19411, _17127, vec4(prevCurrFrac));
                 break;
-            }
-            _23990 = _17136 + 1u;
-            _13144 = _3746;
-            _16312 = _5027;
+                }
+            }  
+            iterator += 1u;
+            prevWorldDepth = currSampleWorldDepth;
+            prevSamplePos = currSamplePos;
             _17127 = _19411;
-            _17128 = _3353;
-            _17136 = _23990;
-            _17020 = _22492;
+            prevStepSize = currStepSize;
+            finalPrevCurrFrac = prevCurrFrac;
             continue;
         }
-        float _5420 = (float(_17136) - _9985) / float(_4344);
-        vec3 _18231;
+        float fracOfTotalSteps = (float(iterator) - _9985) / float(_4344);
+        vec3 SsrReflectionResult;
         if (!isSkybox)
         {
-            vec2 _15599 = (_23824.xy * PerViewConstantBuffer_t.g_vViewportToGBufferRatio.xy).xy;
-            float _8505 = _5420 * (-0.00390625);
-            vec3 _14528 = (((texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(_15599 - vec2(_5420 * 0.00390625), vec2(0.0), vec2(1.0)).xy).xyz * 0.4444443881511688232421875) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(_15599 + vec2(0.001953125, _8505), vec2(0.0), vec2(1.0)).xy).xyz * 0.22222219407558441162109375)) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(_15599 + vec2(_8505, 0.001953125), vec2(0.0), vec2(1.0)).xy).xyz * 0.22222219407558441162109375)) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(_15599 + vec2(0.001953125), vec2(0.0), vec2(1.0)).xy).xyz * 0.111111097037792205810546875);
-            _18231 = (_14528 + ((normalize(_14528 + vec3(0.001000000047497451305389404296875)) * max(0.0, dot(_14528.xyz, vec3(0.2125000059604644775390625, 0.7153999805450439453125, 0.07209999859333038330078125)) - _Globals_.g_flSSRBoostThreshold)) * _Globals_.g_flSSRBoost)) * _Globals_.g_flSSRBrightness;
+            vec2 scaledSsrUVs = (_23824.xy * PerViewConstantBuffer_t.g_vViewportToGBufferRatio.xy).xy;
+            float _8505 = fracOfTotalSteps * (-0.00390625);
+            vec3 _14528 = (((texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(scaledSsrUVs - vec2(fracOfTotalSteps * 0.00390625), vec2(0.0), vec2(1.0)).xy).xyz * 0.4444443881511688232421875) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(scaledSsrUVs + vec2(0.001953125, _8505), vec2(0.0), vec2(1.0)).xy).xyz * 0.22222219407558441162109375)) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(scaledSsrUVs + vec2(_8505, 0.001953125), vec2(0.0), vec2(1.0)).xy).xyz * 0.22222219407558441162109375)) + (texture(sampler2D(g_tRefractionMap, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), clamp(scaledSsrUVs + vec2(0.001953125), vec2(0.0), vec2(1.0)).xy).xyz * 0.111111097037792205810546875);
+            SsrReflectionResult = (_14528 + ((normalize(_14528 + vec3(0.001)) * max(0.0, dot(_14528.xyz, vec3(0.2125, 0.7154, 0.0721)) - _Globals_.g_flSSRBoostThreshold)) * _Globals_.g_flSSRBoost)) * _Globals_.g_flSSRBrightness;
         }
         else
         {
-            _18231 = mix((_17843.xyz + _4003) * 0.5, _4003, vec3(_5420));
+            SsrReflectionResult = mix((returnColor2.xyz + cubemapReflection) * 0.5, cubemapReflection, vec3(fracOfTotalSteps));
         }
-        _21517 = mix(_4003, _18231, vec3((clamp(1.0 - pow(_5420, 4.0), 0.0, 1.0) * clamp(_23824.y * 8.0, 0.0, 1.0)) * clamp(_9473 * 2.0, 0.0, 1.0)));
+        finalReflectionColor = mix(cubemapReflection, SsrReflectionResult, vec3((clamp(1.0 - pow(fracOfTotalSteps, 4.0), 0.0, 1.0) * clamp(_23824.y * 8.0, 0.0, 1.0)) * clamp(_9473 * 2.0, 0.0, 1.0)));
     }
     else
     {
-        _21517 = _4003;
+        finalReflectionColor = cubemapReflection;
     }
-    float _12717 = mix(_Globals_.g_flReflectance, _Globals_.g_flDebrisReflectance, finalDebrisFactor);
-    float _4658 = (fma(fresnel, 1.0 - _12717, _12717) * fma(_6965, 2.0, fma(-surfaceCoverageAlpha, 0.75, 1.0))) * 1.5;
-    vec3 _12059 = fma((_13155.xyz * (fma(max(0.0, _16583 - (1.0 - _Globals_.g_flSpecularBloomBoostThreshold)), _Globals_.g_flSpecularBloomBoostStrength, _16583) * mix(1.0, _Globals_.g_flDebrisReflectance * 0.0500000007450580596923828125, debrisEdgeFactor))) * _4658, undetermined._m3.xyz, _17843.xyz);
-    vec4 _19314 = _17843;
-    _19314.x = _12059.x;
-    _19314.y = _12059.y;
-    _19314.z = _12059.z;
-    float _8302 = fract(fma(PerViewConstantBuffer_t.g_flTime, 0.100000001490116119384765625, fma(fresnel, 20.0, debrisHeightVal * 8.0)));
+    float localReflectance = mix(_Globals_.g_flReflectance, _Globals_.g_flDebrisReflectance, finalDebrisFactor);
+    float reflectionModulation = (fma(fresnel, 1.0 - localReflectance, localReflectance) * fma(-combinedfinalFoamIntensity, 2.0, fma(-surfaceCoverageAlpha, 0.75, 1.0))) * 1.5;
+    vec3 finalSpecularReflection = fma((_13155.xyz * (fma(max(0.0, specularFactor - (1.0 - _Globals_.g_flSpecularBloomBoostThreshold)), _Globals_.g_flSpecularBloomBoostStrength, specularFactor) * mix(1.0, _Globals_.g_flDebrisReflectance * 0.05, debrisEdgeFactor))) * reflectionModulation, undetermined._m3.xyz, returnColor2.xyz);
+    vec4 returnColor3 = returnColor2;
+    returnColor3.x = finalSpecularReflection.x;
+    returnColor3.y = finalSpecularReflection.y;
+    returnColor3.z = finalSpecularReflection.z;
+    float _8302 = fract(fma(PerViewConstantBuffer_t.g_flTime, 0.1, fma(fresnel, 20.0, debrisHeightVal * 8.0)));
+
     float _15999 = floor(_8302 * 6.0);
-    float _22138 = fma(_8302, 6.0, -_15999);
+    float _22138 = fract(_8302 * 6.0);
+
     float _6700 = 0.75 * (1.0 - _22138);
     float _14751 = 0.75 * _22138;
     vec3 _11313;
-    if (_15999 == 0.0)
+    if (floor(_8302 * 6.0) == 0.0)
     {
         _11313 = vec3(0.75, _14751, 0.0);
     }
     else
     {
-        vec3 _12509;
-        if (_15999 == 1.0)
+        if (floor(_8302 * 6.0) == 1.0)
         {
-            _12509 = vec3(_6700, 0.75, 0.0);
+            _11313 = vec3(_6700, 0.75, 0.0);
         }
         else
         {
-            vec3 _12508;
-            if (_15999 == 2.0)
+            if (floor(_8302 * 6.0) == 2.0)
             {
-                _12508 = vec3(0.0, 0.75, _14751);
+                _11313 = vec3(0.0, 0.75, _14751);
             }
             else
             {
-                vec3 _12506;
-                if (_15999 == 3.0)
+                if (floor(_8302 * 6.0) == 3.0)
                 {
-                    _12506 = vec3(0.0, _6700, 0.75);
+                    _11313 = vec3(0.0, _6700, 0.75);
                 }
                 else
                 {
-                    vec3 _12505;
-                    if (_15999 == 4.0)
+                    if (floor(_8302 * 6.0) == 4.0)
                     {
-                        _12505 = vec3(_14751, 0.0, 0.75);
+                        _11313 = vec3(_14751, 0.0, 0.75);
                     }
                     else
                     {
-                        _12505 = vec3(0.75, 0.0, _6700);
+                        _11313 = vec3(0.75, 0.0, _6700);
                     }
-                    _12506 = _12505;
                 }
-                _12508 = _12506;
             }
-            _12509 = _12508;
         }
-        _11313 = _12509;
     }
-    vec3 _14119 = _19314.xyz * mix(vec3(1.0), _20780 * 0.75, vec3(clamp(_13142.w * 4.0, 0.0, 1.0) * _9615));
-    vec4 _23717 = _19314;
-    _23717.x = _14119.x;
-    _23717.y = _14119.y;
-    _23717.z = _14119.z;
-    vec3 _19800 = mix(_23717.xyz, mix(_21517, _21517 * _11313, vec3(((clamp(_10350 * 20.0, 0.0, 1.0) * _Globals_.g_flDebrisOilyness) / fma(scaledPixelRelativePos, 0.004999999888241291046142578125, 1.0)) * clamp(fma(-refractedVerticalFactor, 5.0, 1.0), 0.0, 1.0))), vec3(clamp(_4658, 0.0, 1.0)));
-    vec4 _17844 = _23717;
-    _17844.x = _19800.x;
-    _17844.y = _19800.y;
-    _17844.z = _19800.z;
-    vec4 _22526;
+
+    vec3 _14119 = returnColor3.xyz * mix(vec3(1.0), ambientTerm * 0.75, vec3(clamp(causticsDebrisTotal.w * 4.0, 0.0, 1.0) * inverseWaterFogAlpha));
+    vec4 returnColor4 = returnColor3;
+    returnColor4.x = _14119.x;
+    returnColor4.y = _14119.y;
+    returnColor4.z = _14119.z;
+    vec3 _19800 = mix(returnColor4.xyz, mix(finalReflectionColor, finalReflectionColor * _11313, vec3(((clamp(noClue * 20.0, 0.0, 1.0) * _Globals_.g_flDebrisOilyness) / fma(scaledPixelRelativePos, 0.005, 1.0)) * clamp(fma(-refractedVerticalFactor, 5.0, 1.0), 0.0, 1.0))), vec3(clamp(reflectionModulation, 0.0, 1.0)));
+    vec4 returnColor5 = returnColor4;
+    returnColor5.x = _19800.x;
+    returnColor5.y = _19800.y;
+    returnColor5.z = _19800.z;
+    vec4 returnColor6;
     if (_Globals_.g_bFogEnabled != 0)
     {
         vec3 _21493;
         vec3 _23187 = trueWorldPos - PerViewConstantBuffer_t.g_vCameraPositionWs.xyz;
         vec3 _9057 = _23187.xyz;
-        vec3 _19340;
+        vec3 fogAppliedRetColor;
         do
         {
             _21493 = _23187.xyz;
@@ -1464,16 +1445,16 @@ void main()
             {
                 vec2 _6354 = clamp(fma(PerViewConstantBufferCsgo_t.g_vGradientFogBiasAndScale.zw, vec2(length(_21493), trueWorldPos.z), PerViewConstantBufferCsgo_t.g_vGradientFogBiasAndScale.xy), vec2(0.0), vec2(1.0));
                 float _12872 = (pow(_6354.x, PerViewConstantBufferCsgo_t.m_vGradientFogExponents.x) * pow(_6354.y, PerViewConstantBufferCsgo_t.m_vGradientFogExponents.y)) * PerViewConstantBufferCsgo_t.g_vGradientFogColor_Opacity.w;
-                _19340 = mix(_17844.xyz, vec4(PerViewConstantBufferCsgo_t.g_vGradientFogColor_Opacity.xyz, _12872).xyz, vec3(_12872));
+                fogAppliedRetColor = mix(returnColor5.xyz, vec4(PerViewConstantBufferCsgo_t.g_vGradientFogColor_Opacity.xyz, _12872).xyz, vec3(_12872));
                 break;
             }
-            _19340 = _17844.xyz;
+            fogAppliedRetColor = returnColor5.xyz;
             break;
         } while(false);
-        vec4 _23944 = _17844;
-        _23944.x = _19340.x;
-        _23944.y = _19340.y;
-        _23944.z = _19340.z;
+        vec4 _23944 = returnColor5;
+        _23944.x = fogAppliedRetColor.x;
+        _23944.y = fogAppliedRetColor.y;
+        _23944.z = fogAppliedRetColor.z;
         vec3 _19341;
         do
         {
@@ -1496,17 +1477,18 @@ void main()
             _19341 = _23944.xyz;
             break;
         } while(false);
+
         _23944.x = _19341.x;
         _23944.y = _19341.y;
         _23944.z = _19341.z;
-        _22526 = _23944;
+        returnColor6 = _23944;
     }
     else
     {
-        _22526 = _17844;
+        returnColor6 = returnColor5;
     }
-    vec4 _10386 = _22526;
-    _10386.w = 1.0;
+    vec4 returnColor7 = returnColor6;
+    returnColor7.w = 1.0;
     if (!isSkybox)
     {
         vec2 _3206 = abs(vec2(0.5) - unbiasedUV) * 2.0;
@@ -1515,36 +1497,38 @@ void main()
             discard;
         }
     }
-    vec4 _12890;
+    vec4 returnColor8;
     if (!isSkybox)
     {
-        _12890 = vec4(mix((refractionColorSample.xyz * mix(1.0, 0.60000002384185791015625, clamp(refractedVerticalFactor * 60.0, 0.0, 1.0) / fma(scaledPixelRelativePos, 0.00200000009499490261077880859375, 1.0))).xyz, _10386.xyz, vec3(clamp(fma(_Globals_.g_flEdgeHardness, _17582, clamp(combinedfinalFoamIntensity, 0.0, 1.0)) + fma(debrisHeightVal, 2.0, -0.5), 0.0, 1.0))), 1.0);
+        returnColor8 = vec4(mix((refractionColorSample.xyz * mix(1.0, 0.6, clamp(refractedVerticalFactor * 60.0, 0.0, 1.0) / fma(scaledPixelRelativePos, 0.002, 1.0))).xyz, returnColor7.xyz, vec3(clamp(fma(_Globals_.g_flEdgeHardness, effectiveWaterDepthForFog, clamp(combinedfinalFoamIntensity, 0.0, 1.0)) + fma(debrisHeightVal, 2.0, -0.5), 0.0, 1.0))), 1.0);
     }
     else
     {
-        _12890 = _10386;
+        returnColor8 = returnColor7;
     }
-    vec4 _6805;
-    if (one_minus_e_to_the_zeroth > 0.0)
-    {
-        vec4 _3401 = texelFetch(g_tMoitFinal, scaledFragCoord, 0);
-        vec3 _8598 = _3401.xyz * (one_minus_e_to_the_zeroth / (_3401.w + 9.9999997473787516355514526367188e-06));
-        vec4 _8677;
-        _8677.x = _8598.x;
-        _8677.y = _8598.y;
-        _8677.z = _8598.z;
-        vec3 _24094 = _8677.xyz + (_12890.xyz * e_to_the_zerothMoment);
-        vec4 _20494 = _12890;
-        _20494.x = _24094.x;
-        _20494.y = _24094.y;
-        _20494.z = _24094.z;
-        _6805 = _20494;
-    }
-    else
-    {
-        _6805 = _12890;
-    }
-    outputColor = _6805;
+//    vec4 _6805;
+//    if (one_minus_e_to_the_zeroth > 0.0)
+//    {
+//        vec4 _3401 = texelFetch(g_tMoitFinal, scaledFragCoord, 0);
+//        vec3 _8598 = _3401.xyz * (one_minus_e_to_the_zeroth / (_3401.w + 9.9999997473787516355514526367188e-06));
+//        vec4 _8677;
+//        _8677.x = _8598.x;
+//        _8677.y = _8598.y;
+//        _8677.z = _8598.z;
+//        vec3 _24094 = _8677.xyz + (returnColor8.xyz * e_to_the_zerothMoment);
+//        vec4 _20494 = returnColor8;
+//        _20494.x = _24094.x;
+//        _20494.y = _24094.y;
+//        _20494.z = _24094.z;
+//        _6805 = _20494;
+//    }
+//    else
+//    {
+//        _6805 = returnColor8;
+//    }
+    //outputColor = _6805;
+    //skip the check for now
+    outputColor = returnColor8;
 }
 
 

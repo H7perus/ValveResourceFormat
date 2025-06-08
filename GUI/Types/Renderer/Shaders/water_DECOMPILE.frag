@@ -168,6 +168,61 @@ layout(set = 0, binding = 2) uniform PerViewParams { // ASSUMED BINDING 2
     vec4 g_vWorldToCameraOffset;
 } ViewParams;
 
+
+layout(std140) uniform PerViewLightingConstantBufferGpu_t {
+    vec4 g_vShadow3x3PCFTermC0;                         // c0
+    vec4 g_vShadow3x3PCFTermC1;                         // c1
+    vec4 g_vShadow3x3PCFTermC2;                         // c2
+    vec4 g_vShadow3x3PCFTermC3;                         // c3
+    vec4 g_vLightmapParams;                             // c4
+    vec4 g_vScreenSpaceDitherParams;                    // c5
+    vec4 g_vCubemapNormalizationParams;                 // c6
+    vec4 g_vAmbientLightingSH[3];                       // c7–c9
+    vec4 g_vAmbientOcclusionProxyLightPositions[4];     // c10–c13
+    vec4 g_vAmbientOcclusionProxyLightConeAngles;       // c14
+    vec4 g_vAmbientOcclusionProxyLightStrengths;        // c15
+    vec4 g_vAmbientOcclusionProxyAmbientStrength;       // c16
+    vec4 g_vToolsAmbientLighting;                       // c17
+
+    vec4 g_vFastPathSunLightDir;                        // c18
+    vec4 g_vFastPathSunLightColor;                      // c19
+    vec4 g_vFastPathSunLightBakedShadowMask;            // c20
+
+    uvec4 g_vLightCullParams;                           // c21
+    uvec4 g_vEnvMapCullParams;                          // c22
+    uvec4 g_vLPVCullParams;                             // c23
+    uvec4 g_vTileCullParams;                            // c24
+    vec4 g_vDepthCullParams;                            // c25
+    vec4 g_vVisibleEnvMapSizeConstants;                 // c26
+    EnvMapData_t g_VisibleEnvMap[1152];                 // c27–c1178
+    LPVData_t g_VisibleLPV[768];                        // c1179–c1946
+    int g_nShadowCascadeCount;                          // c1947.x
+    int g_nShadowCascadeRenderStaticObjects;            // c1947.y
+    float g_flShadowCascadeReceiverDepthBias;           // c1947.z
+    float g_flShadowCascadeReceiverDepthBiasTransmissiveBackface; // c1947.w
+    vec4 g_vShadowCascadeSampleThreshold;               // c1948
+    float g_flShadowCascadeSplitLerpFactorOffset;       // c1949.x
+    float g_flShadowCascadeSplitLerpFactorScale;        // c1949.y
+    float g_flShadowCascadeZLerpFactorOffset;           // c1949.z
+    float g_flShadowCascadeZLerpFactorScale;            // c1949.w
+    mat4 g_mWorldToShadowCascade[4];                    // c1950–c1965
+    mat4 g_mShadowCascadeToWorld[4];                    // c1966–c1981
+    vec4 g_vShadowCascadeAtlasOffset[4];                // c1982–c1985
+    vec4 g_vShadowCascadePenumbra_DepthBias[4];         // c1986–c1989
+    uint g_tShadowDepthBufferIndex;                     // c1990.x
+    uint g_tLightCookieTextureIndex;                    // c1990.y
+    uint g_tEnvironmentMapTextureIndex;                 // c1990.z
+    uint g_tCachedShadowDepthBufferIndex;               // c1990.w
+    uint g_nNumBarnLights;                              // c1991.x
+    uint g_nNumEnvMaps;                                 // c1991.y
+    uint g_nNumLPVs;                                    // c1991.z
+    uint g_padding;                                     // c1991.w
+    uvec4 g_nLightPropertyMasks[10];                    // c1992–c2001
+    vec4 g_vShadowSampleRotations[16];                  // c2002–c2017
+};
+
+
+
 // !! VERIFY THIS UBO STRUCTURE AND BINDING !!
 layout(set = 1, binding = 0) uniform PerMaterialParams { // ASSUMED BINDING 0
     Matrix3x4 transformMatrix;        // _m0
