@@ -44,7 +44,7 @@ uniform bool g_bRenderBackfaceNormals;
 uniform float g_flWaterPlaneOffset;
 uniform float g_flSkyBoxScale;
 uniform float g_flSkyBoxFadeRange;
-//H7per: should this be vec4??? It was vec3, but fog and decay colors broke that way....decompiles fault :p
+//H7per: should this be vec4??? It was vec3, but fog and decay colors broke that way
 uniform vec4 g_vSimpleSkyReflectionColor;
 uniform vec4 g_vMapUVMin;
 uniform vec4 g_vMapUVMax;
@@ -55,11 +55,12 @@ uniform float g_flFoamMin;
 uniform float g_flFoamMax;
 uniform float g_flDebrisMin;
 uniform float g_flDebrisMax;
-uniform vec4 g_vDebrisTint;
+uniform vec4 g_vDebrisTint = vec4(0.7, 0.7, 0.7, 0.0);
 uniform float g_flDebrisReflectance;
 uniform float g_flDebrisOilyness;
 uniform float g_flDebrisNormalStrength = 1.0f;
-uniform float g_flDebrisEdgeSharpness = 1.0f;
+//TODO: somehow doesn't load
+uniform float g_flDebrisEdgeSharpness = 10.0f;
 uniform float g_flDebrisScale;
 uniform float g_flDebrisWobble;
 uniform float g_flFoamScale;
@@ -123,7 +124,7 @@ uniform sampler2D g_tZerothMoment;
 uniform sampler2D g_tBlueNoise;
 uniform sampler2D g_tFoam;
 //uniform sampler AllowGlobalMipBiasOverride_0_Filter_255_MaxAniso_1_AddressU_dynamic_AddressV_dynamic;
-uniform sampler2D g_tDebris;
+uniform sampler2D g_tDebris; // SrgbRead(true)
 //uniform sampler DefaultSamplerState_0;
 uniform sampler2D g_tDebrisNormal;
 
@@ -469,9 +470,6 @@ void main()
         // Accumulate UV offset for next iteration (choppiness / parallax)
         // Parallax factor for wave displacement (view-dependent)
 
- 
-
-
         accumulatedWaveUVOffset += (-viewParallaxFactor) * (waveHeightComponent * 0.01) * g_flWavesHeightOffset * currentWaterRoughness;
         currentWaveTexScale *= g_flWavesPhaseOffset; // e.g., smaller scale for higher frequency
         accumulatedPhaseOffset += waveNormalXYComponent * g_flWavesSharpness * currentWaveTexScale;
@@ -485,11 +483,6 @@ void main()
     vec2 finalWavePhaseOffset = accumulatedPhaseOffset * 0.1;
     vec3 roughedWaveNormal = accumulatedWaveNormal * currentWaterRoughness;
     float scaledAccumulatedWaveHeight = accumulatedWaveHeight * currentWaterRoughness * 60.0; // For stronger visual effect
-
-
-
-    //outputColor.rgb = refractShiftNormal;
-    //return;
 
     vec3 ditheredNormal = vec3(0.0, 0.0, 1.0);
 
@@ -608,30 +601,25 @@ void main()
     vec2 foamWobbleAnim = vec2(sin(effectsSamplePos.y * 0.07 + timeAnim), cos(effectsSamplePos.x * 0.07 + timeAnim));
     vec2 foamBaseUV = (worldPosForFoamAndDebrisBase.xy / g_flFoamScale);
 
-    //outputColor.rgb = vec3( mod(foamBaseUV, vec2(1.0)), 0.0);
-    //return;
+    
 
     vec2 foamWobbleEffect =  (foamBaseUV + finalWavePhaseOffset * g_flFoamWobble * 0.5 * (1.0 - currentFoamAmount))  - (foamSiltEffectNormalXY / g_flFoamScale);    
 
 
-    //TODO TEMPORARY: This is just for very basic visualisation at this point and will go away soon.
-//    if( length(waveDisplacedWorldPos - g_vCameraPositionWs) > length(sceneHitPositionWs - g_vCameraPositionWs))
-//    {
-//        discard;
-//    }
+    
 
     float foamNoiseStrength = finalFoam + 0.05;
     vec4 foamSample1 = texture(g_tFoam, mix(foamBaseUV, foamWobbleEffect + (foamWobbleAnim * foamNoiseStrength * 0.03), depthFactorFine) );
     vec2 sample2Mix1 = foamBaseUV.yx * 0.731;
-    vec2 sample2Mix2 = (foamWobbleEffect.xy * 0.731) + ((vec2(sin(fma(effectsSamplePos.y, 0.06, timeAnim)), cos(fma(effectsSamplePos.x, 0.06, timeAnim))) * foamNoiseStrength) * 0.02);
+    vec2 sample2Mix2 = (foamWobbleEffect.yx * 0.731) + ((vec2(sin(fma(effectsSamplePos.y, 0.06, timeAnim)), cos(fma(effectsSamplePos.x, 0.06, timeAnim))) * foamNoiseStrength) * 0.02);
     vec4 foamSample2 = texture(g_tFoam, mix(sample2Mix1, sample2Mix2, depthFactorFine)); // Second sample with different UVs/anim for variation
     float combinedFoamTextureValue = ( sin(blueNoise.x) * 0.125 + max(foamSample1.z, foamSample2.z) );
     float finalFoamIntensity = fma(    currentFoamAmount * fma(finalFoamHeightContrib, 0.008, 1.0),       1.0 - clamp(debrisDisturbanceForWaves * 2.0, 0.0, 1.0),       foamFromEffects   );
     finalFoamIntensity = clamp(finalFoamIntensity, 0.0, 1.0);
     float finalFoamPow1_5 = pow(finalFoam, 1.5);
 
-    //outputColor.rgb = vec3(currentFoamAmount);
-    //return;
+    outputColor.rgb = vec3(combinedFoamTextureValue) - 0.5;
+    return;
 
     vec2 debrisBaseUV = worldPosForFoamAndDebrisBase.xy / g_flDebrisScale;
     vec2 debrisWobbleOffset = finalWavePhaseOffset * g_flDebrisWobble;
@@ -651,18 +639,23 @@ void main()
     vec2 debrisFinalUV = mix(debrisBaseUV, debrisDistortedUV, depthFactorCoarse).xy;
 
     vec4 debrisColorHeightSample = texture(g_tDebris, debrisFinalUV, finalFoamPow1_5 * 3.0); // RGB=color, A=height/mask
+
     float debrisHeightVal = debrisColorHeightSample.a - 0.5; // Signed height
 
 
 
     
     float finalDebrisVisibility = fma(-currentDebrisVisibility, clamp(1.4 - (finalFoam / mix(1.0, 0.4, debrisColorHeightSample.w)), 0.0, 1.0), 1.0);
+
     float debrisEdgeFactor = clamp((debrisColorHeightSample.a - finalDebrisVisibility) * g_flDebrisEdgeSharpness, 0.0, 1.0);
 
     float noClue = max(0.0, fma(2.0, finalFoamPow1_5, debrisHeightVal * (-2.0)));
     float debrisVisibilityMask = clamp(fma(-noClue, 10.0, 1.0), 0.0, 1.0);
     //TODO: This is so far off from what it actually is that I don't know what to think tbh
     float finalDebrisFactor = debrisVisibilityMask * debrisEdgeFactor; // Final alpha for debris layer
+
+    outputColor.rgb = vec3(finalDebrisFactor);
+    //return;
 
     vec3 debrisNormalSample = texture(g_tDebrisNormal, debrisFinalUV).xyz - vec3(0.5); // Sample and un-pack
 
@@ -672,22 +665,12 @@ void main()
     debrisNormalSample.y *= -1.0; // Flip G channel (common convention)
     vec2 debrisNormalXY = debrisNormalSample.xy * g_flDebrisNormalStrength;
 
-    //outputColor.rg = vec2(g_flDebrisNormalStrength);
-    //return;
-
-    
 
     float combinedfinalFoamIntensity = clamp(fma(-debrisVisibilityMask, debrisEdgeFactor, fma(finalFoamIntensity * combinedFoamTextureValue, 0.25, clamp(finalFoamIntensity - (1.0 - combinedFoamTextureValue), 0.0, 1.0) * 0.75)), 0.0, 1.0);
     float finalDebrisFoamHeightContrib = mix(finalFoamHeightContrib, fma(finalFoamHeightContrib, 0.5, debrisHeightVal * 2.0), finalDebrisFactor);
 
-
-
-    
-
     vec3 finalSurfacePos = effectsSamplePos;
     float finalWaterColumnDepthForRefract = waterColumnOpticalDepthFactor;
-
-    
 
     if(!isSkybox)
     {
@@ -707,15 +690,10 @@ void main()
     vec2 finalWaveNormalXY = (((roughedWaveNormal.xy * 2.0) * g_flWavesNormalStrength) * mix(1.0, 2.0, reflectionsLodFactor)) * 1.0; // * mix(1.0, 2.0, reflectionMipBiasFactor); // Stronger at glancing angles
 
     finalWaveNormalXY *= fma(clamp(0.2 - finalWaterColumnDepthForRefract, 0.0, 1.0), 8.0, 1.0);
-
     finalWaveNormalXY += ((debrisNormalXY * finalDebrisFactor) * 1.5);
-
     finalWaveNormalXY += (mix(foamSample1.xy - vec2(0.5), foamSample2.xy - vec2(0.5), vec2(float(foamSample2.z > foamSample1.z))).xy * combinedfinalFoamIntensity);
-
     finalWaveNormalXY += ((debrisEffectsNormalXY.xy * combinedfinalFoamIntensity) * 0.5);
-
     finalWaveNormalXY += ((foamEffectDisplacementUV.xy * (1.0 - clamp(fma(debrisVisibilityMask, debrisEdgeFactor, combinedfinalFoamIntensity), 0.0, 1.0))) * 2.0);
-
     finalWaveNormalXY *= (vec2(1.0) + ((blueNoiseOffset * 2.0) * g_flWavesNormalJitter));
 
     //TODO: Gemini normalizes here, idfk man
@@ -723,30 +701,17 @@ void main()
 
     vec2 perturbedNormalXY = surfaceNormal.xy * 3.0; // Stronger perturbation
     vec3 perturbedSurfaceNormal = vec3(perturbedNormalXY, sqrt(1.0 - clamp(dot(perturbedNormalXY, perturbedNormalXY), 0.0, 1.0)));
-
-
-
-
     vec3 finalSurfaceNormal = surfaceNormal;
+
     vec3 finalPerturbedSurfaceNormal = perturbedSurfaceNormal;
     if (!isSkybox)
     {
         float _20589 = mix(60.0, 120.0, ditheredNormal.z);
         vec3 edgeLimitFactor = vec3((clamp(fma(-sceneDepthChangeMagnitude, 1000.0, clamp(((1.0 / _20589) - finalWaterColumnDepthForRefract) * _20589, 0.0, 1.0) + clamp((0.025 - finalWaterColumnDepthForRefract) * 8.0, 0.0, 1.0)), 0.0, 1.0) / fma(distanceToFrag, 0.002, 1.0)) * 0.6);
-
-        //outputColor.rgb = vec3(finalWaterColumnDepthForRefract);
-        //return;
-
         finalSurfaceNormal = normalize(mix(surfaceNormal, ditheredNormal, edgeLimitFactor));
         finalPerturbedSurfaceNormal = normalize(mix(perturbedSurfaceNormal, ditheredNormal, edgeLimitFactor));
 
-        //if(length(edgeLimitFactor) > 0.6)
-        //    discard;
     }
-
-    
-    
-
 
     float cosNormAngle = clamp(dot(-viewDir, finalPerturbedSurfaceNormal.xyz), 0.0, 1.0);
     float fresnel = pow(1.0 - cosNormAngle, g_flFresnelExponent);
@@ -793,6 +758,11 @@ void main()
 
 
         vec3 darkenedRefractedColor = pow(finalRefractedColor.rgb, vec3(1.1)) * g_flUnderwaterDarkening;
+
+        //outputColor.rgb = vec3(darkenedRefractedColor);
+        //return;
+
+
         foamSiltStrength += foamSiltFactor * 2.0;
 
         float causticVisibility = clamp((dot(darkenedRefractedColor.xyz, vec3(0.2125, 0.7154, 0.0721)) - g_flCausticShadowCutOff) * (2.0 + g_flCausticShadowCutOff), 0.0, 1.0);
@@ -973,19 +943,24 @@ void main()
     float waterOpacity = (clamp((1.0 - debrisEdgeFactor) + noClue, 0.0, 1.0) * clamp(fma(-combinedfinalFoamIntensity, 4.0, 1.0), 0.0, 1.0)) * inverseWaterFogAlpha;
 
 
-
-    // ----- DETERMINE CORRECT CASCADE
+    //outputColor.rgb = vec3(waterFogAlpha) - 0.1;
+    //return; 
  
-    //this would ask for worldPos + "precision lighting offset", whatever the fuck that is
-
-
+    //this would ask for worldPos + "precision lighting offset" instead of just worldPos, whatever the fuck that is
     vec3 lightingSamplePos = worldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalDebrisFoamHeightContrib * (-1.0)) + (((mix(blueNoise.xxx, vec3(blueNoise.xy, 0.0), vec3(0.1)) * 90.0) * pow(waterOpacity, 2.0)) + vec3(g_flWaterPlaneOffset)))) * mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75));
 
     vec4 surfaceNormal4f = vec4(finalSurfaceNormal.xyz, 1.0);
     vec3 ambientTerm = vec3(1.0); //vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
 
+    float squaredWaterOpacity = pow(waterOpacity, 2.0);
+    float _12400 = mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75);
 
-    outputColor.rgb = combinedRefractedColor * waterDecayColorFactor + float(specularFactor > 0.1) * sunColor * CalculateSunShadowMapVisibility(lightingSamplePos.xyz);
+    vec3 ditheredLightmapUV = vec3(vLightmapUVScaled.xy + (((((((fwidth(vLightmapUVScaled.xy) * 1200.0) / vec2(distanceToFrag)) * cosNormAngle) * (-viewParallaxFactor)) * vec2(-1.0, 1.0)) * (vec2(finalDebrisFoamHeightContrib * (-2.0)) + ((mix(blueNoise.yy, blueNoise.yx, vec2(0.1)) * 20.0) * squaredWaterOpacity))) * _12400), 0.0).xyz;
+
+
+    vec3 bakedShadow = texture(g_tDirectLightShadows, ditheredLightmapUV).rgb;
+    vec3 bakedIrradiance = texture(g_tIrradiance, ditheredLightmapUV).rgb;
+
 
     float finalShadowCoverage = CalculateSunShadowMapVisibility(lightingSamplePos);// = 1.0;
 
@@ -1052,9 +1027,16 @@ void main()
         }
         
     }*/
-        vec4 g_vToolsAmbientLighting = vec4(0); // actually seems to be zero ingame on ancient, tools mode only?
+    vec4 g_vToolsAmbientLighting = vec4(0); // actually seems to be zero ingame on ancient, tools mode only?
 
-    float finalShadowingEffect = mix(finalShadowCoverage, 1.0, waterOpacity * 0.5);
+    float lightmapShadowMulti = 1.0 - dot(bakedShadow, vec3(1.0, 0, 0));
+
+    //outputColor.rgb = vec3(lightmapShadowMulti);
+    //return;
+
+    //lightmapShadowMulti = 1.0;
+
+    float finalShadowingEffect = mix(finalShadowCoverage * lightmapShadowMulti, lightmapShadowMulti, waterOpacity * 0.5);
     vec3 lightingFactor = g_vToolsAmbientLighting.xyz;
 
 
@@ -1062,7 +1044,8 @@ void main()
     {
         lightingFactor = fma(vec3(max(0.0, dot(finalSurfaceNormal.xyz, sunDir))).xyz, (sunColor * finalShadowingEffect).xyz, g_vToolsAmbientLighting.xyz);
     }
-
+    //outputColor.rgb = lightingFactor;
+    //return;
 
 
     //----- LIGHT CULLING AND LIGHTING (not entirely understood by me, I didn't want to spend time on things we aren't doing rn)
@@ -1318,12 +1301,22 @@ void main()
         _16208 = _7172;
         continue;
     }*/
+
+    //TODO: find something comparable to g_vFastPathSunLightBakedShadowMask
     
-    vec3 _22686 = (lightingFactor.xyz + ambientTerm) * mix(mix((baseFogColor * waterFogAlpha) * g_flWaterFogShadowStrength, finalFoamColor.xyz, vec3(combinedfinalFoamIntensity)), vec4(debrisColorHeightSample.xyz * fma(finalDebrisFactor, 0.5, 0.5), debrisEdgeFactor).xyz * g_vDebrisTint.xyz, vec3(clamp(debrisEdgeFactor - noClue, 0.0, 1.0))).xyz;
+    
+    vec3 _22686 = (lightingFactor.xyz + bakedIrradiance) * mix(mix((baseFogColor * waterFogAlpha) * g_flWaterFogShadowStrength, finalFoamColor.xyz, vec3(combinedfinalFoamIntensity)), vec4(debrisColorHeightSample.xyz * fma(finalDebrisFactor, 0.5, 0.5), debrisEdgeFactor).xyz * g_vDebrisTint.xyz, vec3(clamp(debrisEdgeFactor - noClue, 0.0, 1.0))).xyz;
+
+    outputColor.rgb = _22686;
+    //return;
 
     vec3 returnColor = mix(_22686, combinedRefractedColor * waterDecayColorFactor, vec3(waterOpacity)); // + float(specularFactor > 0.5) * sunColor;
 
-    returnColor = mix(returnColor, (baseFogColor * 4.0) * ambientTerm, vec3((waterFogAlpha * clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0)) * (1.0 - g_flWaterFogShadowStrength)));
+    
+
+    returnColor = mix(returnColor, (baseFogColor * 4.0) * bakedIrradiance, vec3((waterFogAlpha * clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0)) * (1.0 - g_flWaterFogShadowStrength)));
+    outputColor.rgb = returnColor;
+    //return;
 
     MaterialProperties_t material;
     InitProperties(material, finalSurfaceNormal);
@@ -1341,7 +1334,7 @@ void main()
 
 
 
-    float SSRStepCountMultiplier = clamp((-cameraDir.z + 0.75) * 4.0, 0.0, 1.0) * (0.5 + 0.5 * float(!isSkybox));
+    float SSRStepCountMultiplier = clamp((cameraDir.z + 0.75) * 4.0, 0.0, 1.0) * (0.5 + 0.5 * float(!isSkybox));
 
     int SSRStepCount = int(g_nSSRMaxForwardSteps * SSRStepCountMultiplier);
 
@@ -1375,6 +1368,10 @@ void main()
 
 
         float initialStepSize = (fma(blueNoiseDitherFactor, g_flSSRSampleJitter, g_flSSRStepSize) / fma(reflectionsLodFactor, 2.0, 1.0)) * mix(20.0, 1.0, cosNormAngle);
+
+        //outputColor.rgb = vec3(SSRStepCount) - 23;
+        //return;
+
         float baseStepSize = initialStepSize;
         if (isSkybox)
         {
@@ -1412,21 +1409,22 @@ void main()
 
             currNormalizedDepth = max(currNormalizedDepth, 0.0000001);
 
-            currSampleWorldDepth = 1.0 / currNormalizedDepth + currSamplePos.z;
+            currSampleWorldDepth = -1.0 / currNormalizedDepth - currSamplePos.z;
 
             prevCurrFrac = clamp(currSampleWorldDepth / (currSampleWorldDepth - prevWorldDepth), 0.0, 1.0);
 
             bool hasHit = false;
             if (currSampleWorldDepth >= 0.0)
             {
+                
+
                 if(currSampleWorldDepth < (SsrHitThickness * currStepSize) )
                 {
+                    //outputColor.rgb = vec3(1);
+                    //return;
+
                     fractionalSampleCount = prevCurrFrac;
                     finalSsrUVCoords = mix(currSsrUV, SsrUVCoords, vec2(prevCurrFrac));
-                    //outputColor.rgb = texture(g_tSceneColor, finalSsrUVCoords).rgb;
-                    //outputColor.rgb = vec3(float(i) / SSRStepCount * 2);
-                    //cubemapReflection = texture(g_tSceneColor, finalSsrUVCoords).rgb;
-                    //return;
                     break;
                 }
             }
@@ -1597,6 +1595,12 @@ void main()
             discard;
         }
     }
+
+    if (!isSkybox)
+    {
+        returnColor = vec3(mix((refractionColorSample.xyz * mix(1.0, 0.6, clamp(refractedVerticalFactor * 60.0, 0.0, 1.0) / fma(distanceToFrag, 0.002, 1.0))).xyz, returnColor.xyz, vec3(clamp(fma(g_flEdgeHardness, effectiveWaterDepthForFog, clamp(combinedfinalFoamIntensity, 0.0, 1.0)) + fma(debrisHeightVal, 2.0, -0.5), 0.0, 1.0))));
+    }
+
     // --- MOIT SOMETHING (for now unused, do we even do MOIT?) ---
 //    if (one_minus_e_to_the_zeroth > 0.0)
 //    {
