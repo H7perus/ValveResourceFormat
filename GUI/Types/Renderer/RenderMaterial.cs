@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
@@ -20,16 +21,15 @@ namespace GUI.Types.Renderer
         Probe1,
         Probe2,
         Probe3,
-        FramebufferColorTexture,
-        FramebufferDepthTexture,
         ShadowDepthBufferDepth,
-        SsrColor,
-        SsrDepth,
+        SceneColor,
+        SceneDepth,
         AnimationTexture,
         MorphCompositeTexture,
         Last = MorphCompositeTexture,
     }
 
+    [DebuggerDisplay("{Material.Name} ({Shader.Name})")]
     class RenderMaterial
     {
         private const int TextureUnitStart = (int)ReservedTextureSlots.Last + 1;
@@ -43,6 +43,7 @@ namespace GUI.Types.Renderer
         public bool IsAlphaTest { get; }
         public bool IsToolsMaterial { get; }
         public bool WantsFrameBufferCopy { get; }
+        public bool DoNotCastShadows { get; }
 
         private readonly bool isAdditiveBlend;
         private readonly bool isMod2x;
@@ -93,7 +94,10 @@ namespace GUI.Types.Renderer
                 }
             }
 
-            Shader = guiContext.ShaderLoader.LoadShader(material.ShaderName, combinedShaderParameters);
+            SetRenderState();
+            Shader = guiContext.ShaderLoader.LoadShader(material.ShaderName, combinedShaderParameters, blocking: false);
+            ResetRenderState();
+
             SortId = GetSortId();
         }
 
@@ -111,6 +115,7 @@ namespace GUI.Types.Renderer
             Material = material;
 
             IsToolsMaterial = material.IntAttributes.ContainsKey("tools.toolsmaterial");
+            DoNotCastShadows = material.IntAttributes.GetValueOrDefault("F_DO_NOT_CAST_SHADOWS") == 1;
             IsTranslucent = (material.IntParams.GetValueOrDefault("F_TRANSLUCENT") == 1)
                 || material.IntAttributes.ContainsKey("mapbuilder.water")
                 || material.ShaderName == "vr_glass.vfx"
@@ -201,9 +206,24 @@ namespace GUI.Types.Renderer
             foreach (var param in shader.Default.Material.VectorParams)
             {
                 var value = Material.VectorParams.GetValueOrDefault(param.Key, param.Value);
-                shader.SetUniform4(param.Key, value);
+                shader.SetMaterialVector4Uniform(param.Key, value);
             }
 
+            SetRenderState();
+        }
+
+        public void PostRender()
+        {
+            ResetRenderState();
+
+            for (var i = TextureUnitStart; i <= textureUnit; i++)
+            {
+                GL.BindTextureUnit(i, 0);
+            }
+        }
+
+        private void SetRenderState()
+        {
             if (IsOverlay)
             {
                 GL.DepthMask(false);
@@ -242,7 +262,7 @@ namespace GUI.Types.Renderer
             }
         }
 
-        public void PostRender()
+        private void ResetRenderState()
         {
             if (IsOverlay)
             {
@@ -263,11 +283,6 @@ namespace GUI.Types.Renderer
             if (isRenderBackfaces)
             {
                 GL.Enable(EnableCap.CullFace);
-            }
-
-            for (var i = TextureUnitStart; i <= textureUnit; i++)
-            {
-                GL.BindTextureUnit(i, 0);
             }
         }
 

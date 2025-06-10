@@ -40,14 +40,13 @@ out vec4 outputColor;
 uniform bool g_bDontFlipBackfaceNormals;
 uniform bool g_bRenderBackfaceNormals;
 
+uniform vec4 g_vSimpleSkyReflectionColor;
 
 uniform float g_flWaterPlaneOffset;
 uniform float g_flSkyBoxScale;
 uniform float g_flSkyBoxFadeRange;
-//H7per: should this be vec4??? It was vec3, but fog and decay colors broke that way
-uniform vec4 g_vSimpleSkyReflectionColor;
-uniform vec4 g_vMapUVMin;
-uniform vec4 g_vMapUVMax;
+uniform vec2 g_vMapUVMin;
+uniform vec2 g_vMapUVMax;
 uniform float g_flLowEndCubeMapIntensity;
 uniform float g_flWaterRoughnessMin;
 uniform float g_flWaterRoughnessMax;
@@ -55,7 +54,7 @@ uniform float g_flFoamMin;
 uniform float g_flFoamMax;
 uniform float g_flDebrisMin;
 uniform float g_flDebrisMax;
-uniform vec4 g_vDebrisTint = vec4(0.7, 0.7, 0.7, 0.0);
+uniform vec3 g_vDebrisTint;
 uniform float g_flDebrisReflectance;
 uniform float g_flDebrisOilyness;
 uniform float g_flDebrisNormalStrength = 1.0f;
@@ -71,7 +70,7 @@ uniform float g_flWavesSharpness;
 uniform float g_flFresnelExponent;
 uniform float g_flWavesNormalStrength;
 uniform float g_flWavesNormalJitter;
-uniform vec4 g_vWaveScale;
+uniform vec2 g_vWaveScale;
 uniform float g_flWaterInitialDirection;
 uniform float g_flWavesSpeed;
 uniform float g_flLowFreqWeight;
@@ -81,10 +80,10 @@ uniform float g_flWavesPhaseOffset;
 uniform float g_flEdgeHardness;
 uniform float g_flEdgeShapeEffect;
 uniform int g_nWaveIterations;
-uniform vec4 g_vWaterFogColor;
+uniform vec3 g_vWaterFogColor;
 uniform float g_flRefractionLimit = 0.1f;
 uniform float g_flWaterFogStrength;
-uniform vec4 g_vWaterDecayColor;
+uniform vec3 g_vWaterDecayColor;
 uniform float g_flWaterDecayStrength;
 uniform float g_flWaterMaxDepth;
 uniform float g_flWaterFogShadowStrength;
@@ -162,11 +161,14 @@ vec3 sunDir = GetEnvLightDirection(0);
 
 void main()
 {
+
+
     vec4 fragCoord = gl_FragCoord;
     vec4 fragCoordWInverse = fragCoord;
     fragCoordWInverse.w = 1.0 / fragCoord.w;
 
-
+    //outputColor = vec4(1.0);
+    //return;
 
     // --- Normal Preparation ---
     bool flipBackfaceNormals = false;
@@ -227,6 +229,11 @@ void main()
 
     //FragCoord.xy * PerViewConstantBuffer_t.g_vInvGBufferSize.xy in decompile
     vec2 gbufferUV = fragCoord.xy / textureSize( g_tSceneColor, 0);
+
+    //outputColor = 1 / (texture(g_tSceneDepth, gbufferUV).rrrr - 0.05) * 0.95 / 100;
+    //return;
+
+
     //This one comes at line 361 in the decomp, moved it up here because it makes more sense imo
 
     //outputColor.rgb = vec3(g_vMapUVMax.xy * 1000000, 0.0);
@@ -294,7 +301,7 @@ void main()
         refractionDistortionFactor = refractionLuminance * -0.03;
 
         //TODO: Check if this is actually correct. I am assuming InvProjRow3 refers to the Row 3 of the inverse projection mat. But .w is always 0 in inv proj for reverse Z so no clue what the fuck this math is.
-        mat4 invProj = inverse(g_matViewToProjection);
+        mat4 invProj = inverse(g_matWorldToProjection);
         float invProjTerm = fma(sceneNormalizedDepth, invProj[2][3], invProj[3][3]);
 
         vec3 cameraDir = -normalize(inverse(mat3(g_matWorldToView))[2]);
@@ -1307,7 +1314,7 @@ void main()
         SSNormal.yz *= 2;
         
 
-        vec4 _15818 = g_matWorldToProjection * vec4(-viewSpacePos.xyz, 1.0); //transViewToProj * vec4(-viewSpacePos, 1.0);
+        vec4 _15818 = g_matViewToProjection * vec4(-viewSpacePos.xyz, 1.0); //transViewToProj * vec4(-viewSpacePos, 1.0);
 
        
 
@@ -1347,7 +1354,7 @@ void main()
         {
             currStepSize = prevStepSize * 1.15;
             currSamplePos = prevSamplePos + SSReflectDir * currStepSize;
-            vec4 currViewSpacePos = g_matWorldToProjection * vec4(-currSamplePos, 1.0);
+            vec4 currViewSpacePos = g_matViewToProjection * vec4(-currSamplePos, 1.0);
             vec3 _10510 = currViewSpacePos.xyz / vec3(currViewSpacePos.w);
             vec2 currSsrUV = (vec2(_10510.x, _10510.y) * 0.5) + vec2(0.5);
             vec4 _20493;

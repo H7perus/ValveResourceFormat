@@ -185,11 +185,17 @@ namespace GUI.Types.Renderer
             return CullResults;
         }
 
-        private readonly List<MeshBatchRenderer.Request> renderLooseNodes = [];
-        private readonly List<MeshBatchRenderer.Request> renderOpaqueDrawCalls = [];
-        private readonly List<MeshBatchRenderer.Request> renderStaticOverlays = [];
-        private readonly List<MeshBatchRenderer.Request> renderTranslucentDrawCalls = [];
-        private readonly List<MeshBatchRenderer.Request> renderWithFramebufferCopyInput = [];
+        public bool WantsSceneColor { get; set; }
+        public bool WantsSceneDepth { get; set; }
+
+        private readonly Dictionary<RenderPass, List<MeshBatchRenderer.Request>> renderLists = new()
+        {
+            [RenderPass.Opaque] = [],
+            [RenderPass.StaticOverlay] = [],
+            [RenderPass.AfterOpaque] = [],
+            [RenderPass.Translucent] = [],
+            [RenderPass.RefractionEffect] = [],
+        };
 
         private void Add(MeshBatchRenderer.Request request, RenderPass renderPass)
         {
@@ -200,28 +206,43 @@ namespace GUI.Types.Renderer
 
             if (renderPass is RenderPass.Opaque or RenderPass.Translucent && request.Call.Material.WantsFrameBufferCopy)
             {
-                renderPass = RenderPass.FramebufferCopy;
+                renderPass = RenderPass.RefractionEffect;
             }
+
 
             var queueList = renderPass switch
             {
-                RenderPass.Opaque => renderOpaqueDrawCalls,
-                RenderPass.StaticOverlay => renderStaticOverlays,
-                RenderPass.Translucent => renderTranslucentDrawCalls,
-                RenderPass.FramebufferCopy => renderWithFramebufferCopyInput,
-                _ => renderLooseNodes,
+                RenderPass.Opaque => renderLists[RenderPass.Opaque],
+                RenderPass.StaticOverlay => renderLists[RenderPass.StaticOverlay],
+                RenderPass.Translucent => renderLists[RenderPass.Translucent],
+                RenderPass.RefractionEffect => renderLists[RenderPass.RefractionEffect],
+                _ => renderLists[RenderPass.AfterOpaque],
             };
+
+            if (renderPass == RenderPass.Translucent)
+            {
+                WantsSceneColor |= request.Call.Material.Shader.ReservedTexuresUsed.Contains("g_tSceneColor");
+                WantsSceneDepth |= request.Call.Material.Shader.ReservedTexuresUsed.Contains("g_tSceneDepth");
+            }
+
+            if (renderPass == RenderPass.RefractionEffect)
+            {
+                WantsSceneColor = true;
+                WantsSceneDepth = true;
+            }
 
             queueList.Add(request);
         }
 
         public void CollectSceneDrawCalls(Camera camera, Frustum cullFrustum = null)
         {
-            renderOpaqueDrawCalls.Clear();
-            renderStaticOverlays.Clear();
-            renderTranslucentDrawCalls.Clear();
-            renderLooseNodes.Clear();
-            renderWithFramebufferCopyInput.Clear();
+            foreach (var bucket in renderLists.Values)
+            {
+                bucket.Clear();
+            }
+
+            WantsSceneColor = false;
+            WantsSceneDepth = false;
 
             cullFrustum ??= camera.ViewFrustum;
             var cullResults = GetFrustumCullResults(cullFrustum);
@@ -289,7 +310,7 @@ namespace GUI.Types.Renderer
                 }
             }
 
-            renderLooseNodes.Sort(MeshBatchRenderer.CompareCameraDistance);
+            renderLists[RenderPass.AfterOpaque].Sort(MeshBatchRenderer.CompareCameraDistance);
         }
 
         private List<SceneNode> CulledShadowNodes { get; } = [];
@@ -347,6 +368,11 @@ namespace GUI.Types.Renderer
                 {
                     foreach (var opaqueCall in mesh.DrawCallsOpaque)
                     {
+                        if (opaqueCall.Material.DoNotCastShadows)
+                        {
+                            continue;
+                        }
+
                         var bucket = (opaqueCall.Material.IsAlphaTest, animated) switch
                         {
                             (false, false) => DepthOnlyProgram.Static,
@@ -399,19 +425,19 @@ namespace GUI.Types.Renderer
             using (new GLDebugGroup("Opaque Render"))
             {
                 renderContext.RenderPass = RenderPass.Opaque;
-                MeshBatchRenderer.Render(renderOpaqueDrawCalls, renderContext);
+                MeshBatchRenderer.Render(renderLists[renderContext.RenderPass], renderContext);
             }
 
             using (new GLDebugGroup("StaticOverlay Render"))
             {
                 renderContext.RenderPass = RenderPass.StaticOverlay;
-                MeshBatchRenderer.Render(renderStaticOverlays, renderContext);
+                MeshBatchRenderer.Render(renderLists[renderContext.RenderPass], renderContext);
             }
 
             using (new GLDebugGroup("AfterOpaque RenderLoose"))
             {
                 renderContext.RenderPass = RenderPass.AfterOpaque;
-                foreach (var request in renderLooseNodes)
+                foreach (var request in renderLists[renderContext.RenderPass])
                 {
                     request.Node.Render(renderContext);
                 }
@@ -450,7 +476,7 @@ namespace GUI.Types.Renderer
             GL.DepthMask(false);
             GL.Disable(EnableCap.CullFace);
 
-            GL.UseProgram(depthOnlyShader.Program);
+            depthOnlyShader.Use();
             GL.BindVertexArray(GuiContext.MeshBufferCache.EmptyVAO);
 
             var maxTests = 128;
@@ -547,7 +573,8 @@ namespace GUI.Types.Renderer
             using (new GLDebugGroup("Translucent RenderLoose"))
             {
                 renderContext.RenderPass = RenderPass.Translucent;
-                foreach (var request in renderLooseNodes)
+
+                foreach (var request in renderLists[RenderPass.AfterOpaque])
                 {
                     request.Node.Render(renderContext);
                 }
@@ -555,16 +582,14 @@ namespace GUI.Types.Renderer
 
             using (new GLDebugGroup("Translucent Render"))
             {
-                MeshBatchRenderer.Render(renderTranslucentDrawCalls, renderContext);
+                MeshBatchRenderer.Render(renderLists[RenderPass.Translucent], renderContext);
             }
         }
-
         public void RenderRefractionEffects(RenderContext renderContext)
         {
-            renderContext.RenderPass = RenderPass.FramebufferCopy;
-            MeshBatchRenderer.Render(renderWithFramebufferCopyInput, renderContext);
+            renderContext.RenderPass = RenderPass.RefractionEffect;
+            MeshBatchRenderer.Render(renderLists[RenderPass.RefractionEffect], renderContext);
         }
-
         public void SetEnabledLayers(HashSet<string> layers, bool skipUpdate = false)
         {
             foreach (var renderer in AllNodes)
@@ -753,7 +778,7 @@ namespace GUI.Types.Renderer
                 var lightingOrigin = node.LightingOrigin ?? Vector3.Zero;
                 if (node.LightingOrigin.HasValue)
                 {
-                    // in source2 this is a dynamic combo D_SPECULAR_CUBEMAP_STATIC=1, and i guess without a loop (similar to SCENE_CUBEMAP_TYPE=1)
+                    // in source2 this is a dynamic combo D_SPECULAR_CUBEMAP_STATIC=1, and i guess without a loop (similar to S_SCENE_CUBEMAP_TYPE=1)
                     node.EnvMaps = [.. node.EnvMaps.OrderBy((envMap) => Vector3.Distance(lightingOrigin, envMap.BoundingBox.Center))];
                 }
                 else
@@ -809,7 +834,7 @@ namespace GUI.Types.Renderer
                 }
             }
         }
-
+        
         private void UpdateGpuEnvmapData(SceneEnvMap envMap, int index)
         {
             if (!Matrix4x4.Invert(envMap.Transform, out var invertedTransform))

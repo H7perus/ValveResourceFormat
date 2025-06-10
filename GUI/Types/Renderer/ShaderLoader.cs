@@ -2,13 +2,12 @@ using System.Globalization;
 using System.IO;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using GUI.Controls;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
-
-#nullable disable
 
 namespace GUI.Types.Renderer
 {
@@ -24,14 +23,15 @@ namespace GUI.Types.Renderer
         public int ShaderCount => CachedShaders.Count;
         private readonly Dictionary<string, HashSet<string>> ShaderDefines = [];
 
-        private readonly static Dictionary<string, byte> EmptyArgs = [];
+        private static readonly Dictionary<string, byte> EmptyArgs = [];
 
         private readonly ShaderParser Parser = new();
 
         private readonly VrfGuiContext VrfGuiContext;
 
 #if DEBUG
-        public ShaderHotReload ShaderHotReload { get; private set; }
+        public ShaderHotReload? ShaderHotReload { get; private set; }
+        public HashSet<string> LastShaderVariantNames { get; private set; } = [];
 #endif
 
         public class ParsedShaderData
@@ -39,6 +39,10 @@ namespace GUI.Types.Renderer
             public HashSet<string> Defines = [];
             public HashSet<string> RenderModes = [];
             public HashSet<string> SrgbSamplers = [];
+
+#if DEBUG
+            public HashSet<string> ShaderVariants = [];
+#endif
         }
 
         public ShaderLoader(VrfGuiContext guiContext)
@@ -54,7 +58,7 @@ namespace GUI.Types.Renderer
         }
 #endif
 
-        public Shader LoadShader(string shaderName, IReadOnlyDictionary<string, byte> arguments = null)
+        public Shader LoadShader(string shaderName, IReadOnlyDictionary<string, byte>? arguments = null, bool blocking = true)
         {
             arguments ??= EmptyArgs;
 
@@ -68,13 +72,13 @@ namespace GUI.Types.Renderer
                 }
             }
 
-            var shader = CompileAndLinkShader(shaderName, arguments);
+            var shader = CompileAndLinkShader(shaderName, arguments, blocking: blocking);
             var newShaderCacheHash = CalculateShaderCacheHash(shaderName, arguments);
             CachedShaders[newShaderCacheHash] = shader;
             return shader;
         }
 
-        private Shader CompileAndLinkShader(string shaderName, IReadOnlyDictionary<string, byte> arguments)
+        private Shader CompileAndLinkShader(string shaderName, IReadOnlyDictionary<string, byte> arguments, bool blocking = true)
         {
             var shaderProgram = -1;
 
@@ -87,6 +91,7 @@ namespace GUI.Types.Renderer
                 var vertexName = $"{shaderFileName}.vert";
                 var vertexShader = GL.CreateShader(ShaderType.VertexShader);
                 LoadShader(vertexShader, vertexName, shaderName, arguments, ref parsedData);
+                Parser.Reset();
 
                 // Fragment shader
                 var fragmentName = $"{shaderFileName}.frag";
@@ -101,7 +106,7 @@ namespace GUI.Types.Renderer
                 GL.ObjectLabel(ObjectLabelIdentifier.Shader, fragmentShader, fragmentName.Length, fragmentName);
 #endif
 
-                var shader = new Shader
+                var shader = new Shader(VrfGuiContext)
                 {
 #if DEBUG
                     FileName = shaderFileName,
@@ -110,6 +115,7 @@ namespace GUI.Types.Renderer
                     Name = shaderName,
                     Parameters = arguments,
                     Program = shaderProgram,
+                    ShaderObjects = [vertexShader, fragmentShader],
                     RenderModes = parsedData.RenderModes,
                     SrgbSamplers = parsedData.SrgbSamplers
                 };
@@ -118,31 +124,30 @@ namespace GUI.Types.Renderer
                 GL.AttachShader(shader.Program, fragmentShader);
 
                 GL.LinkProgram(shader.Program);
-                GL.GetProgram(shader.Program, GetProgramParameterName.LinkStatus, out var linkStatus);
 
-                GL.DetachShader(shader.Program, vertexShader);
-                GL.DeleteShader(vertexShader);
-
-                GL.DetachShader(shader.Program, fragmentShader);
-                GL.DeleteShader(fragmentShader);
-
-                if (linkStatus != 1)
+                // Not getting link status straight away allows the driver to perform parallelized shader compilation
+                // TODO: Ideally we want this to work for initial load too.
+                if (blocking)
                 {
-                    GL.GetProgramInfoLog(shader.Program, out var log);
-                    ThrowShaderError(log, shaderFileName, shaderName, "Failed to link shader");
+                    if (!shader.EnsureLoaded())
+                    {
+                        GL.GetProgramInfoLog(shader.Program, out var log);
+                        ThrowShaderError(log, $"{shaderFileName} ({string.Join(", ", arguments.Keys)})", shaderName, "Failed to link shader");
+                    }
                 }
 
-                VrfGuiContext.MaterialLoader.SetDefaultMaterialParameters(shader.Default);
-                shader.StoreAttributeLocations();
-
                 ShaderDefines[shaderName] = parsedData.Defines;
+
+#if DEBUG
+                LastShaderVariantNames = parsedData.ShaderVariants;
+#endif
 
                 var argsDescription = GetArgumentDescription(shaderName, arguments);
                 Log.Info(nameof(ShaderLoader), $"Shader '{shaderName}' as '{shaderFileName}' ({argsDescription}) compiled and linked succesfully");
 
                 return shader;
             }
-            catch (InvalidProgramException)
+            catch (ShaderCompilerException)
             {
                 if (shaderProgram > -1)
                 {
@@ -168,7 +173,7 @@ namespace GUI.Types.Renderer
             if (shaderStatus != 1)
             {
                 GL.GetShaderInfoLog(shader, out var log);
-                ThrowShaderError(log, shaderFile, originalShaderName, "Failed to set up shader");
+                ThrowShaderError(log, $"{shaderFile} ({string.Join(", ", arguments.Keys)})", originalShaderName, "Failed to set up shader");
             }
         }
 
@@ -197,7 +202,7 @@ namespace GUI.Types.Renderer
 #endif
             }
 
-            throw new InvalidProgramException($"{errorType} {shaderFile} (original={originalShaderName}):\n{info}");
+            throw new ShaderCompilerException($"{errorType} {shaderFile} (original={originalShaderName}):\n\n{info}");
         }
 
         const string VrfInternalShaderPrefix = "vrf.";
@@ -242,6 +247,7 @@ namespace GUI.Types.Renderer
 
             return arguments
                 .Where(p => defines.Contains(p.Key))
+                .Where(static p => p.Value != 0) // Shader defines should already default to zero
                 .OrderBy(static p => p.Key);
         }
 
@@ -276,23 +282,26 @@ namespace GUI.Types.Renderer
         private ulong CalculateShaderCacheHash(string shaderName, IReadOnlyDictionary<string, byte> arguments)
         {
             var hash = new XxHash3(StringToken.MURMUR2SEED);
-            hash.Append(Encoding.ASCII.GetBytes(shaderName));
+            hash.Append(MemoryMarshal.AsBytes(shaderName.AsSpan()));
 
             var argsOrdered = SortAndFilterArguments(shaderName, arguments);
+            Span<byte> valueSpan = stackalloc byte[1];
 
             foreach (var (key, value) in argsOrdered)
             {
                 hash.Append(NewLineArray);
-                hash.Append(Encoding.ASCII.GetBytes(key));
+                hash.Append(MemoryMarshal.AsBytes(key.AsSpan()));
                 hash.Append(NewLineArray);
-                hash.Append(Encoding.ASCII.GetBytes(value.ToString(CultureInfo.InvariantCulture)));
+
+                valueSpan[0] = value;
+                hash.Append(valueSpan);
             }
 
             return hash.GetCurrentHashAsUInt64();
         }
 
 #if DEBUG
-        private void OnHotReload(object sender, string name)
+        private void OnHotReload(object? sender, string? name)
         {
             var ext = Path.GetExtension(name);
 
@@ -310,7 +319,7 @@ namespace GUI.Types.Renderer
             ReloadAllShaders(name);
         }
 
-        public void ReloadAllShaders(string name = null)
+        public void ReloadAllShaders(string? name = null)
         {
             foreach (var shader in CachedShaders.Values)
             {
@@ -319,18 +328,25 @@ namespace GUI.Types.Renderer
                     continue;
                 }
 
-                var newShader = CompileAndLinkShader(shader.Name, shader.Parameters);
-
-                GL.DeleteProgram(shader.Program);
-
-                shader.Program = newShader.Program;
-                shader.RenderModes.Clear();
-                shader.RenderModes.UnionWith(newShader.RenderModes);
-                shader.ClearUniformsCache();
+                var newShader = CompileAndLinkShader(shader.Name, shader.Parameters, blocking: false);
+                shader.ReplaceWith(newShader);
             }
         }
 
         public static void ValidateShaders()
+        {
+            using var progressDialog = new Forms.GenericProgressForm
+            {
+                Text = "Compiling shaders…"
+            };
+            progressDialog.OnProcess += (_, __) =>
+            {
+                ValidateShadersCore(progressDialog);
+            };
+            progressDialog.ShowDialog();
+        }
+
+        private static void ValidateShadersCore(Forms.GenericProgressForm progressDialog)
         {
             using var context = new VrfGuiContext(null, null);
             using var loader = new ShaderLoader(context);
@@ -346,8 +362,61 @@ namespace GUI.Types.Renderer
             foreach (var shader in shaders)
             {
                 var shaderFileName = Path.GetFileNameWithoutExtension(shader);
+                var vrfFileName = string.Concat(VrfInternalShaderPrefix, shaderFileName);
 
-                loader.LoadShader(shaderFileName);
+                progressDialog.SetProgress($"Compiling {vrfFileName}");
+
+                if (shaderFileName == "texture_decode")
+                {
+                    loader.LoadShader(vrfFileName, new Dictionary<string, byte>
+                    {
+                        ["S_TYPE_TEXTURE2D"] = 1,
+                    });
+                    loader.Parser.Reset();
+                    continue;
+                }
+
+                loader.LoadShader(vrfFileName);
+
+                // Test all defines one by one
+                var defines = loader.ShaderDefines[vrfFileName];
+                foreach (var define in defines)
+                {
+                    progressDialog.SetProgress($"Compiling {vrfFileName} with {define}");
+
+                    loader.Parser.Reset();
+                    loader.LoadShader(vrfFileName, new Dictionary<string, byte>
+                    {
+                        [define] = 1,
+                    });
+                }
+
+                var variants = loader.LastShaderVariantNames;
+
+                // Test all define(xxx_vfx) names
+                foreach (var name in variants)
+                {
+                    var vfxName = string.Concat(name, ".vfx");
+                    progressDialog.SetProgress($"Compiling {vfxName}");
+
+                    loader.Parser.Reset();
+                    loader.LoadShader(vfxName);
+
+                    // Test all defines one by one in combination with the shader variant name
+                    defines = loader.ShaderDefines[vfxName];
+                    foreach (var define in defines)
+                    {
+                        progressDialog.SetProgress($"Compiling {vfxName} with {define}");
+
+                        loader.Parser.Reset();
+                        loader.LoadShader(vfxName, new Dictionary<string, byte>
+                        {
+                            [define] = 1,
+                        });
+                    }
+                }
+
+                loader.Parser.Reset();
             }
 
             var parsedShaderData = new ParsedShaderData();
@@ -359,6 +428,7 @@ namespace GUI.Types.Renderer
                 var shaderFileName = Path.GetFileName(include);
                 var fragmentShader = GL.CreateShader(ShaderType.FragmentShader);
                 loader.LoadShader(fragmentShader, shaderFileName, shaderFileName, EmptyArgs, ref parsedShaderData);
+                loader.Parser.Reset();
                 GL.DeleteShader(fragmentShader);
             }
 
@@ -374,9 +444,23 @@ namespace GUI.Types.Renderer
             }
             */
 
-            System.Windows.Forms.MessageBox.Show("Shaders validated", "Shaders validated");
-            Environment.Exit(0);
+            progressDialog.SetProgress("Shaders validated");
         }
 #endif
+
+        public class ShaderCompilerException : Exception
+        {
+            public ShaderCompilerException()
+            {
+            }
+
+            public ShaderCompilerException(string message) : base(message)
+            {
+            }
+
+            public ShaderCompilerException(string message, Exception innerException) : base(message, innerException)
+            {
+            }
+        }
     }
 }

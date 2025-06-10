@@ -1,5 +1,4 @@
 using System.Buffers;
-using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
@@ -325,7 +324,7 @@ namespace GUI.Types.Renderer
                 mesh.LoadExternalMorphData(Scene.GuiContext.FileLoader);
                 model.SetExternalMeshData(mesh);
 
-                meshRenderers.Add(new RenderableMesh(mesh, refMesh.MeshIndex, Scene, model, materialTable, debugLabel: Path.GetFileName(refMesh.MeshName)));
+                meshRenderers.Add(new RenderableMesh(mesh, refMesh.MeshIndex, Scene, model, materialTable));
             }
 
             // Set active meshes to default
@@ -341,11 +340,7 @@ namespace GUI.Types.Renderer
 
             // Create animation texture
             animationTexture = new(TextureTarget.Texture2D, 4, remappingTable.Length, 1, 1);
-
-#if DEBUG
-            var textureName = nameof(animationTexture);
-            GL.ObjectLabel(ObjectLabelIdentifier.Texture, animationTexture.Handle, textureName.Length, textureName);
-#endif
+            animationTexture.SetLabel(nameof(animationTexture));
 
             // Set clamping to edges
             animationTexture.SetWrapMode(TextureWrapMode.ClampToEdge);

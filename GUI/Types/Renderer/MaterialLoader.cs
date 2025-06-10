@@ -1,9 +1,8 @@
 using System.Buffers;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO.Hashing;
 using System.Linq;
-using System.Text;
+using System.Runtime.InteropServices;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat;
@@ -48,17 +47,20 @@ namespace GUI.Types.Renderer
                 return GetErrorMaterial();
             }
 
+            Span<byte> valueSpan = stackalloc byte[1];
             var hash = new XxHash3(StringToken.MURMUR2SEED);
-            hash.Append(Encoding.ASCII.GetBytes(name));
+            hash.Append(MemoryMarshal.AsBytes(name.AsSpan()));
 
             if (shaderArguments != null)
             {
                 foreach (var (key, value) in shaderArguments)
                 {
                     hash.Append(NewLineArray);
-                    hash.Append(Encoding.ASCII.GetBytes(key));
+                    hash.Append(MemoryMarshal.AsBytes(key.AsSpan()));
                     hash.Append(NewLineArray);
-                    hash.Append(Encoding.ASCII.GetBytes(value.ToString(CultureInfo.InvariantCulture)));
+
+                    valueSpan[0] = value;
+                    hash.Append(valueSpan);
                 }
             }
 
@@ -121,7 +123,7 @@ namespace GUI.Types.Renderer
                 if (mat.Shader.GetUniformLocation(name) != -1)
                 {
                     var srgbRead = mat.Shader.SrgbSamplers.Contains(name);
-                    mat.Textures[name] = GetTexture(path, srgbRead);
+                    mat.Textures[name] = GetTexture(path, srgbRead, anisotropicFiltering: true);
                     return true;
                 }
 
@@ -132,7 +134,7 @@ namespace GUI.Types.Renderer
         }
 
 
-        public RenderTexture GetTexture(string name, bool srgbRead = false)
+        public RenderTexture GetTexture(string name, bool srgbRead = false, bool anisotropicFiltering = false)
         {
             // TODO: Create texture view for srgb textures
             var cache = srgbRead ? TexturesSrgb : Textures;
@@ -144,6 +146,12 @@ namespace GUI.Types.Renderer
 
             tex = LoadTexture(name, srgbRead);
             cache.Add(name, tex);
+
+            if (anisotropicFiltering && MaxTextureMaxAnisotropy >= 4)
+            {
+                GL.TextureParameter(tex.Handle, (TextureParameterName)ExtTextureFilterAnisotropic.TextureMaxAnisotropyExt, MaxTextureMaxAnisotropy);
+            }
+
             return tex;
         }
 
@@ -198,7 +206,7 @@ namespace GUI.Types.Renderer
 
             if (textureName != null)
             {
-                GL.ObjectLabel(ObjectLabelIdentifier.Texture, tex.Handle, textureName.Length, textureName);
+                tex.SetLabel(textureName);
             }
 #endif
 
@@ -279,11 +287,6 @@ namespace GUI.Types.Renderer
                 // Dispose texture otherwise we run out of memory
                 // TODO: This might conflict when opening multiple files due to shit caching
                 textureResource.Dispose();
-
-                if (MaxTextureMaxAnisotropy >= 4)
-                {
-                    GL.TextureParameter(tex.Handle, (TextureParameterName)ExtTextureFilterAnisotropic.TextureMaxAnisotropyExt, MaxTextureMaxAnisotropy);
-                }
             }
 
             tex.SetFiltering(TextureMinFilter.LinearMipmapLinear, TextureMagFilter.Linear);
@@ -340,65 +343,7 @@ namespace GUI.Types.Renderer
             _ => throw new NotImplementedException($"Unsupported texture format {vformat}")
         };
 
-        static readonly string[] ReservedTextures = Enum.GetNames<ReservedTextureSlots>();
-
-        public void SetDefaultMaterialParameters(RenderMaterial mat)
-        {
-            var vec4Val = new float[4];
-            var uniforms = mat.Shader.GetAllUniformNames();
-
-            foreach (var uniform in uniforms)
-            {
-                var name = uniform.Name;
-                var type = uniform.Type;
-                var index = uniform.Index;
-                var size = uniform.Size;
-
-                if (!name.StartsWith("g_", StringComparison.Ordinal) && !name.StartsWith("F_", StringComparison.Ordinal))
-                {
-                    continue;
-                }
-
-                if (size != 1) // arrays
-                {
-                    continue;
-                }
-
-                var isTexture = type is ActiveUniformType.Sampler2D or ActiveUniformType.SamplerCube;
-                var isVector = type == ActiveUniformType.FloatVec4;
-                var isScalar = type == ActiveUniformType.Float;
-                var isBoolean = type == ActiveUniformType.Bool;
-                var isInteger = type is ActiveUniformType.Int or ActiveUniformType.UnsignedInt;
-
-                if (isTexture && !mat.Textures.ContainsKey(name)
-                    && !ReservedTextures.Any(x => name.Contains(x, StringComparison.OrdinalIgnoreCase)))
-                {
-                    mat.Textures[name] = name switch
-                    {
-                        _ when name.Contains("color", StringComparison.OrdinalIgnoreCase) => GetErrorTexture(),
-                        _ when name.Contains("normal", StringComparison.OrdinalIgnoreCase) => GetDefaultNormal(),
-                        _ when name.Contains("mask", StringComparison.OrdinalIgnoreCase) => GetDefaultMask(),
-                        _ => GetErrorTexture(),
-                    };
-                }
-                else if (isVector && !mat.Material.VectorParams.ContainsKey(name))
-                {
-                    vec4Val[0] = vec4Val[1] = vec4Val[2] = vec4Val[3] = 0f;
-                    GL.GetUniform(mat.Shader.Program, mat.Shader.GetUniformLocation(name), vec4Val);
-                    mat.Material.VectorParams[name] = new Vector4(vec4Val[0], vec4Val[1], vec4Val[2], vec4Val[3]);
-                }
-                else if (isScalar && !mat.Material.FloatParams.ContainsKey(name))
-                {
-                    GL.GetUniform(mat.Shader.Program, mat.Shader.GetUniformLocation(name), out float flVal);
-                    mat.Material.FloatParams[name] = flVal;
-                }
-                else if ((isBoolean || isInteger) && !mat.Material.IntParams.ContainsKey(name))
-                {
-                    GL.GetUniform(mat.Shader.Program, mat.Shader.GetUniformLocation(name), out int intVal);
-                    mat.Material.IntParams[name] = intVal;
-                }
-            }
-        }
+        public static readonly string[] ReservedTextures = Enum.GetNames<ReservedTextureSlots>();
 
         private RenderMaterial GetErrorMaterial()
         {
@@ -430,8 +375,8 @@ namespace GUI.Types.Renderer
         }
 
         private static RenderTexture CreateSolidTexture(byte r, byte g, byte b) => GenerateColorTexture(1, 1, [r, g, b]);
-        private RenderTexture GetDefaultNormal() => DefaultNormal ??= CreateSolidTexture(127, 127, 255);
-        private RenderTexture GetDefaultMask() => DefaultMask ??= CreateSolidTexture(255, 255, 255);
+        public RenderTexture GetDefaultNormal() => DefaultNormal ??= CreateSolidTexture(127, 127, 255);
+        public RenderTexture GetDefaultMask() => DefaultMask ??= CreateSolidTexture(255, 255, 255);
 
         private static RenderTexture GenerateColorTexture(int width, int height, byte[] color)
         {
@@ -443,8 +388,7 @@ namespace GUI.Types.Renderer
             GL.TextureSubImage2D(texture.Handle, 0, 0, 0, width, height, PixelFormat.Rgb, PixelType.UnsignedByte, color);
 
 #if DEBUG
-            var label = width > 1 ? "ErrorTexture" : "ColorTexture";
-            GL.ObjectLabel(ObjectLabelIdentifier.Texture, texture.Handle, label.Length, label);
+            texture.SetLabel(width > 1 ? "ErrorTexture" : "ColorTexture");
 #endif
 
             return texture;

@@ -120,15 +120,8 @@ namespace GUI.Types.Renderer
                 LightProbeType = context.Scene.LightingInfo.LightProbeType,
             };
 
-
             foreach (var request in requests)
             {
-                if (vao != request.Call.VertexArrayObject)
-                {
-                    vao = request.Call.VertexArrayObject;
-                    GL.BindVertexArray(vao);
-                }
-
                 var requestMaterial = request.Call.Material;
 
                 if (material != requestMaterial)
@@ -149,7 +142,7 @@ namespace GUI.Types.Renderer
                             Tint = shader.GetUniformLocation("vTint"),
                         };
 
-                        if (shader.Parameters.ContainsKey("SCENE_CUBEMAP_TYPE"))
+                        if (shader.Parameters.ContainsKey("S_SCENE_CUBEMAP_TYPE"))
                         {
                             uniforms.EnvmapTexture = shader.GetUniformLocation("g_tEnvironmentMap");
                             uniforms.CubeMapArrayIndices = shader.GetUniformLocation("g_iEnvMapArrayIndices");
@@ -181,7 +174,7 @@ namespace GUI.Types.Renderer
                             uniforms.ShaderProgramId = shader.GetUniformLocation("shaderProgramId");
                         }
 
-                        GL.UseProgram(shader.Program);
+                        shader.Use();
 
                         foreach (var (slot, name, texture) in context.View.Textures)
                         {
@@ -193,14 +186,19 @@ namespace GUI.Types.Renderer
 
                     material = requestMaterial;
                     material.Render(shader);
-
-                    // material.render has bug where it resets viewcontext textures to default texture
-                    foreach (var (slot, name, texture) in context.View.Textures)
-                    {
-                        shader.SetTexture((int)slot, name, texture);
-                    }
                 }
 
+                if (request.Call.VertexArrayObject == -1)
+                {
+                    request.Call.Material.Shader.EnsureLoaded();
+                    request.Call.UpdateVertexArrayObject();
+                }
+
+                if (vao != request.Call.VertexArrayObject)
+                {
+                    vao = request.Call.VertexArrayObject;
+                    GL.BindVertexArray(vao);
+                }
 
                 Draw(shader, ref uniforms, ref config, request);
             }

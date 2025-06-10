@@ -20,7 +20,7 @@ float diffuseLobe(float NoL, float roughness)
 // Used in vr_xen_foliage, vr_eyeball (not supported yet bc alt param names), and optionally in vr_complex
 uniform float g_flDiffuseExponent = 1.0;
 uniform float g_flDiffuseWrap = 1.0;
-uniform vec4 g_vDiffuseWrapColor = vec4(1.0, 0.5, 0.3, 0.0); // 1.0, 0.5, 0.3 -> srgbtolinear
+uniform vec3 g_vDiffuseWrapColor = vec3(1.0, 0.5, 0.3); // 1.0, 0.5, 0.3 -> srgbtolinear
 
 vec3 diffuseWrapped(vec3 vNormal, vec3 vLightVector)
 {
@@ -156,7 +156,7 @@ vec3 specularLighting(vec3 lightVector, vec3 normal, MaterialProperties_t mat)
 	float VoH = ClampToPositive(dot(lightVector, halfVector));
 
 #if defined(vr_complex_vfx) && (F_CLOTH_SHADING == 1)
-    return SpecularCloth(mat.Roughness, NoL, NoH, NoV, VoH, mat.SpecularColor);
+    return SpecularCloth(mat.Roughness.x, NoL, NoH, NoV, VoH, mat.SpecularColor);
 #else
 
 #if defined(ANISO_ROUGHNESS)

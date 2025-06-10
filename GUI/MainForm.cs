@@ -113,9 +113,14 @@ namespace GUI
             HardwareAcceleratedTextureDecoder.Decoder = new GLTextureDecoder();
 
 #if DEBUG
+            var shadersMenuItem = new ToolStripMenuItem("Validate shaders");
+            shadersMenuItem.Click += OnValidateShadersToolStripMenuItem_Click;
+            fileToolStripMenuItem.DropDownItems.Add(shadersMenuItem);
+
             if (args.Length > 0 && args[0] == "validate_shaders")
             {
                 GUI.Types.Renderer.ShaderLoader.ValidateShaders();
+                Environment.Exit(0);
                 return;
             }
 #endif
@@ -789,6 +794,10 @@ namespace GUI
             else if (Types.Viewers.Audio.IsAccepted(magic, vrfGuiContext.FileName))
             {
                 return new Types.Viewers.Audio().Create(vrfGuiContext, stream, isPreview);
+            }
+            else if (Types.Viewers.GridNavFile.IsAccepted(magic))
+            {
+                return new Types.Viewers.GridNavFile().Create(vrfGuiContext, stream);
             }
 
             return new Types.Viewers.ByteViewer().Create(vrfGuiContext, stream);

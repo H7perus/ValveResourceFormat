@@ -9,36 +9,31 @@ namespace GUI.Types.Renderer
 {
     partial class GPUMeshBufferCache
     {
-        private readonly Dictionary<ulong, GPUMeshBuffers> gpuBuffers = [];
+        private readonly Dictionary<string, GPUMeshBuffers> gpuBuffers = [];
         private readonly Dictionary<VAOKey, int> vertexArrayObjects = [];
 
-        private struct VAOKey
-        {
-            public GPUMeshBuffers VBIB;
-            public int Shader;
-            public int VertexIndex;
-            public int IndexIndex;
-        }
+        private record struct VAOKey(string MeshName, int Shader, int VertexIndex, int IndexIndex);
 
-        public GPUMeshBuffers CreateVertexIndexBuffers(ulong key, VBIB vbib)
+        public GPUMeshBuffers CreateVertexIndexBuffers(string meshName, VBIB vbib)
         {
-            if (!gpuBuffers.TryGetValue(key, out var gpuVbib))
+            if (!gpuBuffers.TryGetValue(meshName, out var gpuVbib))
             {
                 gpuVbib = new GPUMeshBuffers(vbib);
-                gpuBuffers.Add(key, gpuVbib);
+                gpuBuffers.Add(meshName, gpuVbib);
             }
 
             return gpuVbib;
         }
 
-        public int GetVertexArrayObject(ulong key, VertexDrawBuffer[] vertexBuffers, RenderMaterial material, int idxIndex)
+        public int GetVertexArrayObject(string meshName, VertexDrawBuffer[] vertexBuffers, RenderMaterial material, int idxIndex)
         {
             Debug.Assert(vertexBuffers != null && vertexBuffers.Length > 0);
 
-            var gpuVbib = gpuBuffers[key];
+            var gpuVbib = gpuBuffers[meshName];
+
             var vaoKey = new VAOKey
             {
-                VBIB = gpuVbib,
+                MeshName = meshName,
                 Shader = material.Shader.Program,
                 VertexIndex = vertexBuffers[0].Handle, // Probably good enough since every draw call will be creating new buffers
                 IndexIndex = idxIndex,
@@ -198,6 +193,10 @@ namespace GUI.Types.Renderer
 
                 case DXGI_FORMAT.R16G16B16A16_UNORM:
                     GL.VertexArrayAttribFormat(vao, attributeLocation, 4, VertexAttribType.UnsignedShort, true, offset);
+                    break;
+
+                case DXGI_FORMAT.R16G16B16A16_FLOAT:
+                    GL.VertexArrayAttribFormat(vao, attributeLocation, 4, VertexAttribType.HalfFloat, false, offset);
                     break;
 
                 case DXGI_FORMAT.R16G16_SNORM:

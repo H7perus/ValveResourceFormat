@@ -13,6 +13,7 @@ out vec3 vTangentOut;
 out vec3 vBitangentOut;
 out vec4 vColorBlendValues;
 
+uniform float g_flSkyBoxScale;
 uniform float g_flWaterPlaneOffset;
 
 #include "common/features.glsl"
@@ -22,6 +23,9 @@ uniform float g_flWaterPlaneOffset;
     out vec3 vLightmapUVScaled;
 
     #include "common/LightingConstants.glsl"
+#elif D_BAKED_LIGHTING_FROM_VERTEX_STREAM == 1
+    in vec4 vPerVertexLighting;
+    out vec3 vPerVertexLightingOut;
 #endif
 
 #include "common/ViewConstants.glsl"
@@ -29,18 +33,22 @@ uniform mat4 transform;
 
 void main()
 {
-    vec4 fragPosition = transform * vec4(vPOSITION + vec3(0, 0, g_flWaterPlaneOffset), 1.0);
-
-    gl_Position = g_matViewToProjection * fragPosition;
-    vFragPosition = fragPosition.xyz / fragPosition.w;
+    
 
     vec4 tangent;
     GetOptionallyCompressedNormalTangent(vNormalOut, tangent);
     vTangentOut = tangent.xyz;
     vBitangentOut = tangent.w * cross(vNormalOut, vTangentOut);
 
+    vec4 fragPosition = transform * vec4(vPOSITION + vNormalOut * g_flWaterPlaneOffset * mix(1.0, 1.0 / g_flSkyBoxScale, float(g_bIsSkybox)), 1.0);
+    gl_Position = g_matWorldToProjection * fragPosition;
+    vFragPosition = fragPosition.xyz / fragPosition.w;
+
     #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
         vLightmapUVScaled = vec3(vLightmapUV * g_vLightmapUvScale.xy, 0);
+    #elif (D_BAKED_LIGHTING_FROM_VERTEX_STREAM == 1)
+        vec3 Light = vPerVertexLighting.rgb * 6.0 * vPerVertexLighting.a;
+        vPerVertexLightingOut = pow2(Light);
     #endif
 
     vTexCoordOut = vTEXCOORD;

@@ -484,7 +484,7 @@ namespace Decompiler
                         Console.WriteLine($"Processing file {CurrentFile} out of {TotalFiles} files - {path}");
                     }
                 }
-                else
+                else if (IsInputFolder)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.Write($"[{CurrentFile}/{TotalFiles}] ");
@@ -1291,6 +1291,11 @@ namespace Decompiler
             if (contentFile.Data != null)
             {
                 DumpFile(path, contentFile.Data);
+            }
+
+            foreach (var additionalFile in contentFile.AdditionalFiles)
+            {
+                DumpContentFile(Path.Combine(Path.GetDirectoryName(path)!, Path.GetFileName(additionalFile.FileName)), additionalFile);
             }
 
             if (dumpSubFiles)

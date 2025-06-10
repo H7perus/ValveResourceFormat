@@ -55,9 +55,8 @@ namespace GUI.Types.Renderer
             OcclusionQueryAABBProxy,
         }
         private readonly Shader[] depthOnlyShaders = new Shader[Enum.GetValues<DepthOnlyProgram>().Length];
-        public Framebuffer FramebufferCopy { get; private set; }
         public Framebuffer ShadowDepthBuffer { get; private set; }
-        public Framebuffer SsrFramebuffer { get; private set; }
+        public Framebuffer FramebufferCopy { get; private set; }
 
         protected GLSceneViewer(VrfGuiContext guiContext, Frustum cullFrustum) : base(guiContext)
         {
@@ -287,19 +286,9 @@ namespace GUI.Types.Renderer
             Textures.Add(new(ReservedTextureSlots.ShadowDepthBufferDepth, "g_tShadowDepthBufferDepth", ShadowDepthBuffer.Depth));
 
             GL.TextureParameter(ShadowDepthBuffer.Depth.Handle, TextureParameterName.TextureCompareMode, (int)TextureCompareMode.CompareRToTexture);
+            ShadowDepthBuffer.Depth.SetParameter(TextureParameterName.TextureCompareMode, (int)TextureCompareMode.CompareRToTexture);
             ShadowDepthBuffer.Depth.SetFiltering(TextureMinFilter.Linear, TextureMagFilter.Linear);
             ShadowDepthBuffer.Depth.SetWrapMode(TextureWrapMode.ClampToBorder);
-
-            FramebufferCopy = Framebuffer.Prepare(4, 4, 0,
-                new Framebuffer.AttachmentFormat(PixelInternalFormat.R11fG11fB10f, PixelFormat.Rgb, PixelType.HalfFloat),
-                new Framebuffer.DepthAttachmentFormat(PixelInternalFormat.DepthComponent32f, PixelType.Float)
-            );
-
-            FramebufferCopy.Initialize();
-            FramebufferCopy.ClearColor = new(0, 255, 0, 255);
-
-            Textures.Add(new(ReservedTextureSlots.FramebufferColorTexture, "g_tSceneColor", FramebufferCopy.Color));
-            Textures.Add(new(ReservedTextureSlots.FramebufferDepthTexture, "g_tSceneDepth", FramebufferCopy.Depth));
 
             depthOnlyShaders[(int)DepthOnlyProgram.Static] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only");
             //depthOnlyShaders[(int)DepthOnlyProgram.StaticAlphaTest] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only", new Dictionary<string, byte> { { "F_ALPHA_TEST", 1 } });
@@ -308,20 +297,16 @@ namespace GUI.Types.Renderer
 
             depthOnlyShaders[(int)DepthOnlyProgram.OcclusionQueryAABBProxy] = GuiContext.ShaderLoader.LoadShader("vrf.depth_only_aabb");
 
-            if (this is GLWorldViewer)
-            {
-                SsrFramebuffer = Framebuffer.Prepare(1024, 1024, 0, MainFramebuffer.ColorFormat, MainFramebuffer.DepthFormat);
-                SsrFramebuffer.Initialize();
-                SsrFramebuffer.ClearColor = new(0, 255, 0, 255);
+            FramebufferCopy = Framebuffer.Prepare(4, 4, 0,
+                new Framebuffer.AttachmentFormat(PixelInternalFormat.R11fG11fB10f, PixelFormat.Rgb, PixelType.HalfFloat),
+                new Framebuffer.DepthAttachmentFormat(PixelInternalFormat.DepthComponent32f, PixelType.Float)
+            );
 
-                GL.TextureParameter(SsrFramebuffer.Color.Handle, TextureParameterName.TextureBaseLevel, 0);
-                GL.TextureParameter(SsrFramebuffer.Color.Handle, TextureParameterName.TextureMaxLevel, 0);
-                GL.TextureParameter(SsrFramebuffer.Depth.Handle, TextureParameterName.TextureBaseLevel, 0);
-                GL.TextureParameter(SsrFramebuffer.Depth.Handle, TextureParameterName.TextureMaxLevel, 0);
+            FramebufferCopy.Initialize();
+            FramebufferCopy.ClearColor = new(0, 0, 0, 255);
 
-                Textures.Add(new(ReservedTextureSlots.SsrColor, "g_tSsrColor", SsrFramebuffer.Color));
-                Textures.Add(new(ReservedTextureSlots.SsrDepth, "g_tSsrDepth", SsrFramebuffer.Depth));
-            }
+            Textures.Add(new(ReservedTextureSlots.SceneColor, "g_tSceneColor", FramebufferCopy.Color));
+            Textures.Add(new(ReservedTextureSlots.SceneDepth, "g_tSceneDepth", FramebufferCopy.Depth));
 
             MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
             CreateBuffers();
@@ -440,7 +425,7 @@ namespace GUI.Types.Renderer
             renderContext.Framebuffer = ShadowDepthBuffer;
             renderContext.Scene = Scene;
 
-            viewBuffer.Data.ViewToProjection = Scene.LightingInfo.SunViewProjection;
+            viewBuffer.Data.WorldToProjection = Scene.LightingInfo.SunViewProjection;
             var worldToShadow = Scene.LightingInfo.SunViewProjection;
             viewBuffer.Data.WorldToShadow = worldToShadow;
             viewBuffer.Data.SunLightShadowBias = Scene.LightingInfo.SunLightShadowBias;
@@ -483,11 +468,15 @@ namespace GUI.Types.Renderer
 
                 renderContext.ReplacementShader?.SetUniform1("isSkybox", 1u);
                 var render3DSkybox = ShowSkybox && SkyboxScene != null;
+                var (copyColor, copyDepth) = (Scene.WantsSceneColor, Scene.WantsSceneDepth);
 
                 if (render3DSkybox)
                 {
                     SkyboxScene.SetSceneBuffers();
                     renderContext.Scene = SkyboxScene;
+
+                    copyColor |= SkyboxScene.WantsSceneColor;
+                    copyDepth |= SkyboxScene.WantsSceneDepth;
 
                     using var _ = new GLDebugGroup("3D Sky Scene");
                     SkyboxScene.RenderOpaqueLayer(renderContext);
@@ -498,9 +487,10 @@ namespace GUI.Types.Renderer
                     Skybox2D.Render();
                 }
 
-                // grab framebuffer copy
-                if(this is GLWorldViewer)
-                    GrabFramebufferCopy(renderContext.Framebuffer);
+                if (renderContext.Framebuffer == MainFramebuffer)
+                {
+                    GrabFramebufferCopy(renderContext.Framebuffer, copyColor, copyDepth);
+                }
 
                 if (render3DSkybox)
                 {
@@ -516,21 +506,6 @@ namespace GUI.Types.Renderer
 
                 renderContext.ReplacementShader?.SetUniform1("isSkybox", 0u);
                 GL.DepthRange(0.05, 1);
-            }
-
-            {
-                ////float[] Color = [1.0f, 0.0f, 1.0f, 1.0f];
-                //SsrFramebuffer.Resize(renderContext.Framebuffer.Width, renderContext.Framebuffer.Height);
-                ////GL.ClearBuffer(ClearBuffer.Color, SsrFramebuffer.FboHandle, Color);
-
-                //// copy current color to ssr framebuffer
-                //GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
-                //    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-                //    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
-
-                //GL.BlitNamedFramebuffer(renderContext.Framebuffer.FboHandle, SsrFramebuffer.FboHandle,
-                //    0, 0, renderContext.Framebuffer.Width, renderContext.Framebuffer.Height,
-                //    0, 0, SsrFramebuffer.Width, SsrFramebuffer.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
             }
 
             using (new GLDebugGroup("Main Scene Translucent Render"))
@@ -557,8 +532,13 @@ namespace GUI.Types.Renderer
             scene.RenderRefractionEffects(renderContext);
         }
 
-        private void GrabFramebufferCopy(Framebuffer framebuffer)
+        private void GrabFramebufferCopy(Framebuffer framebuffer, bool copyColor, bool copyDepth)
         {
+            if (!copyColor && !copyDepth)
+            {
+                return;
+            }
+
             if (FramebufferCopy.Width != framebuffer.Width ||
                 FramebufferCopy.Height != framebuffer.Height)
             {
@@ -567,15 +547,19 @@ namespace GUI.Types.Renderer
 
             FramebufferCopy.BindAndClear(FramebufferTarget.DrawFramebuffer);
 
-            // copy current color to framebuffer copy
-            GL.BlitNamedFramebuffer(framebuffer.FboHandle, FramebufferCopy.FboHandle,
-                0, 0, framebuffer.Width, framebuffer.Height,
-                0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Linear);
+            if (copyColor)
+            {
+                GL.BlitNamedFramebuffer(framebuffer.FboHandle, FramebufferCopy.FboHandle,
+                    0, 0, framebuffer.Width, framebuffer.Height,
+                    0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+            }
 
-            // copy current depth to framebuffer copy
-            GL.BlitNamedFramebuffer(framebuffer.FboHandle, FramebufferCopy.FboHandle,
-                0, 0, framebuffer.Width, framebuffer.Height,
-                0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+            if (copyDepth)
+            {
+                GL.BlitNamedFramebuffer(framebuffer.FboHandle, FramebufferCopy.FboHandle,
+                    0, 0, framebuffer.Width, framebuffer.Height,
+                    0, 0, FramebufferCopy.Width, FramebufferCopy.Height, ClearBufferMask.DepthBufferBit, BlitFramebufferFilter.Nearest);
+            }
 
             framebuffer.Bind(FramebufferTarget.Framebuffer);
         }

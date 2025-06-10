@@ -372,6 +372,11 @@ namespace GUI.Types.Viewers
 
             foreach (var source in combo.ShaderFiles)
             {
+                if (source.Size == 0)
+                {
+                    continue;
+                }
+
                 var config = combo.ParentProgramData.GetDBlockConfig(sourceIdToRenderStateInfo[source.ShaderFileId].DynamicComboId);
 
                 dfNames.Clear();
@@ -604,6 +609,25 @@ namespace GUI.Types.Viewers
                     "VertexPaintTintColor",
                     "PerVertexLighting", // todo: confirm this
                 ];
+
+                var shouldPrioritizeVertexColors = program.ShaderName == "csgo_water_fancy";
+
+                if (shouldPrioritizeVertexColors)
+                {
+                    for (var i = 0; i < 3; i++)
+                    {
+                        var colorIndex = priority.Length - 3 + i;
+                        var color = priority[colorIndex];
+
+                        // make place for the new item
+                        for (var j = colorIndex; j > i; j--)
+                        {
+                            priority[j] = priority[j - 1];
+                        }
+
+                        priority[i] = color;
+                    }
+                }
 
                 foreach (var semantic in priority)
                 {

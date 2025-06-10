@@ -1,9 +1,5 @@
 #version 460
 
-#if !(defined(csgo_environment_vfx) || defined(csgo_environment_blend_vfx))
-    #error "This shader is not supported!"
-#endif
-
 #include "common/utils.glsl"
 #include "common/animation.glsl"
 #include "common/features.glsl"
@@ -43,7 +39,7 @@ out vec4 vTexCoord2;
 out vec4 vTintColor_ModelAmount;
 centroid out vec4 vVertexColor_Alpha;
 
-uniform vec4 g_vColorTint = vec4(1.0);
+uniform vec3 g_vColorTint = vec3(1.0);
 uniform float g_flModelTintAmount = 1.0;
 
 #include "common/ViewConstants.glsl"
@@ -53,33 +49,65 @@ uniform vec4 vTint;
 
 // Material 1
 uniform float g_flTexCoordRotation1 = 0.0;
-uniform vec4 g_vTexCoordCenter1 = vec4(0.5);
-uniform vec4 g_vTexCoordOffset1 = vec4(0.0);
-uniform vec4 g_vTexCoordScale1 = vec4(1.0);
+uniform vec2 g_vTexCoordCenter1 = vec2(0.5);
+uniform vec2 g_vTexCoordOffset1 = vec2(0.0);
+uniform vec2 g_vTexCoordScale1 = vec2(1.0);
 
 // Material 2
 #if defined(csgo_environment_blend_vfx)
     uniform float g_flTexCoordRotation2 = 0.0;
-    uniform vec4 g_vTexCoordCenter2 = vec4(0.5);
-    uniform vec4 g_vTexCoordOffset2 = vec4(0.0);
-    uniform vec4 g_vTexCoordScale2 = vec4(1.0);
+    uniform vec2 g_vTexCoordCenter2 = vec2(0.5);
+    uniform vec2 g_vTexCoordOffset2 = vec2(0.0);
+    uniform vec2 g_vTexCoordScale2 = vec2(1.0);
 
     uniform float g_flBlendSoftness2 = 0.01;
 
+    uniform int F_BLEND_BY_FACING_DIRECTION_2; // 0="None", 1="Geometric", 2="Normal Map"
+
+    uniform vec3 g_vFacingDirection2 = vec3(0.0, 0.0, 1.0);
+    #define g_vFacingDirectionNormalizedSafe2 (normalize(vec3(g_vFacingDirection2.x,g_vFacingDirection2.y,g_vFacingDirection2.z+((g_vFacingDirection2.z==0) ? .0001 : 0))))
+
+    uniform float g_flFacingDirectionMaskSpread2 = 0.5;
+    uniform float g_vFacingDirectionMaskFalloff2 = 0.1;
+    #define g_vFacingDirectionMinMax2 (vec2(max(0, (1-g_flFacingDirectionMaskSpread2)-g_vFacingDirectionMaskFalloff2), min(1,((1-g_flFacingDirectionMaskSpread2)+.001)+g_vFacingDirectionMaskFalloff2)))
+
+
+    #if (F_ENABLE_LAYER_3 == 1)
+        uniform float g_flTexCoordRotation3 = 0.0;
+        uniform vec2 g_vTexCoordCenter3 = vec2(0.5);
+        uniform vec2 g_vTexCoordOffset3 = vec2(0.0);
+        uniform vec2 g_vTexCoordScale3 = vec2(1.0);
+
+        uniform float g_flBlendSoftness3 = 0.01;
+
+        uniform int F_BLEND_BY_FACING_DIRECTION_3; // 0="None", 1="Geometric", 2="Normal Map"
+
+        uniform vec3 g_vFacingDirection3 = vec3(0.0, 0.0, 1.0);
+        #define g_vFacingDirectionNormalizedSafe3 (normalize(vec3(g_vFacingDirection3.x,g_vFacingDirection3.y,g_vFacingDirection3.z+((g_vFacingDirection3.z==0) ? .0001 : 0))))
+
+        uniform float g_flFacingDirectionMaskSpread3 = 0.5;
+        uniform float g_vFacingDirectionMaskFalloff3 = 0.1;
+        #define g_vFacingDirectionMinMax3 (vec2(max(0, (1-g_flFacingDirectionMaskSpread3)-g_vFacingDirectionMaskFalloff3), min(1,((1-g_flFacingDirectionMaskSpread3)+.001)+g_vFacingDirectionMaskFalloff3)))
+
+        out vec4 vTexCoord3;
+    #endif
+
+
+
     #if (F_SHARED_COLOR_OVERLAY == 1)
         uniform float g_flOverlayTexCoordRotation = 0.0;
-        uniform vec4 g_vOverlayTexCoordCenter = vec4(0.5);
-        uniform vec4 g_vOverlayTexCoordOffset = vec4(0.0);
-        uniform vec4 g_vOverlayTexCoordScale = vec4(1.0);
+        uniform vec2 g_vOverlayTexCoordCenter = vec2(0.5);
+        uniform vec2 g_vOverlayTexCoordOffset = vec2(0.0);
+        uniform vec2 g_vOverlayTexCoordScale = vec2(1.0);
     #endif
 
 #endif
 
 #if (F_DETAIL_NORMAL == 1)
     uniform float g_flDetailTexCoordRotation1 = 0.0;
-    uniform vec4 g_vDetailTexCoordCenter1 = vec4(0.5);
-    uniform vec4 g_vDetailTexCoordOffset1 = vec4(0.0);
-    uniform vec4 g_vDetailTexCoordScale1 = vec4(1.0);
+    uniform vec2 g_vDetailTexCoordCenter1 = vec2(0.5);
+    uniform vec2 g_vDetailTexCoordOffset1 = vec2(0.0);
+    uniform vec2 g_vDetailTexCoordScale1 = vec2(1.0);
 
     out vec2 vDetailTexCoords;
 #endif
@@ -89,7 +117,7 @@ void main()
 {
     mat4 skinTransform = transform * getSkinMatrix();
     vec4 fragPosition = skinTransform * vec4(vPOSITION, 1.0);
-    gl_Position = g_matViewToProjection * fragPosition;
+    gl_Position = g_matWorldToProjection * fragPosition;
     vFragPosition = fragPosition.xyz / fragPosition.w;
 
     vec3 normal;
@@ -140,6 +168,7 @@ void main()
     #endif
 
     #if defined(csgo_environment_blend_vfx)
+
         vTexCoord2.xy = RotateVector2D(vTEXCOORD.xy,
             g_flTexCoordRotation2,
             g_vTexCoordScale2.xy,
@@ -147,8 +176,48 @@ void main()
             g_vTexCoordCenter2.xy
         );
 
+        #if (F_ENABLE_LAYER_3 == 1)
+            vTexCoord3.xy = RotateVector2D(vTEXCOORD.xy,
+                g_flTexCoordRotation3,
+                g_vTexCoordScale3.xy,
+                g_vTexCoordOffset3.xy,
+                g_vTexCoordCenter3.xy
+            );
+
+            vTexCoord3.zw = vTEXCOORD.xy;
+        #endif
+
         vColorBlendValues = vTEXCOORD4;
-        vColorBlendValues.a = clamp(vColorBlendValues.a + g_flBlendSoftness2, 0.001, 1.0);
+
+        if (F_BLEND_BY_FACING_DIRECTION_2 > 0)
+        {
+            float flDirectionMultiplier = fma(dot(g_vFacingDirectionNormalizedSafe2.xyz, vNormalOut.xyz), 0.5, 0.5);
+            flDirectionMultiplier = smoothstep(g_vFacingDirectionMinMax2.x, g_vFacingDirectionMinMax2.y, flDirectionMultiplier);
+
+            vColorBlendValues.x *= flDirectionMultiplier;
+        }
+
+        float flSoftness = g_flBlendSoftness2;
+
+        #if (F_ENABLE_LAYER_3 == 1)
+            if (vColorBlendValues.x < 0.001)
+            {
+                flSoftness = g_flBlendSoftness3;
+            }
+
+            flSoftness = mix(flSoftness, g_flBlendSoftness3, vColorBlendValues.y);
+
+            if (F_BLEND_BY_FACING_DIRECTION_3 > 0)
+            {
+                float flDirectionMultiplier = fma(dot(g_vFacingDirectionNormalizedSafe3.xyz, vNormalOut.xyz), 0.5, 0.5);
+                flDirectionMultiplier = smoothstep(g_vFacingDirectionMinMax3.x, g_vFacingDirectionMinMax3.y, flDirectionMultiplier);
+
+                vColorBlendValues.y *= flDirectionMultiplier;
+                // bVertexBlendByFacingDirection3 ???
+            }
+        #endif
+
+        vColorBlendValues.a = clamp(vColorBlendValues.a + flSoftness, 0.001, 1.0);
 
         #if (F_SHARED_COLOR_OVERLAY == 1)
             vTexCoord.zw = RotateVector2D((F_SECONDARY_UV == 1) ? vTexCoord2.zw : vTEXCOORD.xy,
