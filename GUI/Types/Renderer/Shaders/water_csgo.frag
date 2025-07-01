@@ -5,15 +5,17 @@
 #include "common/ViewConstants.glsl"
 #include "common/LightingConstants.glsl"
 
-#define renderMode_Cubemaps 1
+
+
+#define renderMode_Cubemaps 0
 #define SCENE_CUBEMAP_TYPE 2
+
 in vec3 vFragPosition;
 in vec2 vTexCoordOut;
 in vec3 vNormalOut;
 in vec3 vTangentOut;
 in vec3 vBitangentOut;
 in vec4 vColorBlendValues;
-//#define F_RENDER_BACKFACES 0;
 
 
 #include "common/lighting_common.glsl"
@@ -130,17 +132,10 @@ uniform sampler2D g_tDebrisNormal;
 uniform samplerCube g_tLowEndCubeMap;
 
 uniform sampler2D g_tWaterEffectsMap;
-//uniform sampler Filter_20_AddressU_3_AddressV_3_AddressW_3_BorderColor_0;
-//uniform samplerShadow AddressU_2_AddressV_2_Filter_149_ComparisonFunc_3;
-//uniform sampler2D g_tShadowDepthBufferDepth;
 uniform sampler2D g_tParticleShadowBuffer;
-//uniform sampler Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2;
 uniform sampler3D g_tLightCookieTexture;
-//uniform sampler Filter_21_AddressU_0_AddressV_0_AllowGlobalMipBiasOverride_0;
-//uniform samplerCube g_tFogCubeTexture;
 uniform sampler2D g_tMoitFinal;
 uniform sampler2D g_tWavesNormalHeight;
-//uniform sampler DefaultSamplerState_0_1;
 
 
 #if (F_REFLECTION_TYPE == 0)
@@ -161,7 +156,22 @@ vec3 sunDir = GetEnvLightDirection(0);
 
 void main()
 {
+    //vec3 vertexNormal = SwitchCentroidNormal(vNormalOut, vCentroidNormalOut);
 
+    // Get material
+    MaterialProperties_t material;
+    InitProperties(material, vec3(0, 0, 1)); //finalPerturbedSurfaceNormal
+
+    material.PositionWS = vec3(0);
+
+    material.SpecularColor = vec3(1.0);
+    if(g_iRenderMode == renderMode_Cubemaps)
+    {
+        // No bumpmaps, full reflectivity
+        vec3 viewmodeEnvMap = GetEnvironment(material).rgb;
+        outputColor.rgb = viewmodeEnvMap;
+        return;
+    }
 
     vec4 fragCoord = gl_FragCoord;
     vec4 fragCoordWInverse = fragCoord;
@@ -306,7 +316,6 @@ void main()
 
         vec3 cameraDir = -normalize(inverse(mat3(g_matWorldToView))[2]);
 
-
         float perspectiveCorrection = dot(cameraDir, viewDir);
 
         sceneViewDistance = (1.f / (invProjTerm * perspectiveCorrection));
@@ -322,7 +331,6 @@ void main()
 
         //outputColor.rgb = vec3(worldPos.z - sceneHitPositionWs.z) - 10;// - 0.2;
         //return;
-
     }
 
     float waterSurfaceViewZ = -(g_matWorldToView * vec4(worldPos, 1.0) ).z;
@@ -1278,18 +1286,20 @@ void main()
     returnColor = mix(returnColor, (baseFogColor * 4.0) * bakedIrradiance, vec3((waterFogAlpha * clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0)) * (1.0 - g_flWaterFogShadowStrength)));
     outputColor.rgb = returnColor;
 
-    MaterialProperties_t material;
-    InitProperties(material, finalSurfaceNormal);
-    material.Roughness;
-    material.AmbientNormal = finalSurfaceNormal;
-    material.SpecularColor = vec3(1.0);
+    
+    //outputColor.rgb = vec3(g_vCameraPositionWs.yyy) + 1700;
+    //return;
+    
+
+    vec3 cubemapReflection = GetEnvironment(material) * GetLuma(ambientTerm) * g_flEnvironmentMapBrightness; //  * g_flLowEndCubeMapIntensity
+
 
     bool has_hit = false;
-
-    vec3 cubemapReflection = GetEnvironment(material) * GetLuma(ambientTerm) * g_flLowEndCubeMapIntensity * g_flEnvironmentMapBrightness;
-
     //TODO: get the correct parameters, this is just a hack for now
-    cubemapReflection = texture(g_tLowEndCubeMap, reflect(viewDir, finalSurfaceNormal)).rgb;
+    //cubemapReflection = texture(g_tLowEndCubeMap, reflect(viewDir, finalSurfaceNormal)).rgb * g_flLowEndCubeMapIntensity * GetLuma(ambientTerm);
+
+    //cubemapReflection
+
     vec3 finalReflectionColor = cubemapReflection;
 
 
