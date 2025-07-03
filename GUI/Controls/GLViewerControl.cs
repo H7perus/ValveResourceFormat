@@ -5,12 +5,11 @@ using System.Linq;
 using System.Windows.Forms;
 using GUI.Types.Renderer;
 using GUI.Utils;
-using OpenTK;
-using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Windowing.Common;
+using OpenTK.Windowing.Desktop;
 using SkiaSharp;
 using static GUI.Types.Renderer.PickingTexture;
-using WinFormsMouseEventArgs = System.Windows.Forms.MouseEventArgs;
 
 #nullable disable
 
@@ -20,6 +19,14 @@ namespace GUI.Controls
     {
         public const int OpenGlVersionMajor = 4;
         public const int OpenGlVersionMinor = 6;
+
+        public static Version OpenGlVersion = new(OpenGlVersionMajor, OpenGlVersionMinor);
+
+#if DEBUG
+        public static ContextFlags OpenGlFlags => ContextFlags.ForwardCompatible | ContextFlags.Debug;
+#else
+        public static ContextFlags OpenGlFlags => ContextFlags.ForwardCompatible;
+#endif
 
         private enum ParallelShaderCompileType : byte
         {
@@ -71,14 +78,20 @@ namespace GUI.Controls
 
             Camera = new Camera();
 
-            // Initialize GL control
-            var flags = GraphicsContextFlags.ForwardCompatible;
+            var settings = new NativeWindowSettings()
+            {
+                APIVersion = OpenGlVersion,
+                Flags = OpenGlFlags,
+                RedBits = 8,
+                GreenBits = 8,
+                BlueBits = 8,
+                AlphaBits = 0,
+                DepthBits = 0,
+                StencilBits = 0,
+                AutoLoadBindings = true,
+            };
 
-#if DEBUG
-            flags |= GraphicsContextFlags.Debug;
-#endif
-
-            GLControl = new GLControl(new GraphicsMode(32, 1, 0, 0, 0, 2), OpenGlVersionMajor, OpenGlVersionMinor, flags)
+            GLControl = new GLControl(settings)
             {
                 Dock = DockStyle.Fill
             };
@@ -248,12 +261,14 @@ namespace GUI.Controls
             MouseOverRenderArea = true;
         }
 
-        protected virtual void OnMouseDown(object sender, WinFormsMouseEventArgs e)
+        protected virtual void OnMouseDown(object sender, MouseEventArgs e)
         {
             if (e.Button != MouseButtons.Left && e.Button != MouseButtons.Right)
             {
                 return;
             }
+
+            GLControl.Focus();
 
             InitialMousePosition = new Point(e.X, e.Y);
             MouseDelta = Point.Empty;
@@ -283,7 +298,7 @@ namespace GUI.Controls
             }
         }
 
-        protected virtual void OnMouseUp(object sender, WinFormsMouseEventArgs e)
+        protected virtual void OnMouseUp(object sender, MouseEventArgs e)
         {
             if (e.Button == MouseButtons.Left)
             {
@@ -306,7 +321,7 @@ namespace GUI.Controls
             }
         }
 
-        protected virtual void OnMouseMove(object sender, WinFormsMouseEventArgs e)
+        protected virtual void OnMouseMove(object sender, MouseEventArgs e)
         {
             if ((CurrentlyPressedKeys & TrackedKeys.MouseLeftOrRight) == 0)
             {
@@ -362,7 +377,7 @@ namespace GUI.Controls
             MousePreviousPosition = position;
         }
 
-        protected virtual void OnMouseWheel(object sender, WinFormsMouseEventArgs e)
+        protected virtual void OnMouseWheel(object sender, MouseEventArgs e)
         {
             var modifier = Camera.ModifySpeed(e.Delta > 0);
 
@@ -404,7 +419,7 @@ namespace GUI.Controls
         {
             GLControl.Load -= OnLoad;
             GLControl.MakeCurrent();
-            GLControl.VSync = Settings.Config.Vsync != 0;
+            GLControl.Context.SwapInterval = Settings.Config.Vsync;
 
             GL.Enable(EnableCap.DebugOutput);
             GL.DebugMessageCallback(OpenGLDebugMessageDelegate, IntPtr.Zero);
@@ -437,7 +452,7 @@ namespace GUI.Controls
             // Application semantics / default state
             GL.Enable(EnableCap.TextureCubeMapSeamless);
             GL.Enable(EnableCap.CullFace);
-            GL.CullFace(CullFaceMode.Back);
+            GL.CullFace(TriangleFace.Back);
             GL.Enable(EnableCap.DepthTest);
 
             // reverse z
@@ -487,15 +502,13 @@ namespace GUI.Controls
         private void OnPaint(object sender, EventArgs e)
         {
             Application.DoEvents();
-            Draw();
-        }
 
-        private void Draw()
-        {
-            if (!GLControl.Visible || GLControl.IsDisposed || !GLControl.Context.IsCurrent)
+            if (IsDisposed || GLControl.IsDisposed || !GLControl.Visible)
             {
                 return;
             }
+
+            GLControl.MakeCurrent();
 
             if (MainFramebuffer.InitialStatus != FramebufferErrorCode.FramebufferComplete)
             {
@@ -634,6 +647,8 @@ namespace GUI.Controls
                 return;
             }
 
+            GLControl.MakeCurrent();
+
             GLDefaultFramebuffer.Resize(w, h);
 
             if (MainFramebuffer != GLDefaultFramebuffer)
@@ -674,12 +689,11 @@ namespace GUI.Controls
 
         private void OnGotFocus(object sender, EventArgs e)
         {
-            if (!MainFramebuffer.HasValidDimensions())
+            if (MainFramebuffer is null || !MainFramebuffer.HasValidDimensions())
             {
                 return;
             }
 
-            GLControl.MakeCurrent();
             HandleResize();
             GLControl.Invalidate();
         }

@@ -504,6 +504,7 @@ namespace GUI.Types.Renderer
                 decodeFlagsListBox?.Dispose();
                 decodeFlagsListBox = null;
 
+
                 texture?.Dispose();
                 SaveAsFbo?.Dispose();
             }
@@ -511,10 +512,21 @@ namespace GUI.Types.Renderer
 
         private void OnSaveButtonClick(object sender, EventArgs e)
         {
+            Debug.Assert(Resource != null);
+
+            var filter = "PNG Image|*.png|JPG Image|*.jpg";
+            var alternativeImageFormatIndex = 2;
+
+            if (Svg != null)
+            {
+                filter = $"SVG (Scalable Vector Graphics)|*.svg|{filter}";
+                alternativeImageFormatIndex++;
+            }
+
             using var saveFileDialog = new SaveFileDialog
             {
                 InitialDirectory = Settings.Config.SaveDirectory,
-                Filter = "PNG Image|*.png|JPG Image|*.jpg", // Bitmap Image|*.bmp doesn't work in skia
+                Filter = filter,
                 Title = "Save an Image File",
                 FileName = Path.GetFileNameWithoutExtension(Resource.FileName),
                 AddToRecent = true,
@@ -527,24 +539,28 @@ namespace GUI.Types.Renderer
 
             Settings.Config.SaveDirectory = Path.GetDirectoryName(saveFileDialog.FileName);
 
+            using var fs = saveFileDialog.OpenFile();
+
+            if (Svg != null && saveFileDialog.FilterIndex == 1)
+            {
+                fs.Write(((Panorama)Resource.DataBlock).Data);
+                return;
+            }
+
             // TODO: nonpow2 sizes?
             using var bitmap = ReadPixelsToBitmap();
             var format = SKEncodedImageFormat.Png;
 
-            switch (saveFileDialog.FilterIndex)
+            switch (saveFileDialog.FilterIndex - alternativeImageFormatIndex)
             {
-                case 2:
+                case 0:
                     format = SKEncodedImageFormat.Jpeg;
-                    break;
-                case 3:
-                    format = SKEncodedImageFormat.Bmp;
                     break;
             }
 
             var test = bitmap.GetPixelSpan();
 
             using var pixmap = bitmap.PeekPixels();
-            using var fs = saveFileDialog.OpenFile();
             var t = pixmap.Encode(fs, format, 100);
         }
 
@@ -676,6 +692,8 @@ namespace GUI.Types.Renderer
 
         protected override void OnMouseMove(object sender, MouseEventArgs e)
         {
+            GLControl.Focus();
+
             if (ClickPosition == null)
             {
                 return;
@@ -960,7 +978,7 @@ namespace GUI.Types.Renderer
                 MainFramebuffer = GLDefaultFramebuffer;
             }
 
-            MainFramebuffer.ClearColor = OpenTK.Graphics.Color4.White;
+            MainFramebuffer.ClearColor = OpenTK.Mathematics.Color4.White;
             MainFramebuffer.ClearMask = ClearBufferMask.ColorBufferBit;
 
             GLLoad -= OnLoad;

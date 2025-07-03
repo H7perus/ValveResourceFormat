@@ -1,26 +1,24 @@
-using System.Globalization;
 using System.Windows.Forms;
-using GUI.Types.Viewers;
 using GUI.Utils;
-using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Forms
 {
     partial class EntityInfoForm : Form
     {
+        public EntityInfoControl EntityInfoControl;
+
         public EntityInfoForm(AdvancedGuiFileLoader guiFileLoader)
         {
-            InitializeComponent();
+            Width = 800;
+            Height = 450;
+            Text = "EntityInfoForm";
+
+            EntityInfoControl = new(guiFileLoader);
+
+            EntityInfoControl.Dock = DockStyle.Fill;
+            Controls.Add(EntityInfoControl);
 
             Icon = Program.MainForm.Icon;
-
-            Resource.AddDataGridExternalRefAction(guiFileLoader, dataGridProperties, ColumnValue.Name, (referenceFound) =>
-            {
-                if (referenceFound)
-                {
-                    Close();
-                }
-            });
         }
 
         protected override bool ProcessDialogKey(Keys keyData)
@@ -34,59 +32,27 @@ namespace GUI.Forms
             return base.ProcessDialogKey(keyData);
         }
 
-        public void ShowOutputsTabIfAnyData()
+        private void InitializeComponent()
         {
-            if (dataGridOutputs.RowCount > 0)
+            SuspendLayout();
+            // 
+            // EntityInfoForm
+            // 
+            ClientSize = new System.Drawing.Size(284, 261);
+            Font = new System.Drawing.Font("Segoe UI", 10F);
+            Name = "EntityInfoForm";
+            ResumeLayout(false);
+
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (EntityInfoControl != null))
             {
-                if (tabPageOutputs.Parent == null)
-                {
-                    tabControl.TabPages.Add(tabPageOutputs);
-                }
+                EntityInfoControl.Dispose();
             }
-            else
-            {
-                if (tabPageOutputs.Parent != null)
-                {
-                    tabControl.TabPages.Remove(tabPageOutputs);
-                }
-            }
+            base.Dispose(disposing);
         }
 
-        public void Clear()
-        {
-            dataGridProperties.Rows.Clear();
-            dataGridOutputs.Rows.Clear();
-        }
-
-        public void AddProperty(string name, string value)
-        {
-            dataGridProperties.Rows.Add([name, value]);
-        }
-
-        public void AddConnection(KVObject connectionData)
-        {
-            var outputName = connectionData.GetStringProperty("m_outputName");
-            var targetName = connectionData.GetStringProperty("m_targetName");
-            var inputName = connectionData.GetStringProperty("m_inputName");
-            var parameter = connectionData.GetStringProperty("m_overrideParam");
-            var delay = connectionData.GetFloatProperty("m_flDelay");
-            var timesToFire = connectionData.GetInt32Property("m_nTimesToFire");
-
-            var stimesToFire = timesToFire switch
-            {
-                1 => "Only Once",
-                >= 2 => $"Only {timesToFire} Times",
-                _ => "Infinite",
-            };
-
-            dataGridOutputs.Rows.Add([
-                outputName,
-                targetName,
-                inputName,
-                parameter,
-                delay.ToString(NumberFormatInfo.InvariantInfo),
-                stimesToFire
-            ]);
-        }
     }
 }

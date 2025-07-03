@@ -5,7 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Windows.Forms;
 using GUI.Controls;
-using GUI.Types.Renderer.UniformBuffers;
+using GUI.Types.Renderer.Buffers;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat;
@@ -117,11 +117,11 @@ namespace GUI.Types.Renderer
 
             if (disposing)
             {
+                GLPaint -= OnPaint;
+
                 viewBuffer?.Dispose();
                 Scene?.Dispose();
                 SkyboxScene?.Dispose();
-
-                GLPaint -= OnPaint;
 
                 if (renderModeComboBox != null)
                 {
@@ -152,6 +152,8 @@ namespace GUI.Types.Renderer
         {
             camera.SetViewConstants(viewBuffer.Data);
             scene.SetFogConstants(viewBuffer.Data);
+
+            viewBuffer.BindBufferBase();
             viewBuffer.Update();
 
             postProcessRenderer.State = scene.PostProcessInfo.CurrentState;
@@ -443,7 +445,7 @@ namespace GUI.Types.Renderer
             // TODO+: replace wireframe shaders with solid color
             if (IsWireframe)
             {
-                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
+                GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Line);
             }
 
             GL.DepthRange(0.05, 1);
@@ -515,7 +517,7 @@ namespace GUI.Types.Renderer
 
             if (IsWireframe)
             {
-                GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Fill);
+                GL.PolygonMode(TriangleFace.FrontAndBack, PolygonMode.Fill);
             }
         }
 

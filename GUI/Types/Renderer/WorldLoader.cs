@@ -20,7 +20,8 @@ namespace GUI.Types.Renderer
         private readonly World world;
         private readonly VrfGuiContext guiContext;
 
-        public List<EntityLump.Entity> Entities { get; } = [];
+        public List<Entity> Entities { get; } = [];
+        public WorldNode MainWorldNode { get; private set; }
 
         public HashSet<string> DefaultEnabledLayers { get; } = ["Entities", "Particles"];
 
@@ -71,7 +72,7 @@ namespace GUI.Types.Renderer
             Action<List<SceneLight>> lightEntityStore = scene.LightingInfo.LightmapGameVersionNumber switch
             {
                 0 or 1 => scene.LightingInfo.StoreLightMappedLights_V1,
-                2 or 3 => scene.LightingInfo.StoreLightMappedLights_V2,
+                >= 2 => scene.LightingInfo.StoreLightMappedLights_V2,
                 _ => (List<SceneLight> x) => Log.Error(nameof(WorldLoader), $"Storing lights for lightmap version {scene.LightingInfo.LightmapGameVersionNumber} is not supported."),
             };
 
@@ -85,13 +86,16 @@ namespace GUI.Types.Renderer
             {
                 if (worldNode != null)
                 {
-                    var newResource = guiContext.LoadFile(string.Concat(worldNode, ".vwnod_c"));
-                    if (newResource == null)
+                    var worldNodeResource = guiContext.LoadFile(string.Concat(worldNode, ".vwnod_c"));
+                    if (worldNodeResource == null)
                     {
                         continue;
                     }
 
-                    var subloader = new WorldNodeLoader(guiContext, (WorldNode)newResource.DataBlock);
+                    var worldNodeData = (WorldNode)worldNodeResource.DataBlock;
+                    MainWorldNode ??= worldNodeData;
+
+                    var subloader = new WorldNodeLoader(guiContext, worldNodeData, worldNodeResource.ExternalReferences);
                     subloader.Load(scene);
 
                     foreach (var layer in subloader.LayerNames)
@@ -272,6 +276,11 @@ namespace GUI.Types.Renderer
 
                 var transformationMatrix = parentTransform * EntityTransformHelper.CalculateTransformationMatrix(entity);
                 var light = SceneLight.IsAccepted(classname);
+
+                if (entity.Connections != null)
+                {
+                    CreateEntityConnectionLines(entity, transformationMatrix.Translation);
+                }
 
                 if (classname == "info_world_layer")
                 {
@@ -811,10 +820,6 @@ namespace GUI.Types.Renderer
                     renderamt /= 255f;
                 }
 
-                rendercolor.X = MathF.Pow(rendercolor.X, 2.2f);
-                rendercolor.Y = MathF.Pow(rendercolor.Y, 2.2f);
-                rendercolor.Z = MathF.Pow(rendercolor.Z, 2.2f);
-
                 var newModel = (Model)newEntity.DataBlock;
 
                 var modelNode = new ModelSceneNode(scene, newModel, skin)
@@ -826,25 +831,28 @@ namespace GUI.Types.Renderer
                     EntityData = entity,
                 };
 
-                // Animation
-                var isAnimated = modelNode.SetAnimationForWorldPreview(animation);
-                if (isAnimated)
+                if (modelNode.HasMeshes)
                 {
-                    var holdAnimationOn = entity.GetPropertyUnchecked<bool>("holdanimation");
-                    if (holdAnimationOn)
+                    // Animation
+                    var isAnimated = modelNode.SetAnimationForWorldPreview(animation);
+                    if (isAnimated)
                     {
-                        modelNode.AnimationController.PauseLastFrame();
+                        var holdAnimationOn = entity.GetPropertyUnchecked<bool>("holdanimation");
+                        if (holdAnimationOn)
+                        {
+                            modelNode.AnimationController.PauseLastFrame();
+                        }
                     }
-                }
 
-                var body = entity.GetPropertyUnchecked("body", -1L);
-                if (body != -1L)
-                {
-                    var groups = modelNode.GetMeshGroups();
-                    modelNode.SetActiveMeshGroups(groups.Skip((int)body).Take(1));
-                }
+                    var body = entity.GetPropertyUnchecked("body", -1L);
+                    if (body != -1L)
+                    {
+                        var groups = modelNode.GetMeshGroups();
+                        modelNode.SetActiveMeshGroups(groups.Skip((int)body).Take(1));
+                    }
 
-                scene.Add(modelNode, true);
+                    scene.Add(modelNode, true);
+                }
 
                 var phys = newModel.GetEmbeddedPhys();
                 if (phys == null)
@@ -870,6 +878,11 @@ namespace GUI.Types.Renderer
 
                         scene.Add(physSceneNode, true);
                     }
+                }
+                else if (!modelNode.HasMeshes)
+                {
+                    // If the loaded model has no meshes and has no physics, fallback to default entity
+                    CreateDefaultEntity(entity, classname, transformationMatrix);
                 }
             }
 
@@ -1053,7 +1066,7 @@ namespace GUI.Types.Renderer
             }
             else if (resource.ResourceType == ResourceType.Model)
             {
-                var modelNode = new ModelSceneNode(scene, (Model)resource.DataBlock, null)
+                var modelNode = new ModelSceneNode(scene, (Model)resource.DataBlock, null, isWorldPreview: true)
                 {
                     Transform = transformationMatrix,
                     LayerName = "Entities",
@@ -1120,13 +1133,56 @@ namespace GUI.Types.Renderer
                     end -= origin;
                     start -= origin;
 
-                    var lineNode = new LineSceneNode(scene, line.Color, start, end)
+                    var lineNode = new LineSceneNode(scene, start, end, line.Color, line.Color)
                     {
                         LayerName = "Entities",
                         Transform = Matrix4x4.CreateTranslation(origin)
                     };
                     scene.Add(lineNode, true);
                 }
+            }
+        }
+
+        private void CreateEntityConnectionLines(Entity entity, Vector3 start)
+        {
+            var alreadySeen = new HashSet<Entity>(entity.Connections.Count);
+
+            foreach (var connectionData in entity.Connections)
+            {
+                var targetType = connectionData.GetEnumValue<EntityIOTargetType>("m_targetType");
+
+                if (targetType != EntityIOTargetType.EntityNameOrClassName)
+                {
+                    Log.Debug(nameof(WorldLoader), $"Skipping entity i/o type {targetType}");
+                    continue;
+                }
+
+                var targetName = connectionData.GetStringProperty("m_targetName");
+                var endEntity = FindEntityByKeyValue("targetname", targetName);
+
+                if (endEntity == null)
+                {
+                    Log.Debug(nameof(WorldLoader), $"Did not find entity i/o output {targetName}");
+                    continue;
+                }
+
+                if (!alreadySeen.Add(endEntity))
+                {
+                    continue;
+                }
+
+                var end = EntityTransformHelper.CalculateTransformationMatrix(endEntity).Translation;
+
+                var origin = (start + end) / 2f;
+                end -= origin;
+                var lineStart = start - origin;
+
+                var lineNode = new LineSceneNode(scene, lineStart, end, new Color32(0, 255, 0), new Color32(255, 0, 0))
+                {
+                    LayerName = "Entity Connections",
+                    Transform = Matrix4x4.CreateTranslation(origin)
+                };
+                scene.Add(lineNode, true);
             }
         }
 

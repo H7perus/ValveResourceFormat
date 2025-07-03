@@ -82,6 +82,7 @@ namespace GUI.Types.Renderer
         {
             foreach (var call in DrawCalls)
             {
+                call.Material.Shader.EnsureLoaded();
                 call.UpdateVertexArrayObject();
             }
         }
@@ -375,6 +376,7 @@ namespace GUI.Types.Renderer
             if (objectDrawCall.ContainsKey("m_vTintColor"))
             {
                 var tintColor = objectDrawCall.GetSubCollection("m_vTintColor").ToVector3();
+                tintColor = ColorSpace.SrgbLinearToGamma(tintColor);
                 tintAlpha = new Vector4(tintColor, 1.0f);
             }
 

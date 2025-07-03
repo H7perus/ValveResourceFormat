@@ -1,7 +1,9 @@
 using System.Buffers;
 using System.Runtime.InteropServices;
-using GUI.Types.Renderer.UniformBuffers;
+using GUI.Types.Renderer.Buffers;
+using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
+using ValveResourceFormat.ResourceTypes;
 
 namespace GUI.Types.Renderer;
 
@@ -47,7 +49,6 @@ class SceneLightProbe : SceneNode
     public int IndoorOutdoorLevel { get; init; }
 
     public float VoxelSize { get; set; }
-    public List<SceneNode> DebugGridSpheres { get; } = [];
 
     private int bufferHandle = -1;
 
@@ -57,10 +58,36 @@ class SceneLightProbe : SceneNode
         LocalBoundingBox = bounds;
     }
 
-    public void CreateDebugGridSpheres()
+    public SceneAggregate DebugGridSpheres { get; private set; }
+
+    public void CrateDebugGridSpheres()
     {
-        var grid = LocalBoundingBox.Size / Math.Max(VoxelSize + 0.5f, 6f);
-        var model = GLMaterialViewer.CreateEnvCubemapSphere(Scene);
+        if (DebugGridSpheres != null)
+        {
+            DebugGridSpheres.LayerEnabled = true;
+            return;
+        }
+
+        DebugGridSpheres = new SceneAggregate(Scene, (Model)GLMaterialViewer.CubemapResource.Value.DataBlock)
+        {
+            LightProbeVolumePrecomputedHandshake = LightProbeVolumePrecomputedHandshake,
+            LightProbeBinding = this,
+            LayerName = "LightProbeGrid" + Id,
+            LayerEnabled = true,
+        };
+
+        DebugGridSpheres.SetInfiniteBoundingBox();
+        Scene.Add(DebugGridSpheres, true);
+
+        const float MinVoxelSize = 8f;
+
+        if (VoxelSize < MinVoxelSize)
+        {
+            Log.Warn(nameof(CrateDebugGridSpheres), $"LightProbe {Id} has a too dense voxel grid {VoxelSize} to visualize. Clamping to {MinVoxelSize}.");
+        }
+
+        var grid = LocalBoundingBox.Size / Math.Max(VoxelSize + 0.5f, MinVoxelSize);
+        DebugGridSpheres.InstanceTransforms.EnsureCapacity((int)(grid.X * grid.Y * grid.Z));
 
         for (var x = 0; x < grid.X; x++)
         {
@@ -68,23 +95,21 @@ class SceneLightProbe : SceneNode
             {
                 for (var z = 0; z < grid.Z; z++)
                 {
-                    var sphere = new SceneNodeInstance(model);
+                    var localPosition = LocalBoundingBox.Min + new Vector3(x, y, z) * VoxelSize + new Vector3(VoxelSize / 2f);
+                    var worldPosition = Vector3.Transform(localPosition, Transform);
+                    var transform = Matrix4x4.CreateScale(0.2f * (VoxelSize / 24f)) * Matrix4x4.CreateTranslation(worldPosition);
 
-                    var transform = Matrix4x4.CreateTranslation(BoundingBox.Min + new Vector3(x, y, z) * VoxelSize + new Vector3(VoxelSize / 2f));
-                    var scale = 0.2f * (VoxelSize / 24f);
-                    // todo: rotation
-
-                    sphere.Transform = Matrix4x4.CreateScale(scale) * transform;
-                    sphere.LayerName = "LightProbeGrid" + Id;
-                    sphere.LayerEnabled = false;
-
-                    sphere.LightProbeBinding = this;
-                    sphere.EnvMapIds = EnvMapIds;
-                    DebugGridSpheres.Add(sphere);
-
-                    Scene.Add(sphere, true);
+                    DebugGridSpheres.InstanceTransforms.Add(transform);
                 }
             }
+        }
+    }
+
+    public void RemoveDebugGridSpheres()
+    {
+        if (DebugGridSpheres != null)
+        {
+            DebugGridSpheres.LayerEnabled = false;
         }
     }
 

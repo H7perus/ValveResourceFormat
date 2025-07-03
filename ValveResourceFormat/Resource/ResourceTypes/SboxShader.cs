@@ -24,6 +24,8 @@ namespace ValveResourceFormat.ResourceTypes
 
         public override void Read(BinaryReader reader)
         {
+            ArgumentNullException.ThrowIfNull(Resource);
+
             reader.BaseStream.Position = Offset;
 
             const int ShaderFileCount = 9;
@@ -36,14 +38,15 @@ namespace ValveResourceFormat.ResourceTypes
                 shaderFiles[i].Size = reader.ReadUInt32();
             }
 
-            var shaderName = Path.GetFileNameWithoutExtension(Resource.FileName);
+            var shaderName = Path.GetFileNameWithoutExtension(Resource.FileName) ?? string.Empty;
             var shaderModelType = VcsShaderModelType._50;
-            var platformType = Type switch
+
+            if (Type != BlockType.SPRV)
             {
-                BlockType.DATA or BlockType.DXBC => VcsPlatformType.PC,
-                BlockType.SPRV => VcsPlatformType.VULKAN,
-                _ => throw new InvalidDataException($"Unable to read {nameof(SboxShader)} constructed with an unknown block type: {Type}"),
-            };
+                throw new InvalidDataException($"Unable to read {nameof(SboxShader)} constructed with an unknown block type: {Type}");
+            }
+
+            var platformType = VcsPlatformType.VULKAN;
 
             string GetVcsCompatibleFileName(VcsProgramType programType)
             {

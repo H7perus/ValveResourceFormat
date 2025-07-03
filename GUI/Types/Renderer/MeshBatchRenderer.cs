@@ -69,6 +69,7 @@ namespace GUI.Types.Renderer
             public int LPVScalarsTexture = -1;
             public int LPVShadowsTexture = -1;
             public int Transform = -1;
+            public int IsInstancing = -1;
             public int Tint = -1;
             public int ObjectId = -1;
             public int MeshId = -1;
@@ -139,6 +140,7 @@ namespace GUI.Types.Renderer
                             AnimationData = shader.GetUniformLocation("uAnimationData"),
                             AnimationTexture = shader.GetUniformLocation("animationTexture"),
                             Transform = shader.GetUniformLocation("transform"),
+                            IsInstancing = shader.GetUniformLocation("bIsInstancing"),
                             Tint = shader.GetUniformLocation("vTint"),
                         };
 
@@ -214,9 +216,6 @@ namespace GUI.Types.Renderer
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void Draw(Shader shader, ref Uniforms uniforms, ref Config config, Request request)
         {
-            var transformTk = request.Transform.ToOpenTK();
-            GL.ProgramUniformMatrix4(shader.Program, uniforms.Transform, false, ref transformTk);
-
             if (uniforms.ObjectId != -1)
             {
                 GL.ProgramUniform1((uint)shader.Program, uniforms.ObjectId, request.Node.Id);
@@ -292,6 +291,12 @@ namespace GUI.Types.Renderer
                 GL.ProgramUniform1(shader.Program, uniforms.MorphVertexIdOffset, morphComposite != null ? request.Call.VertexIdOffset : -1);
             }
 
+            if (uniforms.Transform > -1)
+            {
+                var transformTk = request.Transform.ToOpenTK();
+                GL.ProgramUniformMatrix4(shader.Program, uniforms.Transform, false, ref transformTk);
+            }
+
             if (uniforms.Tint > -1)
             {
                 var instanceTint = (request.Node is SceneAggregate.Fragment fragment) ? fragment.Tint : Vector4.One;
@@ -300,11 +305,25 @@ namespace GUI.Types.Renderer
                 GL.ProgramUniform4(shader.Program, uniforms.Tint, tint.X, tint.Y, tint.Z, tint.W);
             }
 
-            GL.DrawElementsBaseVertex(
+            var instanceCount = 1;
+
+            if (request.Node is SceneAggregate { InstanceTransforms.Count: > 0 } aggregate)
+            {
+                instanceCount = aggregate.InstanceTransforms.Count;
+                aggregate.InstanceTransformsGpu.BindBufferBase();
+            }
+
+            if (uniforms.IsInstancing > -1)
+            {
+                GL.ProgramUniform1((uint)shader.Program, uniforms.IsInstancing, instanceCount > 1 ? 1 : 0);
+            }
+
+            GL.DrawElementsInstancedBaseVertex(
                 request.Call.PrimitiveType,
                 request.Call.IndexCount,
                 request.Call.IndexType,
                 request.Call.StartIndex,
+                instanceCount,
                 request.Call.BaseVertex
             );
 

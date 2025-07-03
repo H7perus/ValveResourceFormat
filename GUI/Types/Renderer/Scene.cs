@@ -1,8 +1,9 @@
 using System.Diagnostics;
 using System.Linq;
-using GUI.Types.Renderer.UniformBuffers;
+using GUI.Types.Renderer.Buffers;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
+using ValveResourceFormat.ResourceTypes;
 using static GUI.Types.Renderer.GLSceneViewer;
 
 #nullable disable
@@ -35,7 +36,9 @@ namespace GUI.Types.Renderer
         public WorldLightingInfo LightingInfo { get; }
         public WorldFogInfo FogInfo { get; set; } = new();
         public WorldPostProcessInfo PostProcessInfo { get; set; } = new();
+
         private UniformBuffer<LightingConstants> lightingBuffer;
+
 
         public VrfGuiContext GuiContext { get; }
         public Octree<SceneNode> StaticOctree { get; }
@@ -107,6 +110,30 @@ namespace GUI.Types.Renderer
 
                 return staticNodes[index];
             }
+        }
+
+        public SceneNode Find(EntityLump.Entity entity)
+        {
+            bool IsMatchingEntity(SceneNode node) => node.EntityData == entity;
+
+            return staticNodes.Find(IsMatchingEntity) ?? dynamicNodes.Find(IsMatchingEntity);
+        }
+
+        public SceneNode FindNodeByKeyValue(string keyToFind, string valueToFind)
+        {
+            bool IsMatchingEntity(SceneNode node)
+            {
+                if (node.EntityData == null)
+                {
+                    return false;
+                }
+
+                return node.EntityData.Properties.Properties.TryGetValue(keyToFind, out var value)
+                    && value.Value is string outString
+                    && valueToFind.Equals(outString, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return staticNodes.Find(IsMatchingEntity) ?? dynamicNodes.Find(IsMatchingEntity);
         }
 
         public void Update(float timestep)
@@ -297,6 +324,16 @@ namespace GUI.Types.Renderer
                         Transform = fragment.Transform,
                         Mesh = fragment.RenderMesh,
                         Call = fragment.DrawCall,
+                        Node = node,
+                    }, RenderPass.Opaque);
+                }
+                else if (node is SceneAggregate aggregate && aggregate.InstanceTransforms.Count > 0)
+                {
+                    Add(new MeshBatchRenderer.Request
+                    {
+                        Transform = aggregate.Transform,
+                        Mesh = aggregate.RenderMesh,
+                        Call = aggregate.RenderMesh.DrawCallsOpaque[0],
                         Node = node,
                     }, RenderPass.Opaque);
                 }
@@ -779,15 +816,30 @@ namespace GUI.Types.Renderer
                 if (node.LightingOrigin.HasValue)
                 {
                     // in source2 this is a dynamic combo D_SPECULAR_CUBEMAP_STATIC=1, and i guess without a loop (similar to S_SCENE_CUBEMAP_TYPE=1)
-                    node.EnvMaps = [.. node.EnvMaps.OrderBy((envMap) => Vector3.Distance(lightingOrigin, envMap.BoundingBox.Center))];
+                    node.EnvMaps.Clear();
+
+                    foreach (var envMap in LightingInfo.EnvMaps)
+                    {
+                        if (envMap.BoundingBox.Contains(lightingOrigin))
+                        {
+                            node.EnvMaps.Add(envMap);
+                        }
+                    }
                 }
-                else
+
+                node.EnvMaps.Sort((a, b) =>
                 {
-                    node.EnvMaps = [.. node.EnvMaps
-                        .OrderByDescending((envMap) => envMap.IndoorOutdoorLevel)
-                        .ThenBy((envMap) => Vector3.Distance(node.BoundingBox.Center, envMap.BoundingBox.Center))
-                    ];
-                }
+                    var result = b.IndoorOutdoorLevel.CompareTo(a.IndoorOutdoorLevel);
+                    if (result != 0)
+                    {
+                        return result;
+                    }
+
+                    var aDistance = Vector3.Distance(node.BoundingBox.Center, a.BoundingBox.Center);
+                    var bDistance = Vector3.Distance(node.BoundingBox.Center, b.BoundingBox.Center);
+
+                    return aDistance.CompareTo(bDistance);
+                });
 
                 /*
                 const int max = 16;

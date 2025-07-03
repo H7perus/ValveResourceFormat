@@ -580,6 +580,11 @@ MaterialProperties_t GetMaterial(vec2 texCoord, vec3 vertexNormals)
     mat.AmbientGeometricNormal = mat.GeometricNormal;
 #endif
 
+    #if defined(vr_energy_field_vfx)
+        mat.IllumColor = vec3(0.1, 0.3, 0.8);
+        mat.Opacity = 0.2;
+    #endif
+
 
 #if (F_DECAL_TEXTURE == 1)
     mat.Albedo = ApplyDecalTexture(mat.Albedo);
@@ -652,7 +657,7 @@ void main()
     vec3 specularLighting = lighting.SpecularDirect + lighting.SpecularIndirect;
 
     #if F_NO_SPECULAR_AT_FULL_ROUGHNESS == 1
-        specularLighting = (mat.Roughness == 1.0) ? vec3(0) : specularLighting;
+        specularLighting = (mat.Roughness == vec2(1.0)) ? vec3(0) : specularLighting;
     #endif
 
     #if defined(S_TRANSMISSIVE_BACKFACE_NDOTL)

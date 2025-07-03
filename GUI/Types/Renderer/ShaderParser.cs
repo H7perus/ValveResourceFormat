@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -281,10 +280,9 @@ namespace GUI.Types.Renderer
             return Path.Combine(ShadersFolderPathOnDisk, ShaderDirectory.Replace('.', '/'), name);
         }
 
-        [RequiresAssemblyFiles("Calls System.Reflection.Assembly.Location")]
         private static string GetShadersFolder()
         {
-            var root = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            var root = AppContext.BaseDirectory;
             var failsafe = 10;
             var fileName = string.Empty;
 

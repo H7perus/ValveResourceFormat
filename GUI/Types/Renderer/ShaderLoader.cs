@@ -8,6 +8,7 @@ using System.Text.RegularExpressions;
 using GUI.Controls;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
+using OpenTK.Windowing.Desktop;
 
 namespace GUI.Types.Renderer
 {
@@ -51,7 +52,7 @@ namespace GUI.Types.Renderer
         }
 
 #if DEBUG
-        public void EnableHotReload(OpenTK.GLControl glControl)
+        public void EnableHotReload(GLControl glControl)
         {
             ShaderHotReload = new(glControl);
             ShaderHotReload.ReloadShader += OnHotReload;
@@ -354,8 +355,14 @@ namespace GUI.Types.Renderer
 
             var shaders = Directory.GetFiles(folder, "*.frag");
 
-            using var control = new OpenTK.GLControl(OpenTK.Graphics.GraphicsMode.Default, GLViewerControl.OpenGlVersionMajor, GLViewerControl.OpenGlVersionMinor, OpenTK.Graphics.GraphicsContextFlags.Default);
-            control.MakeCurrent();
+            using var window = new GameWindow(GameWindowSettings.Default, new()
+            {
+                APIVersion = GLViewerControl.OpenGlVersion,
+                Flags = GLViewerControl.OpenGlFlags | OpenTK.Windowing.Common.ContextFlags.Offscreen,
+                StartVisible = false,
+            });
+
+            window.MakeCurrent();
 
             GLViewerControl.CheckOpenGL();
 
