@@ -759,8 +759,11 @@ void main()
 
     // --- Reflections & Specular ---
     vec3 envReflDir = -reflect(viewVectorWs, finalCombinedNormalWs); // reflect view about normal
+
     float roughnessForCubemap = sqrt(dot(mix(WaterParams.g_vRoughness,vec2(1),vec2(clamp(reflectionLODFactor,0,0.35))),vec2(0.5)));
+
     vec3 lowEndCubemapReflection = textureLod(samplerCube(g_tLowEndCubeMap, s_DefaultSampler_variant1), envReflDir, roughnessForCubemap*6.0).rgb * (dot(transformedFinalNormal,vec3(0.2125,0.7154,0.0721))*WaterParams.g_flLowEndCubeMapIntensity) * WaterParams.g_flEnvironmentMapBrightness;
+
     vec3 ssrResult = lowEndCubemapReflection;
     uint ssrSteps = uint((float(WaterParams.g_nSSRMaxForwardSteps)*mix(1.0,0.5,float(isSkyboxScaleEffectEnabled)))*clamp((ViewParams.g_vCameraDirWs.z+0.75)*4.0,0.0,1.0));
     if(ssrSteps > 0u) {

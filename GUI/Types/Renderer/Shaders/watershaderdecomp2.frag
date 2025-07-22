@@ -901,7 +901,9 @@ void main()
 
     float inverseWaterFogAlpha = 1.0 - waterFogAlpha;
     float waterOpacity = (clamp((1.0 - debrisEdgeFactor) + noClue, 0.0, 1.0) * clamp(fma(-combinedfinalFoamIntensity, 4.0, 1.0), 0.0, 1.0)) * inverseWaterFogAlpha;
+
     vec3 lightingSamplePos = offsetWorldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalDebFoamHeightContrib * (-1.0)) + (((mix(NoiseValue.xxx, vec3(NoiseValue.xy, 0.0), vec3(0.1)) * 90.0) * pow(waterOpacity, 2.0)) + vec3(_Globals_.g_flWaterPlaneOffset)))) * mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75));
+
     vec4 surfaceNormal4f = vec4(finalSurfaceNormal.xyz, 1.0);
     vec3 ambientTerm = vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
     float finalShadowCoverage = 1.0;
