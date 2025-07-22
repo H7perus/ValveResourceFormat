@@ -17,12 +17,11 @@ uniform float g_flSkyBoxScale;
 uniform float g_flWaterPlaneOffset;
 
 #include "common/features.glsl"
+#include "common/LightingConstants.glsl"
 
 #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
     in vec2 vLightmapUV;
     out vec3 vLightmapUVScaled;
-
-    #include "common/LightingConstants.glsl"
 #elif D_BAKED_LIGHTING_FROM_VERTEX_STREAM == 1
     in vec4 vPerVertexLighting;
     out vec3 vPerVertexLightingOut;
@@ -30,6 +29,8 @@ uniform float g_flWaterPlaneOffset;
 
 #include "common/ViewConstants.glsl"
 uniform mat4 transform;
+
+#define F_REFRACTION 0
 
 void main()
 {
@@ -40,8 +41,29 @@ void main()
     vTangentOut = tangent.xyz;
     vBitangentOut = tangent.w * cross(vNormalOut, vTangentOut);
 
-    vec4 fragPosition = transform * vec4(vPOSITION + vNormalOut * g_flWaterPlaneOffset * mix(1.0, 1.0 / g_flSkyBoxScale, float(g_bIsSkybox)), 1.0);
+    vec3 offset = vec3(0);
+
+
+    //TODO: this is probably wrong because refraction modes != r_csgo_water_refraction true/false
+    //#if F_REFRACTION == 1
+        offset =  vNormalOut * g_flWaterPlaneOffset * mix(1.0, 1.0 / g_flSkyBoxScale, float(g_bIsSkybox)) * 1;
+    //#endif
+
+    vec4 worldSpacePos = transform * vec4(vPOSITION, 1.0);
+
+    //Here comes some of the greatest fucking bullshit I have ever seen
+    vec3 vertDir = normalize(worldSpacePos.xyz - g_vCameraPositionWs);
+    vec2 parallaxOffset = vertDir.xy / -vertDir.z * 0.7; //like ???? what the fuck
+    vec3 offsetFragPos = worldSpacePos.xyz + (vNormalOut.xyz * g_flWaterPlaneOffset);
+
+    offsetFragPos.xy += ((-(normalize(parallaxOffset) * clamp(length(parallaxOffset), 0.0, 20.0))) * g_flWaterPlaneOffset);
+
+    vec4 fragPosition = vec4(offsetFragPos.xyz, 1.0);
+
+
     gl_Position = g_matWorldToProjection * fragPosition;
+
+    //TODO: does this do anything?
     vFragPosition = fragPosition.xyz / fragPosition.w;
 
     #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
