@@ -796,7 +796,7 @@ void main()
             float causticDebrisCoverage = clamp((fma(-finalDebrisVisibility, 0.9, causticDebrisSample.w) - debrisEdgeFactor) * 1.1, 0.0, 1.0);
             
             
-            #if F_CAUSTICS == 0
+            #if F_CAUSTICS == 1
             float causticDepthFalloffPre = distToCausticSurfaceHit / g_flCausticDepthFallOffDistance;
             float causticDepthFalloff = clamp(1.0 - causticDepthFalloffPre, 0.0, 1.0);
             float causticBaseIntensity = (causticVisibility * clamp(distToCausticSurfaceHit * 0.05, 0.0, 1.0)) * causticDepthFalloff;
@@ -889,73 +889,51 @@ void main()
             
             vec3 powA = max(causticsModifier * (vec3(1.0) + (vec3(1.25, -0.25, -1.0) * (clamp(dFdxFine(causticsModifier.x) * 200.0, -1.0, 1.0) * clamp(fma(-causticsModifier.x, 3.0, 1.0), 0.0, 1.0)))), vec3(0.001)) * 8.0;
             modifiedCausticsRefractColor *= (vec3(1.0) + (((((pow(powA, vec3(2.5)) * causticBaseIntensity) * sunColor) * g_vCausticsTint.xyz) * g_flCausticsStrength) * 0.1));
-            //---CHECKED AND CONFIRMED UP TO HERE!!!!!!
+            
 
             causticsEffectsZ = fadedCausticsEffects.z;
             #endif //F_CAUSTICS == 1
 
             float softenedModifiedCausticsRefractLuminance = pow(GetLuma(modifiedCausticsRefractColor), 0.2);
-            float _14717 = clamp(dFdxFine(softenedModifiedCausticsRefractLuminance), -1.0, 1.0) + clamp(-dFdyFine(softenedModifiedCausticsRefractLuminance), -1.0, 1.0);
-
-
-
-            causticsDebrisTotal.w = causticDebrisCoverage;
-            combinedRefractedColor = mix(modifiedCausticsRefractColor, modifiedCausticsRefractColor * (vec3(1.0) + (vec3(2.5, 0.0, -2.0) * float(int(sign(_14717 * clamp(abs(_14717) - 0.1, 0.0, 1.0)))))), vec3(clamp(200.0 / relFragPos, 0.0, 1.0) * 0.1));
             
+            //TODO: what do we name this?
+            float _14717 = clamp(dFdxFine(softenedModifiedCausticsRefractLuminance), -1.0, 1.0) + clamp(-dFdyFine(softenedModifiedCausticsRefractLuminance), -1.0, 1.0);
+            causticsDebrisTotal.w = causticDebrisCoverage;
+            combinedRefractedColor = mix(modifiedCausticsRefractColor, modifiedCausticsRefractColor * (vec3(1.0) + (vec3(2.5, 0.0, -2.0) * float(int(sign(_14717 * clamp(abs(_14717) - 0.1, 0.0, 1.0)))))), vec3(clamp(200.0 / distanceToFrag, 0.0, 1.0) * 0.1));
         }
         
         postRefractionWaterColumnDepth = fma(max( ( 1.0 / finalRefractedNormalizedDepth) - surfaceDepth, 0.0), 0.01, refractionDistortionFactor);
     }
-    
 
+    
     float effectiveWaterDepthForFog = min(g_flWaterMaxDepth, postRefractionWaterColumnDepth);
     vec3 waterDecayColorFactor = exp(((g_vWaterDecayColor.rgb - vec3(1.0)) * vec3(g_flWaterDecayStrength)) * effectiveWaterDepthForFog);
-
     float totalFogStrength = max(inscatterStrength, causticsEffectsZ);
-
     float foamDebrisForFogMix = finalFoamIntensity + clamp(causticsEffectsZ - 0.5, 0.0, 1.0);
-
-    //float _4632
     float waterFogAlpha = fma(fma(-clamp(blueNoise.x, 0.0, 1.0), 0.25, foamDebrisForFogMix), 0.1, 1.0 - exp((-effectiveWaterDepthForFog) * totalFogStrength));
-    //vec3 _5353
     vec3 baseFogColor = mix(g_vWaterFogColor.rgb, finalFoamColor, vec3(foamDebrisForFogMix * 0.1)) * mix(waterDecayColorFactor, vec3(1.0), vec3(clamp(totalFogStrength * 0.04, 0.0, 1.0)));
-    
     vec3 finalDirToCam = -normalize(finalSurfacePos.xyz - g_vCameraPositionWs.xyz);
-    //float _16838
     float specularCosAlpha = clamp(dot(-sunDir, reflect(finalDirToCam, normalize(mix(normalize(geometricNormal).xyz, finalPerturbedSurfaceNormal.xyz, vec3(g_flSpecularNormalMultiple * fma(distanceToFrag, 0.0005, 1.0)))))), 0.0, 1.0);
-    //float _3579
     float specularExponent = mix(g_flSpecularPower, g_flDebrisReflectance * 8.0, debrisEdgeFactor) * mix(2.0, 0.2, clamp(currentWaterRoughness, 0.0, 1.0));
-    //float _16583
     float specularFactor = fma(pow(specularCosAlpha, specularExponent), 0.1, pow(specularCosAlpha, specularExponent * 10.0));
-
-    //float _9615
     float inverseWaterFogAlpha = 1.0 - waterFogAlpha;
-    //float _3039
     float waterOpacity = (clamp((1.0 - debrisEdgeFactor) + noClue, 0.0, 1.0) * clamp(fma(-combinedSurfaceCoverage, 4.0, 1.0), 0.0, 1.0)) * inverseWaterFogAlpha;
-
-
-
-    //TODO: this would ask for worldPos + "precision lighting offset" instead of just worldPos, whatever the fuck that is
-    vec3 lightingSamplePos = worldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalSurfaceHeight * (-1.0)) + (((mix(blueNoise.xxx, vec3(blueNoise.xy, 0.0), vec3(0.1)) * 90.0) * pow(waterOpacity, 2.0)) + vec3(g_flWaterPlaneOffset)))) * mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75));
-
-    vec4 surfaceNormal4f = vec4(finalSurfaceNormal.xyz, 1.0);
-
-    
     float squaredWaterOpacity = pow(waterOpacity, 2.0);
-    float _12400 = mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75);
-
-    vec3 ditheredLightmapUV = vec3(vLightmapUVScaled.xy + (((((((fwidth(vLightmapUVScaled.xy) * 1200.0) / vec2(distanceToFrag)) * cosNormAngle) * (-viewParallaxFactor)) * vec2(-1.0, 1.0)) * (vec2(finalSurfaceHeight * (-2.0)) + ((mix(blueNoise.yy, blueNoise.yx, vec2(0.1)) * 20.0) * squaredWaterOpacity))) * _12400), 0.0).xyz;
-
-
     
+    //TODO: this would ask for worldPos + "precision lighting offset" instead of just worldPos, whatever the fuck that is
+    float underwaterDistortionScale = mix(1.0, effectiveWaterDepthForFog * 2.0, 0.75);
+    vec3 lightingSamplePos = worldPos.xyz + (((-viewDepOffsetFactor) * (vec3(finalSurfaceHeight * (-1.0)) + (((mix(blueNoise.xxx, vec3(blueNoise.xy, 0.0), vec3(0.1)) * 90.0) * squaredWaterOpacity) + vec3(g_flWaterPlaneOffset)))) * underwaterDistortionScale);
 
+
+    vec3 ditheredLightmapUV = vec3(vLightmapUVScaled.xy + (((((((fwidth(vLightmapUVScaled.xy) * 1200.0) / vec2(distanceToFrag)) * cosNormAngle) * (-viewParallaxFactor)) * vec2(-1.0, 1.0)) * (vec2(finalSurfaceHeight * (-2.0)) + ((mix(blueNoise.yy, blueNoise.yx, vec2(0.1)) * 20.0) * squaredWaterOpacity))) * underwaterDistortionScale), 0.0).xyz;
+    
 
     //Calculating baked lighting
+    //TODO: helper function to obtain lightmap directly from lightmapUVs? the function usually responsible for getting lightmap samples could use that too for reduced code duplication.
+    //TODO: should baked shadow and irrad be 1? I guess so?
     #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
     vec3 bakedShadow = texture(g_tDirectLightShadows, ditheredLightmapUV).rgb;
     vec3 bakedIrradiance = texture(g_tIrradiance, ditheredLightmapUV).rgb;
-    
-
 
     if(true)
     {
@@ -971,13 +949,12 @@ void main()
     vec3 bakedShadow = vec3(1.0);
     vec3 bakedIrradiance = vec3(1.0);
     #endif
-    //outputColor.rgb = bakedIrradiance;
-    //return;
-
+    //---CHECKED AND CONFIRMED UP TO HERE!!!!!!
     //TODO: see if ambientTerm actually matches bakedIrradiance for all practical intents and purposes! Wait, is this sunlighting? therefore the dot? I am so confused
-    vec3 ambientTerm = bakedIrradiance; //vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
 
     float finalShadowCoverage = CalculateSunShadowMapVisibility(lightingSamplePos);// = 1.0;
+
+    vec3 ambientTerm = bakedIrradiance; //vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
 
     //vec4 surfaceNormal4f = vec4(finalSurfaceNormal, 1.0);
 
