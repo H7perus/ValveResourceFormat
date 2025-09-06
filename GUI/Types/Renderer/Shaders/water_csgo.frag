@@ -932,7 +932,7 @@ void main()
     //TODO: helper function to obtain lightmap directly from lightmapUVs? the function usually responsible for getting lightmap samples could use that too for reduced code duplication.
     //TODO: should baked shadow and irrad be 1? I guess so?
     #if (D_BAKED_LIGHTING_FROM_LIGHTMAP == 1)
-    vec3 bakedShadow = texture(g_tDirectLightShadows, ditheredLightmapUV).rgb;
+    vec3 lightmapShadowSample = texture(g_tDirectLightShadows, ditheredLightmapUV).rgb;
     vec3 bakedIrradiance = texture(g_tIrradiance, ditheredLightmapUV).rgb;
 
     if(true)
@@ -946,13 +946,13 @@ void main()
         bakedIrradiance = ComputeLightmapShading(bakedIrradiance, vAHDData, finalSurfaceNormal);
     }
     #else
-    vec3 bakedShadow = vec3(1.0);
+    vec3 lightmapShadowSample = vec3(1.0);
     vec3 bakedIrradiance = vec3(1.0);
     #endif
-    //---CHECKED AND CONFIRMED UP TO HERE!!!!!!
+    
     //TODO: see if ambientTerm actually matches bakedIrradiance for all practical intents and purposes! Wait, is this sunlighting? therefore the dot? I am so confused
 
-    float finalShadowCoverage = CalculateSunShadowMapVisibility(lightingSamplePos);// = 1.0;
+    float shadowTerm = CalculateSunShadowMapVisibility(lightingSamplePos);// = 1.0;
 
     vec3 ambientTerm = bakedIrradiance; //vec3(dot(undetermined._m0._m0[0].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[1].xyzw, surfaceNormal4f), dot(undetermined._m0._m0[2].xyzw, surfaceNormal4f));
 
@@ -1004,17 +1004,17 @@ void main()
                 }
                 finalCsmCoverage = mix(secondCascadeShadowCoverage, shadowCoverage, shadowCascadeLerpFactor);
             }
-            else
+            elsehttps://bsky.app/profile/stefan-s-from-h.de/post/3ly4qqqk6kk2v
             {
                 finalCsmCoverage = shadowCoverage;
             }
         }
         float finalFadedCsmCoverage = mix(finalCsmCoverage, 1.0, clamp(fma(distance(trueWorldPos, PerViewConstantBuffer_t.g_vCameraPositionWs), g_flShadowCascadeZLerpFactorScale, g_flShadowCascadeZLerpFactorOffset), 0.0, 1.0));
-        finalShadowCoverage = finalFadedCsmCoverage;
+        shadowTerm = finalFadedCsmCoverage;
 
         if (notEqual(PerViewConstantBufferCsgo_t.g_bOtherFxEnabled, ivec4(0)).y)
         {
-            finalShadowCoverage = min(finalFadedCsmCoverage, textureLod(sampler2D(g_tParticleShadowBuffer, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), (FragCoordWInverse.xy * PerViewConstantBuffer_t.g_vInvGBufferSize.xy).xy, 0.0).z);
+            shadowTerm = min(finalFadedCsmCoverage, textureLod(sampler2D(g_tParticleShadowBuffer, Filter_21_AllowGlobalMipBiasOverride_0_AddressU_2_AddressV_2), (FragCoordWInverse.xy * PerViewConstantBuffer_t.g_vInvGBufferSize.xy).xy, 0.0).z);
         }
         
     }*/
@@ -1022,9 +1022,10 @@ void main()
 
     vec4 g_vToolsAmbientLighting = vec4(0); // actually seems to be zero ingame on ancient, tools mode only?
 
-    float lightmapShadowMulti = 1.0 - dot(bakedShadow, vec3(1.0, 0, 0));
+    float lightmapShadowMulti = 1.0 - dot(lightmapShadowSample, vec3(1.0, 0, 0));
 
-    float finalShadowingEffect = mix(finalShadowCoverage * lightmapShadowMulti, lightmapShadowMulti, waterOpacity * 0.5);
+    float finalShadowingEffect = mix(shadowTerm * lightmapShadowMulti, lightmapShadowMulti, waterOpacity * 0.5);
+
     vec3 lightingFactor = g_vToolsAmbientLighting.xyz;
 
 
@@ -1032,6 +1033,7 @@ void main()
     {
         lightingFactor = fma(vec3(max(0.0, dot(finalSurfaceNormal.xyz, sunDir))).xyz, (sunColor * finalShadowingEffect).xyz, g_vToolsAmbientLighting.xyz);
     }
+    
     {
     //----- LIGHT CULLING AND LIGHTING (not entirely understood by me, I didn't want to spend time on things we aren't doing rn)
     /*
@@ -1287,15 +1289,10 @@ void main()
         continue;
     }*/
     }
-    //TODO: find something comparable to g_vFastPathSunLightBakedShadowMask
+    //TODO: find something comparable to g_vFastPathSunLightlightmapShadowSampleMask
 
-
-
-    
     vec3 _22686 = (lightingFactor.xyz + bakedIrradiance) * mix(mix((baseFogColor * waterFogAlpha) * g_flWaterFogShadowStrength, finalFoamColor.xyz, vec3(combinedSurfaceCoverage)), vec4(debrisColorHeightSample.xyz * fma(finalDebrisFactor, 0.5, 0.5), debrisEdgeFactor).xyz * g_vDebrisTint.xyz, vec3(clamp(debrisEdgeFactor - noClue, 0.0, 1.0))).xyz;
-
-
-
+    
     //outputColor.rgb = debrisColorHeightSample.xyz;
     //return;
 
@@ -1303,25 +1300,11 @@ void main()
       combinedRefractedColor = vec3(0);
     #endif
 
-    vec3 returnColor = mix(_22686, combinedRefractedColor * waterDecayColorFactor, vec3(waterOpacity)); // + float(specularFactor > 0.5) * sunColor;
-
-    
-    
-
+    vec3 returnColor = mix(_22686, combinedRefractedColor * waterDecayColorFactor, vec3(waterOpacity));
     returnColor = mix(returnColor, (baseFogColor * 4.0) * bakedIrradiance, vec3((waterFogAlpha * clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0)) * (1.0 - g_flWaterFogShadowStrength)));
-    
-    outputColor.rgb = returnColor;
-
-    outputColor.rgb = vec3(clamp((1.0 - surfaceCoverageAlpha) + noClue, 0.0, 1.0));
-    //return;
-    MaterialProperties_t material;
-    InitProperties(material, vec3(0, 0, 1));
-    material.SpecularColor = vec3(1);
+    //---CHECKED AND CONFIRMED UP TO HERE!!!!!!
 
     float roughnessForCubemap = dot(mix(g_vRoughness,vec2(1),vec2(clamp(reflectionsLodFactor, 0.0 ,0.35))), vec2(0.5) );
-
-    material.Roughness.x = sqrt(roughnessForCubemap);
-    
 
     vec3 tempSurfNormal = finalPerturbedSurfaceNormal;
     tempSurfNormal = finalSurfaceNormal;
@@ -1330,7 +1313,6 @@ void main()
     {
     tempSurfNormal.xy *= 6.0;
     tempSurfNormal = mat3(g_matWorldToView) * normalize(tempSurfNormal);
-    //tempSurfNormal = (g_matWorldToView * vec4(normalize(tempSurfNormal), 0.0)).xyz;
     tempSurfNormal.yz *= 2;
     tempSurfNormal = transpose(mat3(g_matWorldToView)) * normalize(tempSurfNormal);
     }
@@ -1343,7 +1325,7 @@ void main()
     float reflectionBlendFactor = clamp(fma(-roughnessForCubemap, roughnessForCubemap, 1.0), 0.0, 1.0);
 
 
-    material.AmbientNormal = tempSurfNormal;
+    //material.AmbientNormal = tempSurfNormal;
     //material.Curvature = 0;
 
     vec3 reflectedRay = reflect(viewDir, tempSurfNormal);
