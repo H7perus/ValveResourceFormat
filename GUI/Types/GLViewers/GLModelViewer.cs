@@ -19,6 +19,7 @@ namespace GUI.Types.GLViewers
     {
         protected Model? model { get; init; }
         private PhysAggregateData? phys;
+        private VKTestModelViewer? vkTestModelViewer;
 
         private readonly List<string?> animationIndexMap = [];
 
@@ -55,6 +56,7 @@ namespace GUI.Types.GLViewers
         public GLModelViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext, Model model) : base(vrfGuiContext, rendererContext)
         {
             this.model = model;
+            vkTestModelViewer = new VKTestModelViewer(model, vrfGuiContext, () => Renderer?.Camera?.CameraViewMatrix);
         }
 
         public GLModelViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext, PhysAggregateData phys) : base(vrfGuiContext, rendererContext)
@@ -222,6 +224,8 @@ namespace GUI.Types.GLViewers
         protected override void LoadScene()
         {
             base.LoadScene();
+
+            vkTestModelViewer?.LoadScene();
 
             InitializeSoundPlayer();
 
@@ -785,6 +789,8 @@ namespace GUI.Types.GLViewers
         /// </summary>
         protected override void OnUpdate(float frameTime)
         {
+            vkTestModelViewer?.OnUpdate(frameTime);
+
             if (rootMotionResetPending)
             {
                 rootMotionResetPending = false;
@@ -798,6 +804,8 @@ namespace GUI.Types.GLViewers
 
         protected override void OnPaint(float frameTime)
         {
+            vkTestModelViewer?.OnPaint(frameTime);
+
             // The stats overlay reflects whatever meshes are currently drawn, so it only needs rebuilding
             // when that set changes (a LoD switch, or a mesh/material group change), not every frame.
             if (modelSceneNode != null && SelectedNodeRenderer != null)
