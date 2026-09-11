@@ -2,7 +2,7 @@ using Microsoft.VisualBasic.FileIO;
 using System;
 using Vortice.Vulkan;
 
-namespace S2V_RHI_Test.RHI;
+namespace ValveResourceFormat.Renderer2.RHI;
 
 
 public struct RenderingAttachmentInfo

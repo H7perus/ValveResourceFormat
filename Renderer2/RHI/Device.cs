@@ -1,34 +1,30 @@
-global using static S2vDevice;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+global using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
 using System.Runtime.InteropServices;
-using System.Text;
-using S2V_RHI_Test.RHI;
+using ValveResourceFormat.Renderer2.RHI;
 //using SDL;
 using Vortice.Vulkan;
 //using static SDL.SDL3;
 using static Vortice.Vulkan.Vma;
 using static Vortice.Vulkan.Vulkan;
 
-public static class S2vDevice
-{
-    public static Device? RenderDevice { get; private set; }
 
-    unsafe public static void createS2vDevice(nint window)
+
+
+namespace ValveResourceFormat.Renderer2.RHI
+{
+    public static class S2vDevice
     {
-        if (RenderDevice == null)
+        public static Device? RenderDevice { get; private set; }
+
+        public static void CreateRenderDevice()
         {
-            RenderDevice = new S2V_RHI_Test.RHI.Device(window);
+            if (RenderDevice == null)
+            {
+                RenderDevice = new ValveResourceFormat.Renderer2.RHI.Device();
+            }
         }
     }
-}
 
-
-namespace S2V_RHI_Test.RHI
-{
     public struct QueueFamilyIndices
     {
         public uint? GraphicsFamily;
@@ -54,7 +50,6 @@ namespace S2V_RHI_Test.RHI
         public VkInstanceApi VkInstanceApi;
         public VkDeviceApi VkDeviceApi;
         public VkPhysicalDevice VkPhysicalDevice;
-        public VkSurfaceKHR VkSurfaceKHR;
 
 
         private class BindlessManagerType
@@ -186,7 +181,7 @@ namespace S2V_RHI_Test.RHI
             return 0;
         }
 
-        unsafe public Device(nint windowHandle)
+        unsafe public Device()
         {
             vkInitialize();
 
@@ -263,28 +258,6 @@ namespace S2V_RHI_Test.RHI
 
             VkInstanceApi = new VkInstanceApi(instance);
 
-            [DllImport("user32.dll")]
-            static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
-
-            const int GWLP_HINSTANCE = -6;
-
-            nint hinstance = GetWindowLongPtr(windowHandle, GWLP_HINSTANCE);
-
-
-
-            VkWin32SurfaceCreateInfoKHR createInfo = new();
-            createInfo.hinstance = hinstance; // or the HINSTANCE you created the window with
-            createInfo.hwnd = windowHandle;                       // your raw HWND
-
-            VkResult result = VkInstanceApi.vkCreateWin32SurfaceKHR(&createInfo, out var surface);
-            if (result != VK_SUCCESS)
-            {
-                // handle error
-            }
-
-            VkSurfaceKHR = surface;
-
-
             VkDebugUtilsMessengerEXT debugMessenger;
             VkInstanceApi.vkCreateDebugUtilsMessengerEXT(&debugCreateInfo, null, &debugMessenger).CheckResult();
 
@@ -327,9 +300,7 @@ namespace S2V_RHI_Test.RHI
                 synchronization2 = true
             };
 
-            
-
-            QueueFamilyIndices = FindQueueFamilies(VkPhysicalDevice, VkSurfaceKHR);
+            QueueFamilyIndices = FindQueueFamilies();
 
             var graphicsQueuePriority = 1.0f;
             var graphicsQueueCreateInfo = new VkDeviceQueueCreateInfo
@@ -370,7 +341,7 @@ namespace S2V_RHI_Test.RHI
                 pNext = &features13
             };
             VkDevice createdDevice;
-            result = VkInstanceApi.vkCreateDevice(VkPhysicalDevice, &deviceCreateInfo, null, &createdDevice);
+            var result = VkInstanceApi.vkCreateDevice(VkPhysicalDevice, &deviceCreateInfo, null, &createdDevice);
 
             if (result != VkResult.Success)
                 throw new Exception($"failed to create logical device: {result}");
@@ -399,27 +370,25 @@ namespace S2V_RHI_Test.RHI
             CreateSharedDescriptorPool();
             CreateSharedBindlessDescriptorSet();
         }
-
-        unsafe QueueFamilyIndices FindQueueFamilies(
-    VkPhysicalDevice physicalDevice,
-    VkSurfaceKHR surface)
+        unsafe QueueFamilyIndices FindQueueFamilies()
         {
             var indices = new QueueFamilyIndices();
 
             uint count = 0;
-            VkInstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, null);
+            VkInstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice, &count, null);
 
             var families = new VkQueueFamilyProperties[count];
             fixed (VkQueueFamilyProperties* famPtr = families)
             {
-                VkInstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, famPtr);
+                VkInstanceApi.vkGetPhysicalDeviceQueueFamilyProperties(VkPhysicalDevice, &count, famPtr);
             }
 
             for (uint i = 0; i < count; i++)
             {
                 var flags = families[i].queueFlags;
-                VkInstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, out var presentSupport);
-                if (flags.HasFlag(VkQueueFlags.Graphics) && presentSupport)
+                //bit of a hack, because present support is technically 
+                //VkInstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, out var presentSupport);
+                if (flags.HasFlag(VkQueueFlags.Graphics))
                 {
                     indices.GraphicsFamily = i;
                 }
@@ -450,6 +419,21 @@ namespace S2V_RHI_Test.RHI
             }
 
             return indices;
+        }
+
+        public unsafe VkSurfaceKHR CreateSurfaceFromWindowHandle(nint windowHandle)
+        {
+            [DllImport("user32.dll")]
+            static extern nint GetWindowLongPtr(nint hWnd, int nIndex);
+
+            nint hinstance = GetWindowLongPtr(windowHandle, -6);
+
+            VkWin32SurfaceCreateInfoKHR createInfo = new();
+            createInfo.hinstance = hinstance; // or the HINSTANCE you created the window with
+            createInfo.hwnd = windowHandle;                       // your raw HWND
+
+            VkResult result = VkInstanceApi.vkCreateWin32SurfaceKHR(&createInfo, out var surface);
+            return surface;
         }
 
         public VkSampler CreateSampler(VkSamplerCreateInfo samplerInfo)

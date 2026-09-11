@@ -2,17 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Vortice.Vulkan;
-using static S2vDevice;
+//using static S2vDevice;
 using static Vortice.Vulkan.Vulkan;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
     public unsafe class Swapchain : IDisposable
     {
         private VkSwapchainKHR _swapchain;
-        private VkSwapchainKHR? _oldSwapchain;
 
-        private uint _currentImageIndex = new();
+        private uint _currentImageIndex;
         private readonly List<Image> _images = new();
         private readonly List<VkSemaphore> _writeToImageFinishedSemaphores = new();
         public VkSwapchainKHR Handle => _swapchain;
@@ -21,6 +20,7 @@ namespace S2V_RHI_Test.RHI
         public IReadOnlyList<VkSemaphore> WriteToImageFinishedSemaphores => _writeToImageFinishedSemaphores;
 
         public VkPresentModeKHR PresentMode { get; private set; }
+        public VkSurfaceKHR Surface { get; private set; }
         public VkSurfaceFormatKHR SurfaceFormat { get; private set; }
         public VkExtent2D Extent { get; private set; }
 
@@ -29,26 +29,39 @@ namespace S2V_RHI_Test.RHI
         /// </summary>
         public bool IsOutOfDate { get; private set; }
 
-        public Swapchain(uint width, uint height)
+        public Swapchain(uint width, uint height, VkSurfaceKHR surface)
         {
-            Create(width, height);
+            Create(width, height, surface);
         }
 
-        private void Create(uint width, uint height, VkSwapchainKHR? oldSwapchain = null)
+        private void Create(uint width, uint height, VkSurfaceKHR surface, VkSwapchainKHR oldSwapchain = new VkSwapchainKHR())
         {
             var device = RenderDevice
                 ?? throw new InvalidOperationException("S2vDevice has not been initialized.");
 
+            //if it is, we are recreating
+            if(surface.Handle != 0)
+                Surface = surface;
+
             device.VkInstanceApi.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
                 device.VkPhysicalDevice,
-                device.VkSurfaceKHR,
+                Surface,
                 out var capabilities);
+
+            device.VkInstanceApi.vkGetPhysicalDeviceSurfaceSupportKHR(
+                device.VkPhysicalDevice,
+                device.QueueFamilyIndices.GraphicsFamily!.Value,
+                Surface,
+                out var presentSupport);
+
+            if (!presentSupport)
+                throw new Exception("Graphics queue family can not present to this surface.");
 
             uint formatCount = 0;
 
             device.VkInstanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(
                 device.VkPhysicalDevice,
-                device.VkSurfaceKHR,
+                Surface,
                 &formatCount,
                 null);
 
@@ -61,7 +74,7 @@ namespace S2V_RHI_Test.RHI
             {
                 device.VkInstanceApi.vkGetPhysicalDeviceSurfaceFormatsKHR(
                     device.VkPhysicalDevice,
-                    device.VkSurfaceKHR,
+                    Surface,
                     &formatCount,
                     formatsPtr);
             }
@@ -72,7 +85,7 @@ namespace S2V_RHI_Test.RHI
 
             device.VkInstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(
                 device.VkPhysicalDevice,
-                device.VkSurfaceKHR,
+                Surface,
                 &presentModeCount,
                 null);
 
@@ -85,7 +98,7 @@ namespace S2V_RHI_Test.RHI
             {
                 device.VkInstanceApi.vkGetPhysicalDeviceSurfacePresentModesKHR(
                     device.VkPhysicalDevice,
-                    device.VkSurfaceKHR,
+                    Surface,
                     &presentModeCount,
                     presentModesPtr);
             }
@@ -93,7 +106,6 @@ namespace S2V_RHI_Test.RHI
             var presentMode = ChoosePresentMode(presentModes);
 
             Extent = ChooseExtent(capabilities, width / 2, height / 2);
-            
 
             uint imageCount = capabilities.minImageCount + 1;
 
@@ -105,7 +117,7 @@ namespace S2V_RHI_Test.RHI
 
             var createInfo = new VkSwapchainCreateInfoKHR
             {
-                surface = device.VkSurfaceKHR,
+                surface = Surface,
                 minImageCount = imageCount,
                 imageFormat = SurfaceFormat.format,
                 imageColorSpace = SurfaceFormat.colorSpace,
@@ -117,7 +129,7 @@ namespace S2V_RHI_Test.RHI
                 compositeAlpha = VkCompositeAlphaFlagsKHR.Opaque,
                 presentMode = presentMode,
                 clipped = true,
-                oldSwapchain = _oldSwapchain ?? default
+                oldSwapchain = _swapchain.Handle != 0 ? _swapchain : default
             };
 
             Check(
@@ -308,12 +320,6 @@ namespace S2V_RHI_Test.RHI
 
         public void Recreate(uint width, uint height)
         {
-            // Preserve old swapchain handle for smooth transition
-            if (_swapchain.Handle != 0 && RenderDevice != null)
-            {
-                _oldSwapchain = _swapchain;
-            }
-
             var device = RenderDevice;
             if (device != null)
             {
@@ -332,16 +338,10 @@ namespace S2V_RHI_Test.RHI
                 //        device.VkDeviceApi.vkDestroySemaphore(semaphore, null);
                 //    }
                 //}
-                _writeToImageFinishedSemaphores.Clear();
-
-                if (_swapchain.Handle != 0)
-                {
-                    device.VkDeviceApi.vkDestroySwapchainKHR(_swapchain, null);
-                    _swapchain = default;
-                }
+                //_writeToImageFinishedSemaphores.Clear();
             }
 
-            Create(width, height);
+            Create(width, height, 0, _swapchain);
         }
 
         public void Dispose()
@@ -353,9 +353,8 @@ namespace S2V_RHI_Test.RHI
 
             foreach (var image in _images)
             {
-                image.Destroy();
+                device.VkDeviceApi.vkDestroyImageView(image.ImageViewHandle);
             }
-            _images.Clear();
 
             if (_swapchain.Handle != 0)
             {
@@ -365,6 +364,7 @@ namespace S2V_RHI_Test.RHI
 
                 _swapchain = default;
             }
+            _images.Clear();
         }
 
         //H7per: TODO: This should not be a member function of Swapchain.

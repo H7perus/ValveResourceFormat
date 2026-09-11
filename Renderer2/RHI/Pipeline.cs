@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,7 +6,7 @@ using System.Text;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
     public class Pipeline : IDisposable
     {

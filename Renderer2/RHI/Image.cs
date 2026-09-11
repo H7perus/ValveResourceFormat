@@ -5,10 +5,11 @@ using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vma;
 using static Vortice.Vulkan.Vulkan;
+using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
-    public class Image : Resource
+    public class Image : IResource
     {
         public VkImage ImageHandle { get; private set; }
         public VkImageView ImageViewHandle { get; private set; }

@@ -5,9 +5,9 @@ using System.Text;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
-using S2V_RHI_Test.RHI.ShaderCompile;
+using ValveResourceFormat.Renderer2.RHI.ShaderCompile;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
     public struct AttributeDescription
     {

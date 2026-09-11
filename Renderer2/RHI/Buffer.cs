@@ -1,13 +1,13 @@
-﻿using System;
+using System;
 using System.Drawing;
 using Vortice.Vulkan;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Vortice.Vulkan.Vma;
 using static Vortice.Vulkan.Vulkan;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
-    public class Buffer : Resource
+    public class Buffer : IResource
     {
         public VkBuffer Handle { get; private set; }
         public VmaAllocation VmaAllocation { get; private set; }

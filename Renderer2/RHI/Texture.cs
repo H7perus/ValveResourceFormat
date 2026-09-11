@@ -9,7 +9,7 @@ using static System.Net.Mime.MediaTypeNames;
 using static Vortice.Vulkan.Vma;
 using static Vortice.Vulkan.Vulkan;
 
-namespace S2V_RHI_Test.RHI
+namespace ValveResourceFormat.Renderer2.RHI
 {
     public class Texture : Image
     {

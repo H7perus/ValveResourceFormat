@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Vortice.Vulkan;
 
 using SlangShaderSharp;
 
-namespace S2V_RHI_Test.RHI.ShaderCompile
+namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 {
     public readonly record struct VertexInput(
         string SemanticName,

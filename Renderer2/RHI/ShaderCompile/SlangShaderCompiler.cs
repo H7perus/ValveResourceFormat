@@ -1,4 +1,4 @@
-﻿using SlangShaderSharp;
+using SlangShaderSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -6,7 +6,7 @@ using System.Text;
 using Vortice.Vulkan;
 using static System.Collections.Specialized.BitVector32;
 
-namespace S2V_RHI_Test.RHI.ShaderCompile
+namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 {
     public class SlangShaderCompiler
     {
