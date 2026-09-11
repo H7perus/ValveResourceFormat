@@ -6,8 +6,6 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using GUI.Controls;
 using GUI.Utils;
-using S2V_RHI_Test.RHI;
-using SDL;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.IO.ContentFormats.HalfEdgeMesh;
@@ -18,11 +16,10 @@ using ValveResourceFormat.Renderer.Utils;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using Vortice.Vulkan;
-using static S2vDevice;
-using static Vortice.Vulkan.Vma;
-using static Vortice.Vulkan.Vulkan;
-using RhiBuffer = S2V_RHI_Test.RHI.Buffer;
-using SlangShaderCompiler = S2V_RHI_Test.RHI.ShaderCompile.SlangShaderCompiler;
+using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
+using ValveResourceFormat.Renderer2.RHI;
+using RhiBuffer = ValveResourceFormat.Renderer2.RHI.Buffer;
+using SlangShaderCompiler = ValveResourceFormat.Renderer2.RHI.ShaderCompile.SlangShaderCompiler;
 
 namespace GUI.Types.GLViewers
 {
@@ -62,7 +59,6 @@ namespace GUI.Types.GLViewers
 
 
         private readonly IFileLoader fileLoader;
-        private Swapchain? swapchain;
         private CommandList? commandList;
         private PipelineGraphics? pipeline;
         private PipelineGraphics? pipelineModel;
@@ -80,7 +76,7 @@ namespace GUI.Types.GLViewers
         private Image? depthImage;
 
         // Texture state for albedo map
-        private S2V_RHI_Test.RHI.Texture? textureImage;
+        private ValveResourceFormat.Renderer2.RHI.Texture? textureImage;
         private RhiBuffer? stagingBuffer;
         private uint textureWidth;
         private uint textureHeight;
@@ -623,51 +619,43 @@ namespace GUI.Types.GLViewers
             stagingBuffer.Unmap();
 
             // Create texture image (sampler created in constructor)
-            textureImage = new S2V_RHI_Test.RHI.Texture(width, height, vkFormat, mipLevels: 1);
+            textureImage = new ValveResourceFormat.Renderer2.RHI.Texture(width, height, vkFormat, mipLevels: 1);
         }
 
         protected unsafe override void AddUiControls()
         {
             Debug.Assert(UiControl != null);
+            
+            var _handle = GLControl!.Handle;
 
-            createS2vDevice(GLControl!.Handle);
+            var swapchain = GLControl!.Swapchain;
 
+            uint width = swapchain.Extent.width;
+            uint height = swapchain.Extent.height;
+            depthImage = new Image(width, height, VkFormat.D32Sfloat, 1, 1, VkImageUsageFlags.DepthStencilAttachment);
 
-
-            if (swapchain == null)
+            // Create command list for clearing
+            var device = RenderDevice;
+            if (device != null)
             {
+                commandList = new CommandList(device.QueueFamilyIndices.GraphicsFamily!.Value);
 
+                // Compile grid shader
+                var slangCompiler = new SlangShaderCompiler();
 
-                // Create swapchain
-                swapchain = new Swapchain((uint)GLControl!.ClientSize.Width, (uint)GLControl!.ClientSize.Height);
+                var module = slangCompiler.LoadShaderModule("../../../Shaders/grid.slang");
+                var specShader = slangCompiler.SpecialiseAndCompile(module);
 
-                // Create depth buffer (D32Sfloat)
-                uint width = swapchain.Extent.width;
-                uint height = swapchain.Extent.height;
-                depthImage = new Image(width, height, VkFormat.D32Sfloat, 1, 1, VkImageUsageFlags.DepthStencilAttachment);
+                // Grid pipeline: blending enabled for transparent lines, no depth writes
+                pipeline = new PipelineGraphics(specShader, colorTargetFormat: VkFormat.B8G8R8A8Unorm, depthTargetFormat: VkFormat.D32Sfloat, blendEnable: true, depthWriteEnable: false);
 
-                // Create command list for clearing
-                var device = RenderDevice;
-                if (device != null)
+                // Compile simple vertex shader (position + push constant)
+                var module2 = slangCompiler.LoadShaderModule("../../../Shaders/simple_vert.slang");
+                var specShader2 = slangCompiler.SpecialiseAndCompile(module2);
+
+                // Build binding description for the model shader (POSITION + NORMAL + TEXCOORD)
+                var bindingDescs = new BindingDescription[]
                 {
-                    commandList = new CommandList(device.QueueFamilyIndices.GraphicsFamily!.Value);
-
-                    // Compile grid shader
-                    var slangCompiler = new SlangShaderCompiler();
-
-                    var module = slangCompiler.LoadShaderModule("../../../Shaders/grid.slang");
-                    var specShader = slangCompiler.SpecialiseAndCompile(module);
-
-                    // Grid pipeline: blending enabled for transparent lines, no depth writes
-                    pipeline = new PipelineGraphics(specShader, colorTargetFormat: VkFormat.B8G8R8A8Unorm, depthTargetFormat: VkFormat.D32Sfloat, blendEnable: true, depthWriteEnable: false);
-
-                    // Compile simple vertex shader (position + push constant)
-                    var module2 = slangCompiler.LoadShaderModule("../../../Shaders/simple_vert.slang");
-                    var specShader2 = slangCompiler.SpecialiseAndCompile(module2);
-
-                    // Build binding description for the model shader (POSITION + NORMAL + TEXCOORD)
-                    var bindingDescs = new BindingDescription[]
-                    {
                     new()
                     {
                         binding = 0,
@@ -697,53 +685,52 @@ namespace GUI.Types.GLViewers
                             }
                         ]
                     }
-                    };
+                };
 
-                    // Model pipeline: opaque, no blending
-                    pipelineModel = new PipelineGraphics(specShader2, colorTargetFormat: VkFormat.B8G8R8A8Unorm, depthTargetFormat: VkFormat.D32Sfloat, bindingDescriptions: bindingDescs, blendEnable: false);
+                // Model pipeline: opaque, no blending
+                pipelineModel = new PipelineGraphics(specShader2, colorTargetFormat: VkFormat.B8G8R8A8Unorm, depthTargetFormat: VkFormat.D32Sfloat, bindingDescriptions: bindingDescs, blendEnable: false);
 
-                    // Load model mesh data and upload to Vulkan buffers
-                    var (vertices, indices) = ExtractModelGeometry(model);
-                    if (vertices.Length == 0)
+                // Load model mesh data and upload to Vulkan buffers
+                var (vertices, indices) = ExtractModelGeometry(model);
+                if (vertices.Length == 0)
+                {
+                    Console.WriteLine("No POSITION data found in model; falling back to test triangle");
+                    vertices = new Vertex[]
                     {
-                        Console.WriteLine("No POSITION data found in model; falling back to test triangle");
-                        vertices = new Vertex[]
-                        {
                         new(new Vector3(0f, 0f, 0f), new Vector3(0f, 0f, -1f), new Vector2(0f, 0f)),
                         new(new Vector3(10f, 0f, 0f), new Vector3(0f, 0f, -1f), new Vector2(1f, 0f)),
                         new(new Vector3(5f, -10f, 0f), new Vector3(0f, 0f, -1f), new Vector2(0.5f, 1f))
-                        };
-                        indices = new uint[] { 0, 1, 2 };
-                    }
-
-                    vertexCount = (uint)vertices.Length;
-                    indexCount = (uint)indices.Length;
-
-                    // Upload vertex buffer
-                    var vertexBufferSize = (ulong)(vertices.Length * Marshal.SizeOf<Vertex>());
-                    vertexBuffer = new RhiBuffer(vertexBufferSize, VkBufferUsageFlags.VertexBuffer, VmaMemoryUsage.GpuToCpu);
-                    void* vmap = vertexBuffer.Map();
-                    fixed (Vertex* srcPtr = vertices)
-                    {
-                        System.Buffer.MemoryCopy(srcPtr, vmap, vertices.Length * Marshal.SizeOf<Vertex>(), vertices.Length * Marshal.SizeOf<Vertex>());
-                    }
-                    vertexBuffer.Unmap();
-
-                    // Upload index buffer
-                    var indexBufferSize = (ulong)(indices.Length * sizeof(uint));
-                    indexBuffer = new RhiBuffer(indexBufferSize, VkBufferUsageFlags.IndexBuffer, VmaMemoryUsage.GpuToCpu);
-                    void* imap = indexBuffer.Map();
-                    fixed (uint* idxPtr = indices)
-                    {
-                        System.Buffer.MemoryCopy(idxPtr, imap, indices.Length * sizeof(uint), indices.Length * sizeof(uint));
-                    }
-                    indexBuffer.Unmap();
-
-                    uniformBuffer = new RhiBuffer(256, VkBufferUsageFlags.UniformBuffer, VmaMemoryUsage.GpuToCpu);
-
-                    // Load first albedo texture from model materials and upload to Vulkan
-                    LoadAlbedoTexture(model, fileLoader);
+                    };
+                    indices = new uint[] { 0, 1, 2 };
                 }
+
+                vertexCount = (uint)vertices.Length;
+                indexCount = (uint)indices.Length;
+
+                // Upload vertex buffer
+                var vertexBufferSize = (ulong)(vertices.Length * Marshal.SizeOf<Vertex>());
+                vertexBuffer = new RhiBuffer(vertexBufferSize, VkBufferUsageFlags.VertexBuffer, VmaMemoryUsage.GpuToCpu);
+                void* vmap = vertexBuffer.Map();
+                fixed (Vertex* srcPtr = vertices)
+                {
+                    System.Buffer.MemoryCopy(srcPtr, vmap, vertices.Length * Marshal.SizeOf<Vertex>(), vertices.Length * Marshal.SizeOf<Vertex>());
+                }
+                vertexBuffer.Unmap();
+
+                // Upload index buffer
+                var indexBufferSize = (ulong)(indices.Length * sizeof(uint));
+                indexBuffer = new RhiBuffer(indexBufferSize, VkBufferUsageFlags.IndexBuffer, VmaMemoryUsage.GpuToCpu);
+                void* imap = indexBuffer.Map();
+                fixed (uint* idxPtr = indices)
+                {
+                    System.Buffer.MemoryCopy(idxPtr, imap, indices.Length * sizeof(uint), indices.Length * sizeof(uint));
+                }
+                indexBuffer.Unmap();
+
+                uniformBuffer = new RhiBuffer(256 + (ulong)sizeof(DescriptorHandle<Image>), VkBufferUsageFlags.UniformBuffer, VmaMemoryUsage.GpuToCpu);
+
+                // Load first albedo texture from model materials and upload to Vulkan
+                LoadAlbedoTexture(model, fileLoader);
             }
 
 
@@ -1263,28 +1250,7 @@ namespace GUI.Types.GLViewers
         {
             elapsedTime += frameTime;
 
-            // Update uniform buffer with view and projection matrices
-            if (pipeline != null && uniformBuffer != null)
-            {
-                Renderer?.Camera?.RecalculateMatrices();
-
-                var viewMatrix = Renderer?.Camera?.CameraViewMatrix;
-                var aspectRatio = (float)swapchain.Extent.width / swapchain.Extent.height;
-                var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, aspectRatio, 0.1f, 1000f);
-                projectionMatrix.M22 *= -1;
-                void* mapped = uniformBuffer.Map();
-                Matrix4x4* matrices = (Matrix4x4*)mapped;
-                matrices[0] = viewMatrix ?? Matrix4x4.Identity;
-                matrices[1] = projectionMatrix;
-                var view = viewMatrix ?? Matrix4x4.Identity;
-                Matrix4x4 invView;
-                Matrix4x4.Invert(view, out invView);
-                matrices[2] = invView;
-                Matrix4x4 invProj;
-                Matrix4x4.Invert(projectionMatrix, out invProj);
-                matrices[3] = invProj;
-                uniformBuffer.Unmap();
-            }
+            
 
             var dev = RenderDevice ?? throw new InvalidOperationException("Vulkan device not initialized");
 
@@ -1295,16 +1261,21 @@ namespace GUI.Types.GLViewers
                 imageAvailableSemaphore = dev.CreateSemaphore();
             }
 
-
-            
-
             // Wait for previous frame to finish before reusing resources
             dev.WaitForFences(fence.Value, true);
+
+            var swapchain = GLControl!.Swapchain;
 
             if (swapchain.IsOutOfDate)
             {
                 dev.WaitDeviceIdle();
-                swapchain.Recreate((uint)GLControl!.ClientSize.Width, (uint)GLControl!.ClientSize.Height);
+
+                var size = GLControl!.ClientSize;
+
+                if (size.Width == 0 || size.Height == 0)
+                    return;
+
+                swapchain.Recreate((uint)size.Width, (uint)size.Height);
 
                 depthImage?.Destroy(); // or however this RHI wrapper releases GPU resources
                 depthImage = new Image(swapchain.Extent.width, swapchain.Extent.height, VkFormat.D32Sfloat, 1, 1, VkImageUsageFlags.DepthStencilAttachment);
@@ -1373,7 +1344,35 @@ namespace GUI.Types.GLViewers
                 textureUploaded = true;
             }
 
-            
+            // Update uniform buffer with view and projection matrices
+            if (pipeline != null && uniformBuffer != null)
+            {
+                Renderer?.Camera?.RecalculateMatrices();
+
+                var viewMatrix = Renderer?.Camera?.CameraViewMatrix;
+                var aspectRatio = (float)swapchain.Extent.width / swapchain.Extent.height;
+                var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, aspectRatio, 0.1f, 1000f);
+                projectionMatrix.M22 *= -1;
+                void* mapped = uniformBuffer.Map();
+                Matrix4x4* matrices = (Matrix4x4*)mapped;
+                matrices[0] = viewMatrix ?? Matrix4x4.Identity;
+                matrices[1] = projectionMatrix;
+                var view = viewMatrix ?? Matrix4x4.Identity;
+                Matrix4x4 invView;
+                Matrix4x4.Invert(view, out invView);
+                matrices[2] = invView;
+                Matrix4x4 invProj;
+                Matrix4x4.Invert(projectionMatrix, out invProj);
+                matrices[3] = invProj;
+
+                var descHandle = textureImage.DescriptorHandle;
+
+                DescriptorHandle<ValveResourceFormat.Renderer2.RHI.Texture>* mappedDesc = (DescriptorHandle<ValveResourceFormat.Renderer2.RHI.Texture>*)((byte*)mapped + 256);
+
+                *mappedDesc = textureImage.DescriptorHandle;
+
+                uniformBuffer.Unmap();
+            }
 
 
             var image = swapchain.Images[currentImageIndex];
@@ -1452,7 +1451,7 @@ namespace GUI.Types.GLViewers
 
             //// The stats overlay reflects whatever meshes are currently drawn, so it only needs rebuilding
             //// when that set changes (a LoD switch, or a mesh/material group change), not every frame.
-            //if (modelSceneNode != null && SelectedNodeRenderer != null)
+            if (modelSceneNode != null && SelectedNodeRenderer != null)
             //{
             //    if (!SelectedNodeRenderer.HasSelectedNodes)
             //    {

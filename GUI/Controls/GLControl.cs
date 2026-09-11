@@ -1,58 +1,35 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Threading;
 using System.Windows.Forms;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using NativeWindow = OpenTK.Windowing.Desktop.NativeWindow;
+using ValveResourceFormat.Renderer2.RHI;
+using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
 
 namespace GUI.Controls;
 
 /// <summary>
-/// OpenGL-capable WinForms control that is a specialized wrapper around OpenTK's NativeWindow.
+/// WinForms control holding a Swapchain through which it can be drawn to via Vulkan.
 /// </summary>
-/// <remarks>
-/// Unlike GLControl provided by OpenTK, this class is modified to not explicitly own the NativeWindow.
-/// </remarks>
-/// <see href="https://github.com/opentk/GLControl/blob/9b3e527aac9b5f5759c5f637aa57da5d3821a32f/OpenTK.GLControl/GLControl.cs"/>
 public class GLControl : Control
 {
-    /// <summary>
-    /// The underlying native window.  This will be reparented to be a child of
-    /// this control.
-    /// </summary>
-    private NativeWindow? _nativeWindow;
-
-    /// <summary>
-    /// Gets the <see cref="IGraphicsContext"/> instance that is associated with the <see cref="GLControl"/>.
-    /// </summary>
-    [Browsable(false)]
-    public IGLFWGraphicsContext? Context => _nativeWindow?.Context;
-
-    private readonly Lock glLock;
-
-    /// <summary>
-    /// Constructs a new instance using the specified lock to guard the native OpenGL window.
-    /// </summary>
-    /// <param name="glLock">The lock used to synchronize access to the OpenGL/GLFW native window.</param>
-    public GLControl(Lock glLock)
+    Swapchain? _swapchain;
+    //VKTODO: uuuuuh
+    public Swapchain Swapchain => _swapchain;
+    public GLControl()
     {
         SetStyle(ControlStyles.Opaque, true);
         SetStyle(ControlStyles.UserPaint, true);
         SetStyle(ControlStyles.AllPaintingInWmPaint, true);
         DoubleBuffered = false;
-        this.glLock = glLock;
     }
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing)
-        {
-            DestroyNativeWindow();
-        }
+        //if (disposing)
+        //{
+        //    DestroyNativeWindow();
+        //}
         base.Dispose(disposing);
     }
 
@@ -63,25 +40,13 @@ public class GLControl : Control
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleCreated(EventArgs e)
     {
-        //Debug.Assert(_nativeWindow != null);
+        S2vDevice.CreateRenderDevice();
 
-        //NonportableReparent(_nativeWindow);
+        var surface = RenderDevice!.CreateSurfaceFromWindowHandle(Handle);
 
-        // Force the newly child-ified GLFW window to be resized to fit this control.
-        //ResizeNativeWindow();
-
-        // And now show the child window, since it hasn't been made visible yet.
-        //_nativeWindow.IsVisible = true;
+        _swapchain = new Swapchain((uint)ClientSize.Width, (uint)ClientSize.Height, surface);
 
         base.OnHandleCreated(e);
-    }
-
-    /// <summary>
-    /// Attach an existing NativeWindow.
-    /// </summary>
-    public void AttachNativeWindow(NativeWindow nativeWindow)
-    {
-        _nativeWindow = nativeWindow;
     }
 
     /// <summary>
@@ -106,72 +71,16 @@ public class GLControl : Control
     }
 
     /// <summary>
-    /// Reparent the given NativeWindow to be a child of this GLControl.  This is a
-    /// non-portable operation, as its name implies:  It works wildly differently
-    /// between OSes.  The current implementation only supports Microsoft Windows.
-    /// </summary>
-    /// <param name="nativeWindow">The NativeWindow that must become a child of this control.</param>
-    private void NonportableReparent(NativeWindow nativeWindow)
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            throw new NotSupportedException("The current operating system is not supported by this control.");
-        }
-
-        Windows.Win32.Foundation.HWND hWnd;
-        unsafe
-        {
-            hWnd = (Windows.Win32.Foundation.HWND)GLFW.GetWin32Window(nativeWindow.WindowPtr);
-        }
-
-        // Change the real HWND's window styles to be "WS_CHILD | WS_DISABLED" (i.e.,
-        // a child of some container, with no input support), and turn off *all* the
-        // other style bits (most of the rest of them could cause trouble).  In
-        // particular, this turns off stuff like WS_BORDER and WS_CAPTION and WS_POPUP
-        // and so on, any of which GLFW might have turned on for us.
-        var style = (IntPtr)(Windows.Win32.UI.WindowsAndMessaging.WINDOW_STYLE.WS_CHILD
-            | Windows.Win32.UI.WindowsAndMessaging.WINDOW_STYLE.WS_DISABLED);
-
-        Windows.Win32.PInvoke.SetWindowLongPtr(hWnd, Windows.Win32.UI.WindowsAndMessaging.WINDOW_LONG_PTR_INDEX.GWL_STYLE, style);
-
-        // Change the real HWND's extended window styles to be "WS_EX_NOACTIVATE", and
-        // turn off *all* the other extended style bits (most of the rest of them
-        // could cause trouble).  We want WS_EX_NOACTIVATE because we don't want
-        // Windows mistakenly giving the GLFW window the focus as soon as it's created,
-        // regardless of whether it's a hidden window.
-        style = (IntPtr)Windows.Win32.UI.WindowsAndMessaging.WINDOW_EX_STYLE.WS_EX_NOACTIVATE;
-        Windows.Win32.PInvoke.SetWindowLongPtr(hWnd, Windows.Win32.UI.WindowsAndMessaging.WINDOW_LONG_PTR_INDEX.GWL_EXSTYLE, style);
-
-        // Reparent the real HWND under this control.
-        Windows.Win32.PInvoke.SetParent(hWnd, (Windows.Win32.Foundation.HWND)Handle);
-    }
-
-    /// <summary>
     /// This is triggered when the underlying Handle/HWND instance is *about to be*
     /// destroyed (this is called *before* the Handle/HWND is destroyed).  We use it
-    /// to cleanly destroy the NativeWindow before its parent disappears.
+    /// to cleanly destroy the swapchain before its parent disappears.
     /// </summary>
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleDestroyed(EventArgs e)
     {
-        DestroyNativeWindow();
-
+        _swapchain!.Dispose();
         base.OnHandleDestroyed(e);
 
-    }
-
-    /// <summary>
-    /// Destroy the child NativeWindow that wraps the underlying GLFW instance.
-    /// </summary>
-    private void DestroyNativeWindow()
-    {
-        if (_nativeWindow != null)
-        {
-            using var lockedGl = glLock.EnterScope();
-
-            _nativeWindow.Dispose();
-            _nativeWindow = null;
-        }
     }
 
     /// <summary>
@@ -211,63 +120,5 @@ public class GLControl : Control
         // There is no good way to explain this event except to say
         // that it's just another name for OnControlCreated.
         ((EventHandler?)Events[EVENT_LOAD])?.Invoke(this, e);
-    }
-
-    /// <summary>
-    /// This is invoked when the Resize event is triggered, and is used to position
-    /// the internal GLFW window accordingly.
-    ///
-    /// Note: This method may be called before the OpenGL context is ready or the
-    /// NativeWindow even exists, so everything inside it requires safety checks.
-    /// </summary>
-    /// <param name="e">An EventArgs instance (ignored).</param>
-    protected override void OnResize(EventArgs e)
-    {
-        // Do not raise OnResize event before the handle and context are created.
-        if (!IsHandleCreated)
-        {
-            return;
-        }
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            BeginInvoke(new Action(ResizeNativeWindow)); // Need the native window to resize first otherwise our control will be in the wrong place.
-        }
-        else
-        {
-            ResizeNativeWindow();
-        }
-
-        base.OnResize(e);
-    }
-
-    /// <summary>
-    /// Resize the native window to fit this control.
-    /// </summary>
-    private void ResizeNativeWindow()
-    {
-        if (DesignMode)
-        {
-            return;
-        }
-
-        if (_nativeWindow != null)
-        {
-            _nativeWindow.ClientRectangle = new Box2i(0, 0, Width, Height);
-        }
-    }
-
-    /// <summary>
-    /// This event is raised when this control's parent control is changed,
-    /// which may result in this control becoming a different size or shape, so
-    /// we capture it to ensure that the underlying GLFW window gets correctly
-    /// resized and repositioned as well.
-    /// </summary>
-    /// <param name="e">An EventArgs instance (ignored).</param>
-    protected override void OnParentChanged(EventArgs e)
-    {
-        ResizeNativeWindow();
-
-        base.OnParentChanged(e);
     }
 }

@@ -25,7 +25,6 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     /// <summary>The command stream this control records into, over <see cref="GLNativeWindow"/>.</summary>
     protected GraphicsContext? GraphicsContext;
     public GLControl? GLControl { get; private set; }
-
     protected Form? FullScreenForm { get; private set; }
     public bool IsFullScreen => FullScreenForm != null;
 
@@ -145,7 +144,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     {
         // TODO [GL removal]: Commented out GLControl creation - placeholder will be used instead
         ///*
-        GLControl = new GLControl(glLock)
+        GLControl = new GLControl()
         {
             Dock = DockStyle.Fill,
             // Back-reference for FindHostedIn: this class is not itself a WinForms control, so the
@@ -172,37 +171,6 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         };
 
         UiControl.GLControlContainer.Controls.Add(GLControl);
-
-        //GLControl.Visible = false;
-
-        // TODO [GL removal]: Placeholder panel instead of GLControl
-        var placeholderPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = System.Drawing.Color.Black,
-            AutoSize = false,
-            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-        };
-        var label = new Label
-        {
-            Dock = DockStyle.Fill,
-            TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
-            Text = "OpenGL rendering disabled during Vulkan migration",
-            ForeColor = System.Drawing.Color.Gray,
-            Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont, System.Drawing.FontStyle.Italic),
-        };
-        placeholderPanel.Controls.Add(label);
-        //UiControl.GLControlContainer.Controls.Add(placeholderPanel);
-
-        /*
-        GLControl.AttachNativeWindow(GLNativeWindow!);
-
-        GLNativeWindow!.MouseMove += OnNativeMouseMove;
-
-#if DEBUG
-        ShaderHotReload.SetSynchronizingObject(GLControl);
-#endif
-        */
 
         UiControl.SuspendLayout();
 
