@@ -278,6 +278,19 @@ namespace GUI.Types.GLViewers
             Scene.DynamicOctree.DebugRenderer = new(Scene.DynamicOctree, Scene.RendererContext);
         }
 
+        /// <summary>
+        /// Initializes the scene without requiring an OpenGL context. Useful for Vulkan migration testing.
+        /// Calls PreSceneLoad(), LoadScene(), and PostSceneLoad() in sequence.
+        /// </summary>
+        public override void InitializeSceneDirectly()
+        {
+            //PreSceneLoad();
+            SelectedNodeRenderer = new(Scene.RendererContext);
+
+            LoadScene();
+            //PostSceneLoad();
+        }
+
         protected abstract void LoadScene();
 
         protected abstract void OnPicked(object? sender, PickingTexture.PickingResponse pixelInfo);
@@ -1050,25 +1063,25 @@ namespace GUI.Types.GLViewers
 
         protected override void OnKeyDown(Keys keyData)
         {
-            Debug.Assert(SelectedNodeRenderer != null);
+            //Debug.Assert(SelectedNodeRenderer != null);
 
-            if (keyData == Keys.Delete)
-            {
-                SelectedNodeRenderer.DisableSelectedNodes();
-                return;
-            }
+            //if (keyData == Keys.Delete)
+            //{
+            //    SelectedNodeRenderer.DisableSelectedNodes();
+            //    return;
+            //}
 
-            if (keyData == Keys.Escape)
-            {
-                SelectedNodeRenderer.SelectNode(null);
-                mouseReleased = true;
-            }
+            //if (keyData == Keys.Escape)
+            //{
+            //    SelectedNodeRenderer.SelectNode(null);
+            //    mouseReleased = true;
+            //}
 
-            if (keyData == Keys.Tab && perfDisplayComboBox != null)
-            {
-                // Cycle through the perf display modes (the callback updates perfDisplay)
-                perfDisplayComboBox.SelectedIndex = (perfDisplayComboBox.SelectedIndex + 1) % perfDisplayComboBox.Items.Count;
-            }
+            //if (keyData == Keys.Tab && perfDisplayComboBox != null)
+            //{
+            //    // Cycle through the perf display modes (the callback updates perfDisplay)
+            //    perfDisplayComboBox.SelectedIndex = (perfDisplayComboBox.SelectedIndex + 1) % perfDisplayComboBox.Items.Count;
+            //}
 
             base.OnKeyDown(keyData);
         }

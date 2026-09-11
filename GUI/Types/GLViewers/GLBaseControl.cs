@@ -143,6 +143,8 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
     public Control InitializeUiControls(bool isPreview = false)
     {
+        // TODO [GL removal]: Commented out GLControl creation - placeholder will be used instead
+        ///*
         GLControl = new GLControl(glLock)
         {
             Dock = DockStyle.Fill,
@@ -162,6 +164,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         // High-frequency input (mouse move, wheel, keyboard) is intercepted as raw window messages
         // instead of WinForms events, whose args allocate on every message. See PreFilterMessage.
         Application.AddMessageFilter(this);
+        //*/
 
         UiControl = new(isPreview)
         {
@@ -169,6 +172,29 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         };
 
         UiControl.GLControlContainer.Controls.Add(GLControl);
+
+        //GLControl.Visible = false;
+
+        // TODO [GL removal]: Placeholder panel instead of GLControl
+        var placeholderPanel = new Panel
+        {
+            Dock = DockStyle.Fill,
+            BackColor = System.Drawing.Color.Black,
+            AutoSize = false,
+            Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
+        };
+        var label = new Label
+        {
+            Dock = DockStyle.Fill,
+            TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
+            Text = "OpenGL rendering disabled during Vulkan migration",
+            ForeColor = System.Drawing.Color.Gray,
+            Font = new System.Drawing.Font(System.Drawing.SystemFonts.DefaultFont, System.Drawing.FontStyle.Italic),
+        };
+        placeholderPanel.Controls.Add(label);
+        //UiControl.GLControlContainer.Controls.Add(placeholderPanel);
+
+        /*
         GLControl.AttachNativeWindow(GLNativeWindow!);
 
         GLNativeWindow!.MouseMove += OnNativeMouseMove;
@@ -176,6 +202,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 #if DEBUG
         ShaderHotReload.SetSynchronizingObject(GLControl);
 #endif
+        */
 
         UiControl.SuspendLayout();
 
@@ -221,6 +248,15 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     protected virtual void AddUiControls()
     {
         // Implemented in derived classes
+    }
+
+    /// <summary>
+    /// Initializes the scene without requiring an OpenGL context. Override in derived classes.
+    /// Default implementation does nothing; GLSceneViewer overrides to call InitializeSceneDirectly().
+    /// </summary>
+    public virtual void InitializeSceneDirectly()
+    {
+        // Base class does nothing; derived classes override as needed
     }
 
     private const int WM_KEYDOWN = 0x0100;
@@ -797,9 +833,9 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     /// <summary>Push user settings into the render state.</summary>
     private void ApplySettingsToRenderState()
     {
-        using var lockedGl = MakeCurrent();
+        //using var lockedGl = MakeCurrent();
 
-        GLNativeWindow?.Context.SwapInterval = Settings.Config.Vsync;
+        //GLNativeWindow?.Context.SwapInterval = Settings.Config.Vsync;
 
         if (this is GLSceneViewer viewer)
         {
@@ -849,6 +885,9 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
     private void InitializeLoadCore()
     {
+        RenderLoopThread.RegisterInstance();
+        // TODO [GL removal]: Commented out - GLFW window creation and OpenGL initialization disabled
+        /*
         // Create the GLFW window on the UI thread even though this method may be called from a
         // background thread. This is necessary because of Win32 window thread-affinity rules.
         //
@@ -935,6 +974,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
             prewarmed.Wait();
             RenderLoopThread.UnsetCurrentGLControl(this);
         }
+        */
     }
 
     private void LoadGLResources()
@@ -1081,28 +1121,28 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     {
         using var lockedGl = glLock.EnterScope();
 
-        if (GLNativeWindow == null || !GLNativeWindow.Exists || GraphicsContext == null)
-        {
-            Log.Debug(nameof(GLBaseControl), "Attempted to draw onto destroyed GL Native Window.");
-            RenderLoopThread.UnsetCurrentGLControl(this);
-            return false;
-        }
+        //if (GLNativeWindow == null || !GLNativeWindow.Exists || GraphicsContext == null)
+        //{
+        //    Log.Debug(nameof(GLBaseControl), "Attempted to draw onto destroyed GL Native Window.");
+        //    RenderLoopThread.UnsetCurrentGLControl(this);
+        //    return false;
+        //}
 
-        try
-        {
-            GraphicsContext.Begin();
-        }
-        catch (OpenTK.Windowing.GraphicsLibraryFramework.GLFWException e)
-        {
-            // 'The requested transformation operation is not supported.' when resizing the app
-            // 'The handle is invalid.' when changing tab visibility
-            Log.Debug(nameof(GLFWGraphicsContext), e.Message);
-            return false;
-        }
+        //try
+        //{
+        //    GraphicsContext.Begin();
+        //}
+        //catch (OpenTK.Windowing.GraphicsLibraryFramework.GLFWException e)
+        //{
+        //    // 'The requested transformation operation is not supported.' when resizing the app
+        //    // 'The handle is invalid.' when changing tab visibility
+        //    Log.Debug(nameof(GLFWGraphicsContext), e.Message);
+        //    return false;
+        //}
 
         if (ShouldResize)
         {
-            OnResize(GLNativeWindow.Size.X, GLNativeWindow.Size.Y);
+            //OnResize(GLNativeWindow.Size.X, GLNativeWindow.Size.Y);
             ShouldResize = false;
         }
 
@@ -1133,12 +1173,12 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         if (SkipBufferSwap)
         {
             SkipBufferSwap = false;
-            GraphicsContext.End();
+            //GraphicsContext.End();
             return false;
         }
 
         var swapStart = Stopwatch.GetTimestamp();
-        GLNativeWindow.Context.SwapBuffers();
+        //GLNativeWindow.Context.SwapBuffers();
         var swapEnd = Stopwatch.GetTimestamp();
 
         var framePeriodMs = isPaused || resumingRender || lastSwapTimestamp == 0
@@ -1149,7 +1189,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
         lastSwapTimestamp = swapEnd;
 
-        GraphicsContext.End();
+        //GraphicsContext.End();
 
         if (firstDraw)
         {

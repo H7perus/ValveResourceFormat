@@ -63,15 +63,15 @@ public class GLControl : Control
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleCreated(EventArgs e)
     {
-        Debug.Assert(_nativeWindow != null);
+        //Debug.Assert(_nativeWindow != null);
 
-        NonportableReparent(_nativeWindow);
+        //NonportableReparent(_nativeWindow);
 
         // Force the newly child-ified GLFW window to be resized to fit this control.
-        ResizeNativeWindow();
+        //ResizeNativeWindow();
 
         // And now show the child window, since it hasn't been made visible yet.
-        _nativeWindow.IsVisible = true;
+        //_nativeWindow.IsVisible = true;
 
         base.OnHandleCreated(e);
     }

@@ -2,6 +2,7 @@
   <Project Path="CLI/CLI.csproj" />
   <Project Path="GUI/GUI.csproj" />
   <Project Path="Renderer/Renderer.csproj" />
+  <Project Path="Renderer2/Renderer2.csproj" Id="401622c9-1ff0-439f-b0af-bd7447f4a592" />
   <Project Path="Tests/Tests.csproj" />
   <Project Path="ValveResourceFormat/ValveResourceFormat.csproj" />
 </Solution>
