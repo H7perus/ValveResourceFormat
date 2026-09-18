@@ -1,6 +1,5 @@
 global using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
 using System.Runtime.InteropServices;
-using ValveResourceFormat.Renderer2.RHI;
 //using SDL;
 using Vortice.Vulkan;
 //using static SDL.SDL3;
@@ -421,6 +420,19 @@ namespace ValveResourceFormat.Renderer2.RHI
             return indices;
         }
 
+        public unsafe void SetObjectDebugName(ulong handle, VkObjectType type, string name)
+        {
+            //Q: Performance?
+            var array = new VkStringArray([name]);
+            byte* pName = *(byte**)array;
+            VkDebugUtilsObjectNameInfoEXT nameInfo = new()
+            {
+                objectType = type,
+                objectHandle = handle,
+                pObjectName = (byte*)pName
+            };
+            VkInstanceApi.vkSetDebugUtilsObjectNameEXT(VkDeviceApi.Device, &nameInfo);
+        }
         public unsafe VkSurfaceKHR CreateSurfaceFromWindowHandle(nint windowHandle)
         {
             [DllImport("user32.dll")]

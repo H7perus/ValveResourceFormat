@@ -1,9 +1,6 @@
 using System;
-using System.Drawing;
 using Vortice.Vulkan;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using static Vortice.Vulkan.Vma;
-using static Vortice.Vulkan.Vulkan;
 
 namespace ValveResourceFormat.Renderer2.RHI
 {
@@ -17,23 +14,21 @@ namespace ValveResourceFormat.Renderer2.RHI
 
         public DescriptorHandle<Buffer> DescriptorHandle => new DescriptorHandle<Buffer>(BindlessIndex);
 
-        public Buffer(ulong size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags allocationFlags = VmaAllocationCreateFlags.None)
+        public Buffer(ulong size, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags allocationFlags = VmaAllocationCreateFlags.None, string? name = null)
         {
             Size = size;
 
-            
+            CreateBuffer(usage, memoryUsage, allocationFlags, name);
 
-            CreateBuffer(usage, memoryUsage, allocationFlags);
-
-            //hack
+            //hack. Optimally we have a StorageBuffer and a UniformBuffer subtype and what else comes up
             if(usage == VkBufferUsageFlags.UniformBuffer)
                 BindlessIndex = RenderDevice!.GetBindlessSlot(VkDescriptorType.UniformBuffer, Handle);
 
         }
 
-        unsafe void CreateBuffer(VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags allocationFlags)
-        {            
-            //H7per: NOTE: I am making the sharing mode "Exclusive". This *may* be problematic for transfer buffers later, but thats a problem for future us
+        unsafe void CreateBuffer(VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage, VmaAllocationCreateFlags allocationFlags, string? name = null)
+        {
+            //TODO: review whether we should use sharing mode exclusive or concurrent
             VkBufferCreateInfo bufferCreateInfo = new()
             {
                 size = Size,
@@ -50,6 +45,12 @@ namespace ValveResourceFormat.Renderer2.RHI
             vmaCreateBuffer(RenderDevice!.VmaAllocator, bufferCreateInfo, allocationCreateInfo, out var buffer, out var allocation);
             Handle = buffer;
             VmaAllocation = allocation;
+
+            if (name != null)
+            {
+                RenderDevice!.SetObjectDebugName(Handle, VkObjectType.Buffer, name);
+            }
+
         }
 
         public unsafe void* Map()
@@ -63,16 +64,5 @@ namespace ValveResourceFormat.Renderer2.RHI
         {
             vmaUnmapMemory(RenderDevice!.VmaAllocator, VmaAllocation);
         }
-
-        public unsafe void SetData<T>(ReadOnlySpan<T> data, ulong offset = 0) where T : unmanaged
-        {
-            // TODO: Map, copy, Unmap (or vmaCopyMemoryToAllocation if HOST_VISIBLE + persistently mapped)
-        }
-
-        public void Flush(ulong offset = 0, ulong size = VK_WHOLE_SIZE)
-        {
-            // TODO: vmaFlushAllocation(device.VmaAllocator, VmaAllocation, offset, size) — needed for non-coherent memory
-        }
-
     }
 }
