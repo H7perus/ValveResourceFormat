@@ -1,10 +1,10 @@
-using SlangShaderSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text;
+using SlangShaderSharp;
 using Vortice.Vulkan;
-using static System.Collections.Specialized.BitVector32;
 
 namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 {
@@ -125,7 +125,7 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
             return new SlangShaderModule(module, compileTimeConstants);
         }
 
-        public SpecialisedShader SpecialiseAndCompile(SlangShaderModule shaderModule, IReadOnlyDictionary<string, int> arguments = null)
+        public SpecialisedShader SpecialiseAndCompile(SlangShaderModule shaderModule, IReadOnlyDictionary<string, int>? arguments = null)
         {
             //guh, thats wild. Need sorting so we can traverse the arguments more easily.
 
@@ -366,7 +366,7 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 
         private void ReflectVertexParameter(VariableLayoutReflection vertexInputReflection, ref List<VertexInput> vertexInputs)
         {
-            if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct)
+            if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct && vertexInputReflection.SemanticName == null)
             {
                 for (uint iElement = 0; iElement < vertexInputReflection.TypeLayout.FieldCount; iElement++)
                 {
@@ -378,32 +378,36 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                     }
                 }
             }
+            else if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct && vertexInputReflection.SemanticName == "NORMAL")
+            {
+                ReflectNormalData(vertexInputReflection, ref vertexInputs);
+            }
             else
             {
-            VkFormat vkFormat;
-            uint elementSize = 0;
-            switch (vertexInputReflection.TypeLayout.ScalarType)
-            {
-                case SlangScalarType.Float32:
-                    vkFormat = VkFormat.R32Sfloat;
-                    elementSize = 4;
-                    break;
-                case SlangScalarType.Int32:
-                    vkFormat = VkFormat.R32Sint;
-                    elementSize = 4;
-                    break;
-                case SlangScalarType.UInt32:
-                    vkFormat = VkFormat.R32Uint;
-                    elementSize = 4;
-                    break;
-                default:
-                    vkFormat = 0;
-                    break;
-            }
+                VkFormat vkFormat;
+                uint elementSize = 0;
+                switch (vertexInputReflection.TypeLayout.ScalarType)
+                {
+                    case SlangScalarType.Float32:
+                        vkFormat = VkFormat.R32Sfloat;
+                        elementSize = 4;
+                        break;
+                    case SlangScalarType.Int32:
+                        vkFormat = VkFormat.R32Sint;
+                        elementSize = 4;
+                        break;
+                    case SlangScalarType.UInt32:
+                        vkFormat = VkFormat.R32Uint;
+                        elementSize = 4;
+                        break;
+                    default:
+                        vkFormat = 0;
+                        break;
+                }
 
-            var elementCount = Math.Max((uint)vertexInputReflection.TypeLayout.ColumnCount, 1);
-            //a bit evil but this enum is static, so this trick won't just break with a new Vulkan version or anything.
-            vkFormat = (VkFormat)((uint)vkFormat + (elementCount - 1) * 3);
+                var elementCount = Math.Max((uint)vertexInputReflection.TypeLayout.ColumnCount, 1);
+                //a bit evil but this enum is static, so this trick won't just break with a new Vulkan version or anything.
+                vkFormat = (VkFormat)((uint)vkFormat + (elementCount - 1) * 3);
 
 
                 vertexInputs.Add(new VertexInput()
@@ -415,10 +419,27 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                     Size = elementCount * elementSize
                 });
             }
-            
-            
+
+
         }
 
+        private void ReflectNormalData(VariableLayoutReflection normalInputReflection, ref List<VertexInput> vertexInputs)
+        {
+
+            Debug.Assert(normalInputReflection.TypeLayout.FieldCount == 2);
+            Debug.Assert(normalInputReflection.TypeLayout.Name == "NormalData");
+
+            var isCompressed = normalInputReflection.TypeLayout.GetFieldByIndex(1).TypeLayout.ColumnCount == 1;
+
+            vertexInputs.Add(new VertexInput()
+            {
+                SemanticName = normalInputReflection.SemanticName,
+                SemanticIndex = (uint)normalInputReflection.SemanticIndex,
+                Format = isCompressed ? VkFormat.R32Uint : VkFormat.R16G16B16Sfloat,
+                Location = normalInputReflection.BindingIndex,
+                Size = (uint)(isCompressed ? 4 : 2 * 3)
+            });
+        }
         private string GetTypeString(TypeReflection typeReflection)
         {
             var genericContainer = typeReflection.GenericContainer;
