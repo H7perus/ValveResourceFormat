@@ -34,7 +34,13 @@ public class Renderer2
     /// </summary>
     public Scene Scene { get; set; }
 
-    public CommandList cmd { get; set; }
+    private CommandList cmd { get; set; }
+
+    private RenderTarget HdrRenderTarget { get; set; }
+
+    private Swapchain? WindowSwapchain { get; set; }
+
+    public bool HasSwapchain => WindowSwapchain != null;
 
     public VkFence doneRendering { get; set; }
 
@@ -60,7 +66,7 @@ public class Renderer2
     /// <summary>
     /// Initializes a new renderer around a scene
     /// </summary>
-    public unsafe Renderer2(RendererContext rendererContext)
+    public Renderer2(RendererContext rendererContext)
     {
         RendererContext = rendererContext;
         //VKTODO:
@@ -74,7 +80,19 @@ public class Renderer2
         imageAvailable = RenderDevice!.CreateSemaphore();
         doneRendering = RenderDevice!.CreateFence(true);
         uniformBuffer = new RHI.Buffer(256, VkBufferUsageFlags.UniformBuffer, VmaMemoryUsage.GpuToCpu);
+    }
 
+    public void SetTargetWindow(uint width, uint height, nint windowHandle)
+    {
+        WindowSwapchain = new Swapchain(width, height, RenderDevice!.CreateSurfaceFromWindowHandle(windowHandle));
+        HdrRenderTarget = new RenderTarget(width, height, VkFormat.R16G16B16A16Sfloat, VkFormat.D32Sfloat);
+    }
+
+    public void ResizeTargets(uint width, uint height)
+    {
+        //We should wait on a semaphore/fence here, so we don't resize on active resources.
+        HdrRenderTarget.Resize(width, height);
+        WindowSwapchain!.Recreate(width, height);
     }
 
     public void Update(float deltaTime)
@@ -85,9 +103,8 @@ public class Renderer2
     public unsafe void Render(ViewContext viewContext)
     {
         RenderDevice!.WaitForFences(doneRendering);
-        
 
-        int currIndex = viewContext.Framebuffer.AcquireNextImage(imageAvailable);
+        int currIndex = WindowSwapchain!.AcquireNextImage(imageAvailable);
 
         if (currIndex < 0)
             return;
@@ -97,7 +114,7 @@ public class Renderer2
         viewContext.Camera.RecalculateMatrices();
         Matrix4x4? viewMatrix = viewContext.Camera.CameraViewMatrix; // * Matrix4x4.Identity; // Renderer?.Camera?.CameraViewMatrix;
 
-        var aspectRatio = (float)viewContext.Framebuffer.Extent.width / viewContext.Framebuffer.Extent.height;
+        var aspectRatio = (float)WindowSwapchain.Extent.width / WindowSwapchain.Extent.height;
         var projectionMatrix = Matrix4x4.CreatePerspectiveFieldOfView(MathF.PI / 4f, aspectRatio, 0.1f, 1000f);
         projectionMatrix.M22 *= -1;
         void* mapped = uniformBuffer.Map();
@@ -115,13 +132,17 @@ public class Renderer2
         uniformBuffer.Unmap();
 
         cmd.Begin();
-        cmd.ClearSwapchainImage(viewContext.Framebuffer.Images[currIndex], new VkClearColorValue(0.15f, 0.1f, 0.13f, 1.0f));
+
+
+        cmd.ClearRenderTarget(HdrRenderTarget, new VkClearColorValue(0.1f, 0.1f, 0.2f, 1.0f), 1);
+
+        cmd.ClearSwapchainImage(WindowSwapchain.Images[currIndex], new VkClearColorValue(0.15f, 0.1f, 0.13f, 1.0f));
 
         cmd.BeginDebugLabel("Opaque Pass");
-        cmd.BeginRendering(new RenderingInfo{ colorAttachments = [new() { image = viewContext.Framebuffer.Images[currIndex] }] });
+        cmd.BeginRendering(new RenderingInfo(HdrRenderTarget));
 
-        VkViewport viewport = new() { x = 0, y = 0, width = viewContext.Framebuffer.Extent.width, height = viewContext.Framebuffer.Extent.height, minDepth = 0.0f, maxDepth = 1.0f };
-        VkRect2D scissor = new() { extent = viewContext.Framebuffer.Extent, offset = new() };
+        VkViewport viewport = new() { x = 0, y = 0, width = WindowSwapchain.Extent.width, height = WindowSwapchain.Extent.height, minDepth = 0.0f, maxDepth = 1.0f };
+        VkRect2D scissor = new() { extent = WindowSwapchain.Extent, offset = new() };
 
         cmd.SetViewport(viewport);
         cmd.SetScissor(scissor);
@@ -133,12 +154,18 @@ public class Renderer2
         cmd.EndRendering();
         cmd.EndDebugLabel();
 
-        cmd.ImageTransitionBarrier(viewContext.Framebuffer.Images[currIndex], VkImageLayout.PresentSrcKHR);
+        cmd.BeginDebugLabel("Blit to Swapchain");
+
+        cmd.BlitImageToImage(HdrRenderTarget.ColorTarget, WindowSwapchain.Images[currIndex]);
+
+        cmd.EndDebugLabel();
+
+        cmd.ImageTransitionBarrier(WindowSwapchain.Images[currIndex], VkImageLayout.PresentSrcKHR);
         cmd.End();
 
-        RenderDevice!.SubmitGraphics(cmd, imageAvailable, viewContext.Framebuffer.WriteToImageFinishedSemaphores[currIndex], doneRendering);
+        RenderDevice!.SubmitGraphics(cmd, imageAvailable, WindowSwapchain.WriteToImageFinishedSemaphores[currIndex], doneRendering);
 
-        viewContext.Framebuffer.Present(viewContext.Framebuffer.WriteToImageFinishedSemaphores[currIndex]);
+        WindowSwapchain.Present(WindowSwapchain.WriteToImageFinishedSemaphores[currIndex]);
 
     }
 

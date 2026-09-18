@@ -43,7 +43,6 @@ public class RendererContext : IDisposable
     /// <summary>
     /// GPU mesh buffer and vertex array object cache.
     /// </summary>
-    //VKTODO:
     public GPUMeshBufferCache MeshBufferCache { get; }
 
     private bool disposed;

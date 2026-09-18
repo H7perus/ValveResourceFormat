@@ -12,6 +12,4 @@ internal class View
 public struct ViewContext
 {
     public required Camera Camera { get; set; }
-
-    public required Swapchain Framebuffer { get; set; }
 }

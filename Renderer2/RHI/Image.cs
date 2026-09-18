@@ -24,6 +24,8 @@ namespace ValveResourceFormat.Renderer2.RHI
         public uint Width { get; internal set; }
         public uint Height { get; internal set; }
 
+        public uint SampleCount { get; internal set; }
+
         public unsafe Image(uint width, uint height, VkFormat format, uint mipLevels = 1, uint sampleCount = 1, VkImageUsageFlags imageUsage = VkImageUsageFlags.ColorAttachment)
         {
             Format = format;
@@ -32,6 +34,7 @@ namespace ValveResourceFormat.Renderer2.RHI
 
             Width = width;
             Height = height;
+            SampleCount = sampleCount;
 
             double sampleCountLog = Math.Log2(sampleCount);
 
@@ -55,7 +58,7 @@ namespace ValveResourceFormat.Renderer2.RHI
                     extent = new VkExtent3D(Width, Height, 1),
                     mipLevels = mipLevels,
                     arrayLayers = 1,
-                    samples = (VkSampleCountFlags)sampleCount,
+                    samples = (VkSampleCountFlags)SampleCount,
                     tiling = VkImageTiling.Optimal,
 
                     usage = imageUsage,

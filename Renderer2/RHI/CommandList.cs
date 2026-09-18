@@ -1,6 +1,7 @@
-using Microsoft.VisualBasic.FileIO;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using Microsoft.VisualBasic.FileIO;
 using Vortice.Vulkan;
 
 namespace ValveResourceFormat.Renderer2.RHI;
@@ -19,7 +20,7 @@ public struct RenderingAttachmentInfo
     { }
 }
 
-public struct RenderingInfo
+internal struct RenderingInfo
 {
     public VkRect2D renderArea;
     public uint layerCount = 1;
@@ -27,6 +28,15 @@ public struct RenderingInfo
     public RenderingAttachmentInfo? depthAttachment;
 
     public RenderingInfo() { }
+
+    [SetsRequiredMembers]
+    public RenderingInfo(RenderTarget target)
+    {
+        //offset is implied to be zero.
+        renderArea.extent = new VkExtent2D(target.ColorTarget.Width, target.ColorTarget.Height);
+        colorAttachments = [new RenderingAttachmentInfo { image = target.ColorTarget }];
+        depthAttachment = new RenderingAttachmentInfo { image = target.DepthTarget };
+    }
 }
 
 unsafe public class CommandList : IDisposable
@@ -122,6 +132,133 @@ unsafe public class CommandList : IDisposable
             }
     }
 
+
+    internal void BlitImageToImage(Image a, Image b)
+    {
+        VkImageBlit2 blit = new()
+        {
+            srcSubresource = new VkImageSubresourceLayers
+            {
+                aspectMask = VkImageAspectFlags.Color,
+                mipLevel = 0,
+                baseArrayLayer = 0,
+                layerCount = 1
+            },
+            dstSubresource = new VkImageSubresourceLayers
+            {
+                aspectMask = VkImageAspectFlags.Color,
+                mipLevel = 0,
+                baseArrayLayer = 0,
+                layerCount = 1
+            }
+        };
+
+        blit.srcOffsets[0] = new VkOffset3D(0, 0, 0);
+        blit.srcOffsets[1] = new VkOffset3D((int)a.Width, (int)a.Height, 1);
+
+        blit.dstOffsets[0] = new VkOffset3D(0, 0, 0);
+        blit.dstOffsets[1] = new VkOffset3D((int)b.Width, (int)b.Height, 1);
+
+        VkBlitImageInfo2 info = new()
+        {
+            srcImage = a.ImageHandle,
+            srcImageLayout = a.MipLayouts[0],
+            dstImage = b.ImageHandle,
+            dstImageLayout = b.MipLayouts[0],
+            pRegions = &blit,
+            regionCount = 1
+        };
+
+        RenderDevice!.VkDeviceApi.vkCmdBlitImage2(Handle, &info);
+    }
+
+    internal void ClearColorImage(Image image, VkClearColorValue color)
+    {
+        var subresourceRange = new VkImageSubresourceRange
+        {
+            aspectMask = VkImageAspectFlags.Color,
+            baseMipLevel = 0,
+            levelCount = (uint)image.MipLayouts.Length,
+            baseArrayLayer = 0,
+            layerCount = 1
+        };
+
+        RenderDevice!.VkDeviceApi.vkCmdClearColorImage(
+            Handle,
+            image.ImageHandle,
+            image.MipLayouts[0],
+            &color,
+            1,
+            &subresourceRange
+            );
+    }
+
+    internal void ClearDepthStencilImage(Image image, float depthValue, uint stencilValue)
+    {
+        //TODO: Stencil aspect?
+        var subresourceRange = new VkImageSubresourceRange
+        {
+            aspectMask = VkImageAspectFlags.Depth,
+            baseMipLevel = 0,
+            levelCount = (uint)image.MipLayouts.Length,
+            baseArrayLayer = 0,
+            layerCount = 1
+        };
+
+        VkClearDepthStencilValue value = new VkClearDepthStencilValue(depthValue, stencilValue);
+
+        RenderDevice!.VkDeviceApi.vkCmdClearDepthStencilImage(
+            Handle,
+            image.ImageHandle,
+            image.MipLayouts[0],
+            &value,
+            1,
+            &subresourceRange
+            );
+    }
+
+    internal void ClearRenderTarget(RenderTarget target, VkClearColorValue color, float depthValue, uint stencilValue = 0)
+    {
+        ImageTransitionBarrier(
+            target.ColorTarget,
+            VkImageLayout.TransferDstOptimal,
+            srcBeforeTransition: VkPipelineStageFlags2.AllCommands | VkPipelineStageFlags2.ColorAttachmentOutput,
+            dstTransitionBefore: VkPipelineStageFlags2.AllCommands,
+            srcMask: VkAccessFlags2.ColorAttachmentWrite | VkAccessFlags2.ShaderWrite | VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ShaderRead,
+            dstMask: VkAccessFlags2.TransferWrite
+            );
+
+        ImageTransitionBarrier(
+            target.DepthTarget,
+            VkImageLayout.TransferDstOptimal,
+            srcBeforeTransition: VkPipelineStageFlags2.AllCommands | VkPipelineStageFlags2.ColorAttachmentOutput,
+            dstTransitionBefore: VkPipelineStageFlags2.AllCommands,
+            srcMask: VkAccessFlags2.ColorAttachmentWrite | VkAccessFlags2.ShaderWrite | VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ShaderRead,
+            dstMask: VkAccessFlags2.TransferWrite,
+            aspectFlags: VkImageAspectFlags.Depth
+            );
+        ClearColorImage(target.ColorTarget, color);
+        ClearDepthStencilImage(target.DepthTarget, depthValue, stencilValue);
+
+        ImageTransitionBarrier(
+            target.ColorTarget,
+            VkImageLayout.ColorAttachmentOptimal,
+            srcBeforeTransition: VkPipelineStageFlags2.AllCommands | VkPipelineStageFlags2.ColorAttachmentOutput,
+            dstTransitionBefore: VkPipelineStageFlags2.AllCommands,
+            srcMask: VkAccessFlags2.ColorAttachmentWrite | VkAccessFlags2.ShaderWrite | VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ShaderRead,
+            dstMask: VkAccessFlags2.TransferWrite
+            );
+
+        ImageTransitionBarrier(
+            target.DepthTarget,
+            VkImageLayout.DepthAttachmentOptimal,
+            srcBeforeTransition: VkPipelineStageFlags2.AllCommands | VkPipelineStageFlags2.ColorAttachmentOutput,
+            dstTransitionBefore: VkPipelineStageFlags2.AllCommands,
+            srcMask: VkAccessFlags2.ColorAttachmentWrite | VkAccessFlags2.ShaderWrite | VkAccessFlags2.ColorAttachmentRead | VkAccessFlags2.ShaderRead,
+            dstMask: VkAccessFlags2.TransferWrite,
+            aspectFlags: VkImageAspectFlags.Depth
+            );
+    }
     public void ClearSwapchainImage(
         Image image,
         VkClearColorValue color)
@@ -136,24 +273,7 @@ unsafe public class CommandList : IDisposable
             dstMask: VkAccessFlags2.TransferWrite
             );
 
-
-        var subresourceRange = new VkImageSubresourceRange
-        {
-            aspectMask = VkImageAspectFlags.Color,
-            baseMipLevel = 0,
-            levelCount = 1,
-            baseArrayLayer = 0,
-            layerCount = 1
-        };
-
-        device.VkDeviceApi.vkCmdClearColorImage(
-            Handle,
-            image.ImageHandle,
-            VkImageLayout.TransferDstOptimal,
-            &color,
-            1,
-            &subresourceRange
-            );
+        ClearColorImage(image, color);
 
         ImageTransitionBarrier(
             image,
@@ -316,7 +436,7 @@ unsafe public class CommandList : IDisposable
         RenderDevice!.VkInstanceApi.vkCmdEndDebugUtilsLabelEXT(Handle);
     }
 
-    public void BeginRendering(RenderingInfo renderingInfo)
+    internal void BeginRendering(RenderingInfo renderingInfo)
     {
         VkRenderingInfo VkRenderingInfo = new();
 

@@ -13,9 +13,6 @@ namespace GUI.Controls;
 /// </summary>
 public class GLControl : Control
 {
-    Swapchain? _swapchain;
-    //VKTODO: uuuuuh
-    public Swapchain Swapchain => _swapchain;
     public GLControl()
     {
         SetStyle(ControlStyles.Opaque, true);
@@ -40,11 +37,6 @@ public class GLControl : Control
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleCreated(EventArgs e)
     {
-
-        var surface = RenderDevice!.CreateSurfaceFromWindowHandle(Handle);
-
-        _swapchain = new Swapchain((uint)ClientSize.Width, (uint)ClientSize.Height, surface);
-
         base.OnHandleCreated(e);
     }
 
@@ -77,9 +69,7 @@ public class GLControl : Control
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleDestroyed(EventArgs e)
     {
-        _swapchain!.Dispose();
         base.OnHandleDestroyed(e);
-
     }
 
     /// <summary>

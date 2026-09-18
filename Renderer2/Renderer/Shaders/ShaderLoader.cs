@@ -180,7 +180,7 @@ namespace ValveResourceFormat.Renderer2.Shaders
             }
 
 
-            var pipeline = new RHI.PipelineGraphics(specialisedShader, VkFormat.B8G8R8A8Unorm, VkFormat.Undefined, bindingDescriptions, depthWriteEnable: false);
+            var pipeline = new RHI.PipelineGraphics(specialisedShader, VkFormat.R16G16B16A16Sfloat, VkFormat.D32Sfloat, bindingDescriptions);
 
             return pipeline;
         }

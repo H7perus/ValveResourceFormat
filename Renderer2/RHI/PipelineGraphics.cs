@@ -38,7 +38,6 @@ namespace ValveResourceFormat.Renderer2.RHI
         /// <param name="depthWriteEnable">Whether depth writes are enabled (default true).</param>
         unsafe public PipelineGraphics(SpecialisedShader shader, VkFormat colorTargetFormat = 0, VkFormat depthTargetFormat = 0, BindingDescription[]? bindingDescriptions = null, bool blendEnable = false, VkBlendFactor srcBlendFactor = VkBlendFactor.SrcAlpha, VkBlendFactor dstBlendFactor = VkBlendFactor.OneMinusSrcAlpha, bool depthWriteEnable = true)
         {
-
             VkShaderModule shaderModule;
             fixed (byte* pSpirv = shader.Spirv.Span)
             {
@@ -215,7 +214,7 @@ namespace ValveResourceFormat.Renderer2.RHI
                 {
                     polygonMode = VkPolygonMode.Fill,
                     lineWidth = 1.0f,
-                    cullMode = VkCullModeFlags.None,
+                    cullMode = VkCullModeFlags.Back,
                     frontFace = VkFrontFace.CounterClockwise,
                     depthClampEnable = false,
                     rasterizerDiscardEnable = false,

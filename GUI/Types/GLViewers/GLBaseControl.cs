@@ -154,6 +154,11 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
             Tag = this,
         };
 
+        if (this is GLSceneViewer sceneViewer)
+        {
+            sceneViewer.Renderer.SetTargetWindow(1, 1, GLControl.Handle);
+        }
+
         GLControl.Paint += OnGlControlPaint;
         GLControl.SizeChanged += OnSizeChanged;
         GLControl.MouseEnter += OnMouseEnter;
@@ -352,7 +357,6 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         {
             return;
         }
-        GLControl!.Swapchain.Recreate((uint)w, (uint)h);
 
         //if (GLDefaultFramebuffer is null || MainFramebuffer is null)
         //{

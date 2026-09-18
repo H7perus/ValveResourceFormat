@@ -314,13 +314,13 @@ namespace GUI.Types.GLViewers
         protected override void OnResize(int w, int h)
         {
             base.OnResize(w, h);
+            Renderer.ResizeTargets((uint)w, (uint)h);
 
             //VKTODO
             //Renderer.Camera.SetViewportSize(w, h);
 
             // The input camera frames objects against its own aspect ratio, so it needs the size too
-            //VKTODO
-            //Input.Camera.SetViewportSize(w, h);
+            Input.Camera.SetViewportSize(w, h);
 
             //VKTODO
             //Picker?.Resize(w, h);
@@ -752,7 +752,6 @@ namespace GUI.Types.GLViewers
             ViewContext viewContext = new()
             {
                 Camera = camera,
-                Framebuffer = GLControl.Swapchain
             };
 
             Renderer.Render(viewContext);
