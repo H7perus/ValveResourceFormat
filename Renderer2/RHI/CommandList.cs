@@ -1,5 +1,6 @@
 using Microsoft.VisualBasic.FileIO;
 using System;
+using System.Text;
 using Vortice.Vulkan;
 
 namespace ValveResourceFormat.Renderer2.RHI;
@@ -242,9 +243,9 @@ unsafe public class CommandList : IDisposable
         RenderDevice!.VkDeviceApi.vkCmdBindVertexBuffer(Handle, binding, vertexBuffer.Handle);
     }
 
-    public void BindIndexBuffer(Buffer indexBuffer)
+    public void BindIndexBuffer(Buffer indexBuffer, VkIndexType indexType = VkIndexType.Uint32)
     {
-        RenderDevice!.VkDeviceApi.vkCmdBindIndexBuffer(Handle, indexBuffer.Handle, 0, VkIndexType.Uint32);
+        RenderDevice!.VkDeviceApi.vkCmdBindIndexBuffer(Handle, indexBuffer.Handle, 0, indexType);
     }
 
     //Might need an overload to set multiple.
@@ -268,7 +269,52 @@ unsafe public class CommandList : IDisposable
     }
 
 
+    public void BeginDebugLabel(string name, (float r, float g, float b, float a)? labelColor = null)
+    {
+        (float r, float g, float b, float a) HashToColor(string name)
+        {
+            uint hash = 2166136261; // FNV-1a offset basis
+            foreach (byte by in Encoding.UTF8.GetBytes(name))
+            {
+                hash ^= by;
+                hash *= 16777619; // FNV prime
+            }
 
+            float r = ((hash >> 16) & 0xFF) / 255f;
+            float g = ((hash >> 8) & 0xFF) / 255f;
+            float b = (hash & 0xFF) / 255f;
+            return (1 - (1 - r) * 0.8f, 1 - (1 - g) * 0.8f, 1 - (1 - b) * 0.8f, 1f);
+        }
+
+        var c = labelColor ?? HashToColor(name);
+
+        //Q: Performance?
+        int byteCount = Encoding.UTF8.GetByteCount(name);
+        Span<byte> nameBytes = byteCount < 256 ? stackalloc byte[byteCount + 1] : new byte[byteCount + 1];
+        Encoding.UTF8.GetBytes(name, nameBytes);
+        nameBytes[byteCount] = 0;
+
+        fixed (byte* pName = nameBytes)
+        fixed (float* pColor = new float[4] { c.r, c.g, c.b, c.a })
+        {
+            VkDebugUtilsLabelEXT labelInfo = new()
+            {
+                pLabelName = pName,
+            };
+
+            labelInfo.color[0] = c.r;
+            labelInfo.color[1] = c.g;
+            labelInfo.color[2] = c.b;
+            labelInfo.color[3] = c.a;
+
+            RenderDevice!.VkInstanceApi.vkCmdBeginDebugUtilsLabelEXT(Handle, &labelInfo);
+        }
+    }
+
+    public void EndDebugLabel()
+    {
+        RenderDevice!.VkInstanceApi.vkCmdEndDebugUtilsLabelEXT(Handle);
+    }
 
     public void BeginRendering(RenderingInfo renderingInfo)
     {
