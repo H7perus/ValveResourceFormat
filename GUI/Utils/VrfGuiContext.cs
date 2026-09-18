@@ -9,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using ValvePak;
 using ValveResourceFormat;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 using ValveResourceFormat.ToolsAssetInfo;
 
 namespace GUI.Utils

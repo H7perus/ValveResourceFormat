@@ -1,5 +1,5 @@
 using GUI.Utils;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 
@@ -17,9 +17,9 @@ namespace GUI.Types.GLViewers
         protected override void LoadScene()
         {
             base.LoadScene();
-
-            var meshSceneNode = new MeshSceneNode(Scene, mesh, 0);
-            Scene.Add(meshSceneNode, false);
+            //VKTODO:
+            //var meshSceneNode = new MeshSceneNode(Scene, mesh, 0);
+            //Scene.Add(meshSceneNode, false);
         }
     }
 }

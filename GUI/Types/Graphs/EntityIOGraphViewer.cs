@@ -7,7 +7,7 @@ using GUI.Utils;
 using SkiaSharp;
 using ValveResourceFormat;
 using ValveResourceFormat.Graphs;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using Connection = ValveResourceFormat.ResourceTypes.EntityLump.Connection;
@@ -41,7 +41,6 @@ internal class EntityIOGraphViewer : GLGraphViewer
         try
         {
             var entities = new List<EntityLump.Entity>();
-
             foreach (var traversed in EntityLumpTraversal.EnumerateEntities(entityLump, rendererContext.FileLoader, Matrix4x4.Identity))
             {
                 entities.Add(traversed.Entity);

@@ -9,8 +9,10 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using ValveResourceFormat;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer2.Input;
+
+//using ValveResourceFormat.Renderer.Input;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 
@@ -23,7 +25,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     protected OpenTK.Windowing.Desktop.NativeWindow? GLNativeWindow;
 
     /// <summary>The command stream this control records into, over <see cref="GLNativeWindow"/>.</summary>
-    protected GraphicsContext? GraphicsContext;
+    //protected GraphicsContext? GraphicsContext;
     public GLControl? GLControl { get; private set; }
     protected Form? FullScreenForm { get; private set; }
     public bool IsFullScreen => FullScreenForm != null;
@@ -105,8 +107,8 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "CA2213:Disposable fields should be disposed", Justification = "RendererContext is disposed in Dispose method")]
     protected RendererContext RendererContext;
 
-    protected Framebuffer? GLDefaultFramebuffer;
-    protected Framebuffer? MainFramebuffer;
+    //protected Framebuffer? GLDefaultFramebuffer;
+    //protected Framebuffer? MainFramebuffer;
 
     public GLBaseControl(RendererContext rendererContext)
     {
@@ -114,7 +116,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         RendererContext = rendererContext;
 
 #if DEBUG
-        ShaderHotReload = new ShaderHotReload(this, rendererContext.ShaderLoader);
+        //ShaderHotReload = new ShaderHotReload(this, rendererContext.ShaderLoader);
 #endif
     }
 
@@ -186,7 +188,8 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
             void OnButtonClick(object? s, EventArgs e)
             {
-                ShaderHotReload.ReloadShaders();
+                //VKTODO:
+                //ShaderHotReload.ReloadShaders();
             }
 
             UiControl.AddControl(button);
@@ -291,15 +294,16 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
             Program.MainForm.Text = "Source 2 Viewer - Copying image to clipboard…";
             Application.DoEvents(); // Force the updated text to show up
 
-            using var bitmap = ReadPixelsToBitmap();
-            if (bitmap == null)
-            {
-                Log.Error(nameof(GLBaseControl), "Failed to copy image to clipboard, bitmap was null");
-            }
-            else
-            {
-                AppClipboard.SetImage(bitmap);
-            }
+            //VKTODO:
+            //using var bitmap = ReadPixelsToBitmap();
+            //if (bitmap == null)
+            //{
+            //    Log.Error(nameof(GLBaseControl), "Failed to copy image to clipboard, bitmap was null");
+            //}
+            //else
+            //{
+            //    AppClipboard.SetImage(bitmap);
+            //}
 
             Program.MainForm.Text = title;
 
@@ -348,18 +352,19 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         {
             return;
         }
+        GLControl!.Swapchain.Recreate((uint)w, (uint)h);
 
-        if (GLDefaultFramebuffer is null || MainFramebuffer is null)
-        {
-            return;
-        }
+        //if (GLDefaultFramebuffer is null || MainFramebuffer is null)
+        //{
+        //    return;
+        //}
 
-        GLDefaultFramebuffer.Resize(w, h);
+        //GLDefaultFramebuffer.Resize(w, h);
 
-        if (MainFramebuffer != GLDefaultFramebuffer)
-        {
-            MainFramebuffer.Resize(w, h, NumSamples);
-        }
+        //if (MainFramebuffer != GLDefaultFramebuffer)
+        //{
+        //    MainFramebuffer.Resize(w, h, NumSamples);
+        //}
     }
 
     public void OnLostFocus(object? sender, EventArgs e)
@@ -412,7 +417,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
     public virtual void Dispose()
     {
-        RendererContext.CancelLoading();
+        //RendererContext.CancelLoading();
 
         using var lockedGl = glLock.EnterScope();
 
@@ -450,7 +455,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         }
 
         NativeWindowFactory.Destroy(GLNativeWindow);
-        RendererContext.Dispose();
+        //RendererContext.Dispose();
     }
 
     private void OnMouseLeave(object? sender, EventArgs e)
@@ -801,21 +806,22 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
     /// <summary>Push user settings into the render state.</summary>
     private void ApplySettingsToRenderState()
     {
+        //VKTODO:
         //using var lockedGl = MakeCurrent();
 
         //GLNativeWindow?.Context.SwapInterval = Settings.Config.Vsync;
 
-        if (this is GLSceneViewer viewer)
-        {
-            RendererContext.FieldOfView = Settings.Config.FieldOfView;
-            RendererContext.ViewmodelFieldOfView = Settings.Config.ViewmodelFieldOfView;
-            viewer.Renderer.Camera.FieldOfView = Settings.Config.FieldOfView;
-            viewer.Renderer.Camera.CreateProjectionMatrix();
+        //if (this is GLSceneViewer viewer)
+        //{
+        //    RendererContext.FieldOfView = Settings.Config.FieldOfView;
+        //    RendererContext.ViewmodelFieldOfView = Settings.Config.ViewmodelFieldOfView;
+        //    viewer.Renderer.Camera.FieldOfView = Settings.Config.FieldOfView;
+        //    viewer.Renderer.Camera.CreateProjectionMatrix();
 
-            // The input camera frames objects using its own field of view, so it follows the setting too
-            viewer.Input.Camera.FieldOfView = Settings.Config.FieldOfView;
-            viewer.Input.Camera.CreateProjectionMatrix();
-        }
+        //    // The input camera frames objects using its own field of view, so it follows the setting too
+        //    viewer.Input.Camera.FieldOfView = Settings.Config.FieldOfView;
+        //    viewer.Input.Camera.CreateProjectionMatrix();
+        //}
     }
 
     protected bool ShouldResize;
@@ -846,7 +852,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
     public void InitializeLoad()
     {
-        using var loading = RendererContext.BeginLoading();
+        //using var loading = RendererContext.BeginLoading();
 
         InitializeLoadCore();
     }
@@ -931,66 +937,68 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         RenderLoopThread.RegisterInstance();
 
         GraphicsContext = RendererContext.Device.CreateContext(new GLFWSurface(GLNativeWindow.Context));
-
+        */
         LoadGLResources();
 
-        if (PrewarmsRenderer)
-        {
-            PrewarmPending = true;
+        //VKTODO: Hopefully won't need this anymore
+        //if (PrewarmsRenderer)
+        //{
+        //    PrewarmPending = true;
 
-            RenderLoopThread.SetCurrentGLControl(this);
-            prewarmed.Wait();
-            RenderLoopThread.UnsetCurrentGLControl(this);
-        }
-        */
+        //    RenderLoopThread.SetCurrentGLControl(this);
+        //    prewarmed.Wait();
+        //    RenderLoopThread.UnsetCurrentGLControl(this);
+        //}
+        
     }
 
     private void LoadGLResources()
     {
-        Debug.Assert(GLNativeWindow is not null);
+        //Debug.Assert(GLNativeWindow is not null);
 
-        using var lockedGl = MakeCurrent();
+        //using var lockedGl = MakeCurrent();
 
-        GLNativeWindow.Context.SwapInterval = Settings.Config.Vsync;
+        //VKTODO: we do want to honor vsync, but probably not here because its a question of swapchain setting.
+        //GLNativeWindow.Context.SwapInterval = Settings.Config.Vsync;
 
-        if (!loadedBindings)
-        {
-            LoadOpenGLBindings();
-            loadedBindings = true;
-        }
+//        if (!loadedBindings)
+//        {
+//            LoadOpenGLBindings();
+//            loadedBindings = true;
+//        }
 
-        GL.Enable(EnableCap.DebugOutput);
-        GL.DebugMessageCallback(OpenGLDebugMessageDelegate, IntPtr.Zero);
+//        GL.Enable(EnableCap.DebugOutput);
+//        GL.DebugMessageCallback(OpenGLDebugMessageDelegate, IntPtr.Zero);
 
-#if DEBUG
-        GL.Enable(EnableCap.DebugOutputSynchronous);
+//#if DEBUG
+//        GL.Enable(EnableCap.DebugOutputSynchronous);
 
-        // Filter out performance warnings
-        GL.DebugMessageControl(DebugSourceControl.DebugSourceApi, DebugTypeControl.DebugTypeOther, DebugSeverityControl.DebugSeverityNotification, 0, Array.Empty<int>(), false);
+//        // Filter out performance warnings
+//        GL.DebugMessageControl(DebugSourceControl.DebugSourceApi, DebugTypeControl.DebugTypeOther, DebugSeverityControl.DebugSeverityNotification, 0, Array.Empty<int>(), false);
 
-        // Filter out debug group push/pops
-        GL.DebugMessageControl(DebugSourceControl.DebugSourceApplication, DebugTypeControl.DontCare, DebugSeverityControl.DebugSeverityNotification, 0, Array.Empty<int>(), false);
-#else
-        // Only log high severity messages in release builds
-        GL.DebugMessageControl(DebugSourceControl.DontCare, DebugTypeControl.DontCare, DebugSeverityControl.DontCare, 0, Array.Empty<int>(), false);
-        GL.DebugMessageControl(DebugSourceControl.DontCare, DebugTypeControl.DontCare, DebugSeverityControl.DebugSeverityHigh, 0, Array.Empty<int>(), true);
-#endif
+//        // Filter out debug group push/pops
+//        GL.DebugMessageControl(DebugSourceControl.DebugSourceApplication, DebugTypeControl.DontCare, DebugSeverityControl.DebugSeverityNotification, 0, Array.Empty<int>(), false);
+//#else
+//        // Only log high severity messages in release builds
+//        GL.DebugMessageControl(DebugSourceControl.DontCare, DebugTypeControl.DontCare, DebugSeverityControl.DontCare, 0, Array.Empty<int>(), false);
+//        GL.DebugMessageControl(DebugSourceControl.DontCare, DebugTypeControl.DontCare, DebugSeverityControl.DebugSeverityHigh, 0, Array.Empty<int>(), true);
+//#endif
 
-        GLEnvironment.Initialize(VrfGuiContext.Logger);
-        GLEnvironment.SetDefaultRenderState();
+//        //GLEnvironment.Initialize(VrfGuiContext.Logger);
+//        //GLEnvironment.SetDefaultRenderState();
 
-        MaxSamples = GL.GetInteger(GetPName.MaxSamples);
-        GLDefaultFramebuffer = Framebuffer.GLDefaultFramebuffer;
+//        MaxSamples = GL.GetInteger(GetPName.MaxSamples);
+        //GLDefaultFramebuffer = Framebuffer.GLDefaultFramebuffer;
 
         // Framebuffer used to draw geometry
-        MainFramebuffer = Framebuffer.Prepare(nameof(MainFramebuffer),
-            4, 4,
-            NumSamples,
-            ImageFormat.RGBA16161616F,
-            ImageFormat.D32
-        );
+        //MainFramebuffer = Framebuffer.Prepare(nameof(MainFramebuffer),
+        //    4, 4,
+        //    NumSamples,
+        //    ImageFormat.RGBA16161616F,
+        //    ImageFormat.D32
+        //);
 
-        MainFramebuffer.Initialize();
+        //MainFramebuffer.Initialize();
 
         OnGLLoad();
     }
@@ -1025,7 +1033,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
         try
         {
-            using var lockedGl = MakeCurrent();
+            //using var lockedGl = MakeCurrent();
             PrewarmRenderer();
         }
         finally
@@ -1110,7 +1118,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
         if (ShouldResize)
         {
-            //OnResize(GLNativeWindow.Size.X, GLNativeWindow.Size.Y);
+            OnResize(GLControl!.ClientSize.Width, GLControl!.ClientSize.Height);
             ShouldResize = false;
         }
 
@@ -1172,15 +1180,15 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         //
     }
 
-    public GLLockScope MakeCurrent()
-    {
-        if (GraphicsContext == null)
-        {
-            throw new InvalidOperationException("Cannot acquire GLLockScope without a valid GLNativeWindow.");
-        }
+    //public GLLockScope MakeCurrent()
+    //{
+    //    if (GraphicsContext == null)
+    //    {
+    //        throw new InvalidOperationException("Cannot acquire GLLockScope without a valid GLNativeWindow.");
+    //    }
 
-        return new GLLockScope(glLock, GraphicsContext);
-    }
+    //    return new GLLockScope(glLock, GraphicsContext);
+    //}
 
     static bool loadedBindings;
     private static void LoadOpenGLBindings()
@@ -1189,28 +1197,28 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         GL.LoadBindings(provider);
     }
 
-    protected virtual SkiaSharp.SKBitmap? ReadPixelsToBitmap()
-    {
-        if (GLDefaultFramebuffer is null)
-        {
-            return null;
-        }
+    //protected virtual SkiaSharp.SKBitmap? ReadPixelsToBitmap()
+    //{
+    //    //if (GLDefaultFramebuffer is null)
+    //    //{
+    //    //    return null;
+    //    //}
 
-        var bitmap = new SkiaSharp.SKBitmap(GLDefaultFramebuffer.Width, GLDefaultFramebuffer.Height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Opaque);
-        var pixels = bitmap.GetPixels(out var length);
+    //    var bitmap = new SkiaSharp.SKBitmap(GLDefaultFramebuffer.Width, GLDefaultFramebuffer.Height, SkiaSharp.SKColorType.Bgra8888, SkiaSharp.SKAlphaType.Opaque);
+    //    var pixels = bitmap.GetPixels(out var length);
 
-        using var lockedGl = MakeCurrent();
+    //    using var lockedGl = MakeCurrent();
 
-        BlitFramebufferToScreen();
+    //    BlitFramebufferToScreen();
 
-        GLDefaultFramebuffer.Bind(FramebufferTarget.ReadFramebuffer);
-        GL.ReadPixels(0, 0, GLDefaultFramebuffer.Width, GLDefaultFramebuffer.Height, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
+    //    //GLDefaultFramebuffer.Bind(FramebufferTarget.ReadFramebuffer);
+    //    GL.ReadPixels(0, 0, GLDefaultFramebuffer.Width, GLDefaultFramebuffer.Height, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
 
-        // Flip y
-        using var canvas = new SkiaSharp.SKCanvas(bitmap);
-        canvas.Scale(1, -1, 0, bitmap.Height / 2f);
-        canvas.DrawBitmap(bitmap, new SkiaSharp.SKPoint(), SkiaSharp.SKSamplingOptions.Default);
+    //    // Flip y
+    //    using var canvas = new SkiaSharp.SKCanvas(bitmap);
+    //    canvas.Scale(1, -1, 0, bitmap.Height / 2f);
+    //    canvas.DrawBitmap(bitmap, new SkiaSharp.SKPoint(), SkiaSharp.SKSamplingOptions.Default);
 
-        return bitmap;
-    }
+    //    return bitmap;
+    //}
 }

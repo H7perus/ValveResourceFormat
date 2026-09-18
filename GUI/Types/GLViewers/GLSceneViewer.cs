@@ -7,50 +7,49 @@ using GUI.Controls;
 using GUI.Types.Audio;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Audio;
-using ValveResourceFormat.Renderer.Input;
-using ValveResourceFormat.Renderer.Materials;
-using ValveResourceFormat.Renderer.SceneNodes;
-using ValveResourceFormat.Renderer.Utils;
-using static ValveResourceFormat.Renderer.PickingTexture;
+using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer2.RHI;
+//using ValveResourceFormat.Renderer.Audio;
+using ValveResourceFormat.Renderer2.Input;
+//using ValveResourceFormat.Renderer.Materials;
+//using ValveResourceFormat.Renderer.SceneNodes;
+//using ValveResourceFormat.Renderer.Utils;
+//using static ValveResourceFormat.Renderer.PickingTexture;
 
 namespace GUI.Types.GLViewers
 {
     internal abstract class GLSceneViewer : GLBaseControl
     {
-        public ValveResourceFormat.Renderer.Renderer Renderer { get; internal set; }
+        public ValveResourceFormat.Renderer2.Renderer2 Renderer { get; internal set; }
+        //VKTODO:
         public UserInput Input { get; protected set; }
-
-        public ValveResourceFormat.Renderer.TextRenderer TextRenderer { get; protected set; }
-        private readonly CrosshairRenderer crosshairRenderer;
-
-        protected PickingTexture? Picker { get; set; }
-
-        protected QuadOverdraw? QuadOverdrawRenderer { get; set; }
+        //public ValveResourceFormat.Renderer.TextRenderer TextRenderer { get; protected set; }
+        //private readonly CrosshairRenderer crosshairRenderer;
+        //protected PickingTexture? Picker { get; set; }
+        //protected QuadOverdraw? QuadOverdrawRenderer { get; set; }
+        public Camera camera;
 
         public Scene Scene { get; }
-        public Scene? SkyboxScene => Renderer.SkyboxScene;
+        //public Scene? SkyboxScene => Renderer.SkyboxScene;
         public VrfGuiContext GuiContext;
 
+        //VKTODO:
         /// <summary>Optional sound event player, created by viewers that play scene audio.</summary>
-        protected SoundEventPlayer? soundPlayer;
-
+        //protected SoundEventPlayer? soundPlayer;
         /// <summary>Gets whether this viewer plays scene audio, i.e. whether <see cref="InitializeSoundPlayer"/> got a device.</summary>
-        public bool HasSoundPlayer => soundPlayer != null;
-
+        //public bool HasSoundPlayer => soundPlayer != null;
         /// <summary>Gets or sets whether this viewer's audio is silenced, independently of the master volume.</summary>
-        public bool Muted
-        {
-            get => soundPlayer?.Mute ?? false;
-            set
-            {
-                if (soundPlayer != null)
-                {
-                    soundPlayer.Mute = value;
-                }
-            }
-        }
+        //public bool Muted
+        //{
+        //    get => soundPlayer?.Mute ?? false;
+        //    set
+        //    {
+        //        if (soundPlayer != null)
+        //        {
+        //            soundPlayer.Mute = value;
+        //        }
+        //    }
+        //}
 
         private bool ShowBaseGrid;
         private bool ShowLightBackground;
@@ -61,7 +60,7 @@ namespace GUI.Types.GLViewers
         private bool showVisDebug;
         protected bool ShowSpeed { get; set; }
         private bool showPhysicsTraces;
-        private PhysicsTraceDebugRenderer? physicsTraceRenderer;
+        //private PhysicsTraceDebugRenderer? physicsTraceRenderer;
 
         private enum PerfDisplay
         {
@@ -78,11 +77,11 @@ namespace GUI.Types.GLViewers
         private bool mouseReleased;
         private bool roundStarted;
 
-        private readonly List<RenderModes.RenderMode> renderModes = new(RenderModes.Items.Count);
+        //private readonly List<RenderModes.RenderMode> renderModes = new(RenderModes.Items.Count);
         private int renderModeCurrentIndex;
         private ComboBox? renderModeComboBox;
-        private InfiniteGrid? baseGrid;
-        protected SelectedNodeRenderer? SelectedNodeRenderer;
+        //private InfiniteGrid? baseGrid;
+        //protected SelectedNodeRenderer? SelectedNodeRenderer;
 
         static readonly TimeSpan FpsUpdateTimeSpan = TimeSpan.FromSeconds(0.1);
 
@@ -97,37 +96,42 @@ namespace GUI.Types.GLViewers
 
         protected GLSceneViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext, Frustum cullFrustum) : this(vrfGuiContext, rendererContext)
         {
-            Renderer.LockedCullFrustum = cullFrustum;
+            //VKTODO:
+            //Renderer.LockedCullFrustum = cullFrustum;
         }
 
         protected GLSceneViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext) : base(rendererContext)
         {
             GuiContext = vrfGuiContext;
-
+            S2vDevice.CreateRenderDevice();
             Renderer = new(rendererContext);
+            //VKTODO:
             Input = new UserInput(Renderer);
-            TextRenderer = new(rendererContext, Renderer.Camera);
-            crosshairRenderer = new CrosshairRenderer(rendererContext);
+            //TextRenderer = new(scene, Renderer.Camera);
+            //crosshairRenderer = new CrosshairRenderer(scene);
             Scene = Renderer.Scene;
 
+            camera = new();
+            camera.SetLocationPitchYaw(new Vector3(0, 0, 300), -90, 0);
 #if DEBUG
-            ShaderHotReload.ShadersReloaded += OnHotReload;
+            //VKTODO:
+            //ShaderHotReload.ShadersReloaded += OnHotReload;
 #endif
         }
 
         public override void Dispose()
         {
             // Delete GL resources before the base disposes the GL context
-            physicsTraceRenderer?.Delete();
-            physicsTraceRenderer = null;
+            //physicsTraceRenderer?.Delete();
+            //physicsTraceRenderer = null;
 
-            soundPlayer?.Dispose();
-            soundPlayer = null;
+            //soundPlayer?.Dispose();
+            //soundPlayer = null;
 
-            QuadOverdrawRenderer?.Dispose();
-            QuadOverdrawRenderer = null;
+            //QuadOverdrawRenderer?.Dispose();
+            //QuadOverdrawRenderer = null;
 
-            Renderer?.Dispose();
+            //Renderer?.Dispose();
 
             base.Dispose();
 
@@ -138,7 +142,8 @@ namespace GUI.Types.GLViewers
             renderModeComboBox = null;
 
 #if DEBUG
-            ShaderHotReload.ShadersReloaded -= OnHotReload;
+            //VKTODO:
+            //ShaderHotReload.ShadersReloaded -= OnHotReload;
 #endif
         }
 
@@ -148,39 +153,43 @@ namespace GUI.Types.GLViewers
 
             using (UiControl.BeginGroup("Debug"))
             {
-                UiControl.AddCheckBox("Lock Cull Frustum", false, (v) =>
-                {
-                    Renderer.LockedCullFrustum = v ? Renderer.Camera.ViewFrustum.Clone() : null;
-                    Renderer.LockedCullPosition = v ? Renderer.Camera.Location : null;
-                });
+                //VKTODO:
+                //UiControl.AddCheckBox("Lock Cull Frustum", false, (v) =>
+                //{
+                //    Renderer.LockedCullFrustum = v ? Renderer.Camera.ViewFrustum.Clone() : null;
+                //    Renderer.LockedCullPosition = v ? Renderer.Camera.Location : null;
+                //});
 
                 UiControl.AddCheckBox("Show Static Octree", showStaticOctree, (v) => showStaticOctree = v);
                 UiControl.AddCheckBox("Show Dynamic Octree", showDynamicOctree, (v) => showDynamicOctree = v);
-                UiControl.AddCheckBox("Show Tool Materials", Scene.ShowToolsMaterials, (v) =>
-                {
-                    Scene.ShowToolsMaterials = v;
 
-                    SkyboxScene?.ShowToolsMaterials = v;
-                });
+                //VKTODO:
+                //UiControl.AddCheckBox("Show Tool Materials", Scene.ShowToolsMaterials, (v) =>
+                //{
+                //    Scene.ShowToolsMaterials = v;
 
-                if (this is GLWorldViewer)
-                {
-                    UiControl.AddCheckBox("Show Occluded Bounds", Scene.OcclusionDebugEnabled, (v) => Scene.OcclusionDebugEnabled = v);
+                //    SkyboxScene?.ShowToolsMaterials = v;
+                //});
 
-                    if (Scene.VoxelVisibility != null)
-                    {
-                        UiControl.AddCheckBox("Show Vis Debug", showVisDebug, v => showVisDebug = v);
-                    }
-                }
+                //VKTODO:
+                //if (this is GLWorldViewer)
+                //{
+                //    UiControl.AddCheckBox("Show Occluded Bounds", Scene.OcclusionDebugEnabled, (v) => Scene.OcclusionDebugEnabled = v);
 
-                if (Scene.PhysicsWorld != null)
-                {
-                    UiControl.AddCheckBox("Debug Physics Traces", showPhysicsTraces, v => showPhysicsTraces = v);
-                }
+                //    if (Scene.VoxelVisibility != null)
+                //    {
+                //        UiControl.AddCheckBox("Show Vis Debug", showVisDebug, v => showVisDebug = v);
+                //    }
+                //}
 
-                UiControl.AddCheckBox("Debug Sound Sources", Renderer.ShowSoundDebug, v => Renderer.ShowSoundDebug = v);
+                //if (Scene.PhysicsWorld != null)
+                //{
+                //    UiControl.AddCheckBox("Debug Physics Traces", showPhysicsTraces, v => showPhysicsTraces = v);
+                //}
 
-                UiControl.AddCheckBox("Disable threaded sim", !Renderer.ParallelSimulation, v => Renderer.ParallelSimulation = !v);
+                //UiControl.AddCheckBox("Debug Sound Sources", Renderer.ShowSoundDebug, v => Renderer.ShowSoundDebug = v);
+
+                //UiControl.AddCheckBox("Disable threaded sim", !Renderer.ParallelSimulation, v => Renderer.ParallelSimulation = !v);
 
                 perfDisplayComboBox = UiControl.AddSelection("Debug Performance", (_, i) => perfDisplay = (PerfDisplay)i);
                 perfDisplayComboBox.Items.AddRange([nameof(PerfDisplay.Off), nameof(PerfDisplay.Stats), nameof(PerfDisplay.Timings), nameof(PerfDisplay.Allocations)]);
@@ -209,9 +218,10 @@ namespace GUI.Types.GLViewers
             };
             resource.Read(stream);
 
-            Renderer.LoadDefaultLighting(Scene, resource);
-
-            sunAngles = Renderer.DefaultSunAngles;
+            //VKTODO
+            //Renderer.LoadDefaultLighting(Scene, resource);
+            //VKTODO
+            //sunAngles = Renderer.DefaultSunAngles;
             loadedDefaultLighting = true;
         }
 
@@ -220,62 +230,67 @@ namespace GUI.Types.GLViewers
             sunAngles.X = Math.Clamp(sunAngles.X, 0f, 89f);
             sunAngles.Y %= 360f;
 
-            Scene.LightingInfo.SetSunDirectionFromAngles(new Vector3(sunAngles.X, sunAngles.Y, 0f));
+            //VKTODO
+            //Scene.LightingInfo.SetSunDirectionFromAngles(new Vector3(sunAngles.X, sunAngles.Y, 0f));
         }
 
         public virtual void PostSceneLoad()
         {
-            Scene.Initialize();
-            if (Scene.PhysicsWorld != null)
-            {
-                Input.PhysicsWorld = Scene.PhysicsWorld;
-            }
+            //VKTODO
+            //Scene.Initialize();
+            //if (Scene.PhysicsWorld != null)
+            //{
+            //    Input.PhysicsWorld = Scene.PhysicsWorld;
+            //}
 
-            SkyboxScene?.Initialize();
+            //VKTODO
+            //SkyboxScene?.Initialize();
 
-            if (Scene.FogInfo.CubeFogActive)
-            {
-                var cubemapTexture = Scene.FogInfo.CubemapFog?.CubemapFogTexture;
-                if (cubemapTexture != null)
-                {
-                    Renderer.Textures.RemoveAll(t => t.Slot == ReservedTextureSlots.FogCubeTexture);
-                    Renderer.Textures.Add(new(ReservedTextureSlots.FogCubeTexture, "g_tFogCubeTexture", cubemapTexture));
-                }
-            }
+            //VKTODO
+            //if (Scene.FogInfo.CubeFogActive)
+            //{
+            //    var cubemapTexture = Scene.FogInfo.CubemapFog?.CubemapFogTexture;
+            //    if (cubemapTexture != null)
+            //    {
+            //        Renderer.Textures.RemoveAll(t => t.Slot == ReservedTextureSlots.FogCubeTexture);
+            //        Renderer.Textures.Add(new(ReservedTextureSlots.FogCubeTexture, "g_tFogCubeTexture", cubemapTexture));
+            //    }
+            //}
 
-            if (Scene.AllNodes.Any() && this is not GLWorldViewer)
-            {
-                var first = true;
-                var bbox = new AABB();
+            //VKTODO
+            //if (Scene.AllNodes.Any() && this is not GLWorldViewer)
+            //{
+            //    var first = true;
+            //    var bbox = new AABB();
 
-                foreach (var node in Scene.AllNodes)
-                {
-                    if (first)
-                    {
-                        first = false;
-                        bbox = node.BoundingBox;
-                        continue;
-                    }
+            //    foreach (var node in Scene.AllNodes)
+            //    {
+            //        if (first)
+            //        {
+            //            first = false;
+            //            bbox = node.BoundingBox;
+            //            continue;
+            //        }
 
-                    bbox = bbox.Union(node.BoundingBox);
-                }
+            //        bbox = bbox.Union(node.BoundingBox);
+            //    }
 
-                // If there is no bbox, LookAt will break camera, so +1 to location
-                var offset = Math.Max(bbox.Max.X, Math.Max(bbox.Max.Y, bbox.Max.Z)) + 1f * 1.5f;
-                offset = Math.Clamp(offset, 0f, 2000f);
-                var location = new Vector3(offset, 0, offset);
+            //    // If there is no bbox, LookAt will break camera, so +1 to location
+            //    var offset = Math.Max(bbox.Max.X, Math.Max(bbox.Max.Y, bbox.Max.Z)) + 1f * 1.5f;
+            //    offset = Math.Clamp(offset, 0f, 2000f);
+            //    var location = new Vector3(offset, 0, offset);
 
-                if (this is GLAnimationViewer)
-                {
-                    location = new(offset);
-                }
+            //    if (this is GLAnimationViewer)
+            //    {
+            //        location = new(offset);
+            //    }
 
-                Input.Camera.SetLocation(location);
-                Input.Camera.LookAt(bbox.Center);
-            }
+            //    Input.Camera.SetLocation(location);
+            //    Input.Camera.LookAt(bbox.Center);
+            //}
 
-            Scene.StaticOctree.DebugRenderer = new(Scene.StaticOctree, Scene.RendererContext, false);
-            Scene.DynamicOctree.DebugRenderer = new(Scene.DynamicOctree, Scene.RendererContext);
+            //Scene.StaticOctree.DebugRenderer = new(Scene.StaticOctree, Scene.RendererContext, false);
+            //Scene.DynamicOctree.DebugRenderer = new(Scene.DynamicOctree, Scene.RendererContext);
         }
 
         /// <summary>
@@ -285,7 +300,7 @@ namespace GUI.Types.GLViewers
         public override void InitializeSceneDirectly()
         {
             //PreSceneLoad();
-            SelectedNodeRenderer = new(Scene.RendererContext);
+            //SelectedNodeRenderer = new(Scene.RendererContext);
 
             LoadScene();
             //PostSceneLoad();
@@ -293,54 +308,61 @@ namespace GUI.Types.GLViewers
 
         protected abstract void LoadScene();
 
-        protected abstract void OnPicked(object? sender, PickingTexture.PickingResponse pixelInfo);
+        //VKTODO
+        //protected abstract void OnPicked(object? sender, PickingTexture.PickingResponse pixelInfo);
 
         protected override void OnResize(int w, int h)
         {
             base.OnResize(w, h);
 
-            Renderer.Camera.SetViewportSize(w, h);
+            //VKTODO
+            //Renderer.Camera.SetViewportSize(w, h);
 
             // The input camera frames objects against its own aspect ratio, so it needs the size too
-            Input.Camera.SetViewportSize(w, h);
+            //VKTODO
+            //Input.Camera.SetViewportSize(w, h);
 
-            Picker?.Resize(w, h);
+            //VKTODO
+            //Picker?.Resize(w, h);
         }
 
         protected override void OnMouseWheel(int delta, Point location)
         {
             base.OnMouseWheel(delta, location);
 
-            if (Input.WalkMode)
-            {
-                return;
-            }
+            //VKTODO
+            //if (Input.WalkMode)
+            //{
+            //    return;
+            //}
 
+            //VKTODO
             var modifier = Input.OnMouseWheel(delta);
 
-            if (Input.OrbitMode)
-            {
-                SetMoveSpeedOrZoomLabel($"Orbit distance: {modifier:0.0} (scroll to change)");
-            }
-            else
-            {
-                SetMoveSpeedOrZoomLabel($"Move speed: {modifier:0.0}x (scroll to change)");
-            }
+            //if (Input.OrbitMode)
+            //{
+            //    SetMoveSpeedOrZoomLabel($"Orbit distance: {modifier:0.0} (scroll to change)");
+            //}
+            //else
+            //{
+            //    SetMoveSpeedOrZoomLabel($"Move speed: {modifier:0.0}x (scroll to change)");
+            //}
         }
 
         protected override void OnMouseUp(object? sender, MouseEventArgs e)
         {
             base.OnMouseUp(sender, e);
 
-            if (Input.WalkMode)
-            {
-                return;
-            }
-
-            if (!MouseDragged)
-            {
-                Picker?.RequestNextFrame(InitialMousePosition.X, InitialMousePosition.Y, PickingIntent.Select);
-            }
+            //VKTODO
+            //if (Input.WalkMode)
+            //{
+            //    return;
+            //}
+            //
+            //if (!MouseDragged)
+            //{
+            //    Picker?.RequestNextFrame(InitialMousePosition.X, InitialMousePosition.Y, PickingIntent.Select);
+            //}
         }
 
         protected override void OnMouseDown(object? sender, MouseEventArgs e)
@@ -348,22 +370,22 @@ namespace GUI.Types.GLViewers
             base.OnMouseDown(sender, e);
 
             mouseReleased = false;
-
-            if (Input.WalkMode)
-            {
-                return;
-            }
-
-            if (e.Button == MouseButtons.Left)
-            {
-                if (e.Clicks == 2)
-                {
-                    var intent = Control.ModifierKeys.HasFlag(Keys.Control)
-                        ? PickingIntent.Open
-                        : PickingIntent.Details;
-                    Picker?.RequestNextFrame(e.X, e.Y, intent);
-                }
-            }
+            //VKTODO
+            //if (Input.WalkMode)
+            //{
+            //    return;
+            //}
+            //
+            //if (e.Button == MouseButtons.Left)
+            //{
+            //    if (e.Clicks == 2)
+            //    {
+            //        var intent = Control.ModifierKeys.HasFlag(Keys.Control)
+            //            ? PickingIntent.Open
+            //            : PickingIntent.Details;
+            //        Picker?.RequestNextFrame(e.X, e.Y, intent);
+            //    }
+            //}
         }
 
         protected override void OnGLLoad()
@@ -372,48 +394,50 @@ namespace GUI.Types.GLViewers
 
             ReportLoadingStatus("Preparing renderer…");
 
-            frametimeQuery1 = GraphicsDevice.CreateQuery(QueryTarget.TimeElapsed, "Frame Time Query");
-            frametimeQuery2 = GraphicsDevice.CreateQuery(QueryTarget.TimeElapsed, "Frame Time Query");
+            //frametimeQuery1 = GraphicsDevice.CreateQuery(QueryTarget.TimeElapsed, "Frame Time Query");
+            //frametimeQuery2 = GraphicsDevice.CreateQuery(QueryTarget.TimeElapsed, "Frame Time Query");
 
-            // Needed to fix crash on certain drivers
-            GL.BeginQuery(QueryTarget.TimeElapsed, frametimeQuery2);
-            GL.EndQuery(QueryTarget.TimeElapsed);
+            //// Needed to fix crash on certain drivers
+            //GL.BeginQuery(QueryTarget.TimeElapsed, frametimeQuery2);
+            //GL.EndQuery(QueryTarget.TimeElapsed);
 
-            TextRenderer.Load();
-            Renderer.Postprocess.Load(NumSamples);
+            //TextRenderer.Load();
+            //Renderer.Postprocess.Load(NumSamples);
 
-            Renderer.Postprocess.FullScreenGamma = 2.01f; // 100% Brightness
-            Renderer.Postprocess.ExposureCompensation = -0.4f; // eyeballed
+            //Renderer.Postprocess.FullScreenGamma = 2.01f; // 100% Brightness
+            //Renderer.Postprocess.ExposureCompensation = -0.4f; // eyeballed
 
-            baseGrid = new InfiniteGrid(Scene);
-            SelectedNodeRenderer = new(Scene.RendererContext);
-            Picker = new(Scene.RendererContext, OnPicked);
+            //baseGrid = new InfiniteGrid(Scene);
+            //SelectedNodeRenderer = new(Scene.RendererContext);
+            //Picker = new(Scene.RendererContext, OnPicked);
 
-            QuadOverdrawRenderer = new(Scene.RendererContext);
-            QuadOverdrawRenderer.Load();
+            //QuadOverdrawRenderer = new(Scene.RendererContext);
+            //QuadOverdrawRenderer.Load();
 
-            Renderer.ShadowTextureSize = Settings.Config.ShadowResolution;
-            Renderer.Initialize();
+            //Renderer.ShadowTextureSize = Settings.Config.ShadowResolution;
+            //Renderer.Initialize();
 
-            Renderer.MainFramebuffer = MainFramebuffer;
+            //Renderer.MainFramebuffer = MainFramebuffer;
 
-            MainFramebuffer!.Bind(FramebufferTarget.Framebuffer);
+            //MainFramebuffer!.Bind(FramebufferTarget.Framebuffer);
 
-            var timer = Stopwatch.StartNew();
-            PreSceneLoad();
+            //var timer = Stopwatch.StartNew();
+            //PreSceneLoad();
             LoadScene();
-            timer.Stop();
-            Log.Debug(GetType().Name, $"Loading scene time: {timer.Elapsed}, shader variants: {Scene.RendererContext.ShaderLoader.ShaderCount}, materials: {Scene.RendererContext.MaterialLoader.MaterialCount}");
+            //timer.Stop();
+            //Log.Debug(GetType().Name, $"Loading scene time: {timer.Elapsed}, shader variants: {Scene.RendererContext.ShaderLoader.ShaderCount}, materials: {Scene.RendererContext.MaterialLoader.MaterialCount}");
 
-            ReportLoadingStatus("Initializing scene…");
+            //ReportLoadingStatus("Initializing scene…");
 
-            PostSceneLoad();
+            //PostSceneLoad();
 
-            GuiContext.ClearCache();
-            GuiContext.GLPostLoadAction?.Invoke(this);
-            GuiContext.GLPostLoadAction = null;
+            //GuiContext.ClearCache();
+            //GuiContext.GLPostLoadAction?.Invoke(this);
+            //GuiContext.GLPostLoadAction = null;
         }
 
+
+        //VKTODO: Deprecate. This is pretty nonsensical on Vulkan
         /// <summary>
         /// Renders one full frame with culling disabled so the driver specializes every
         /// (program, vertex layout, framebuffer) combination once.
@@ -424,29 +448,29 @@ namespace GUI.Types.GLViewers
         /// </summary>
         private void PrewarmDrawCalls()
         {
-            Debug.Assert(MainFramebuffer != null);
+            //Debug.Assert(MainFramebuffer != null);
 
-            Scene.RendererContext.ShaderLoader.LinkLoadedShaders();
-            Renderer.DisableAllCulling = true;
+            //Scene.RendererContext.ShaderLoader.LinkLoadedShaders();
+            //Renderer.DisableAllCulling = true;
 
-            Renderer.Camera.CopyFrom(Input.Camera);
-            Renderer.Prewarming = true;
+            //Renderer.Camera.CopyFrom(Input.Camera);
+            //Renderer.Prewarming = true;
 
-            try
-            {
-                // A non-zero delta so that particles actually simulate
-                OnPaint(1f / 60f);
+            //try
+            //{
+            //    // A non-zero delta so that particles actually simulate
+            //    OnPaint(1f / 60f);
 
-                foreach (var particleNode in Scene.AllNodes.OfType<ParticleSceneNode>())
-                {
-                    particleNode.Prewarm(Renderer.Camera);
-                }
-            }
-            finally
-            {
-                Renderer.DisableAllCulling = false;
-                Renderer.Prewarming = false;
-            }
+            //    foreach (var particleNode in Scene.AllNodes.OfType<ParticleSceneNode>())
+            //    {
+            //        particleNode.Prewarm(Renderer.Camera);
+            //    }
+            //}
+            //finally
+            //{
+            //    Renderer.DisableAllCulling = false;
+            //    Renderer.Prewarming = false;
+            //}
         }
 
         protected void ReportLoadingStatus(string status) => GuiContext.LoadingProgress?.Report(status);
@@ -469,76 +493,78 @@ namespace GUI.Types.GLViewers
         /// </summary>
         protected void InitializeSoundPlayer()
         {
-            if (soundPlayer != null)
-            {
-                return;
-            }
+            //VKTODO: I expect sound to be trivial, as it shouldn't depend on OpenGL
+//            if (soundPlayer != null)
+//            {
+//                return;
+//            }
 
-            try
-            {
-                // The player takes ownership of the device and disposes it in its own Dispose (called from ours);
-                // CA2000 cannot see ownership transfer through the constructor, so this is not actually a leak.
-#pragma warning disable CA2000
-                soundPlayer = new SoundEventPlayer(GuiContext, new NAudioDevice(), Scene.RendererContext.Logger);
-#pragma warning restore CA2000
-            }
-            catch (COMException e)
-            {
-                // WASAPI has no usable render endpoint (no audio hardware, headless/RDP session, audio service off).
-                // This is an expected environment, not a bug: run without sound rather than failing the viewer.
-                Log.Warn(nameof(GLSceneViewer), $"No audio device available, sound playback disabled: {e.Message}");
-                return;
-            }
+//            try
+//            {
+//                // The player takes ownership of the device and disposes it in its own Dispose (called from ours);
+//                // CA2000 cannot see ownership transfer through the constructor, so this is not actually a leak.
+//#pragma warning disable CA2000
+//                soundPlayer = new SoundEventPlayer(GuiContext, new NAudioDevice(), Scene.RendererContext.Logger);
+//#pragma warning restore CA2000
+//            }
+//            catch (COMException e)
+//            {
+//                // WASAPI has no usable render endpoint (no audio hardware, headless/RDP session, audio service off).
+//                // This is an expected environment, not a bug: run without sound rather than failing the viewer.
+//                Log.Warn(nameof(GLSceneViewer), $"No audio device available, sound playback disabled: {e.Message}");
+//                return;
+//            }
 
-            soundPlayer.LoadSoundEvents();
-            soundPlayer.LoadSoundscapes();
+//            soundPlayer.LoadSoundEvents();
+//            soundPlayer.LoadSoundscapes();
 
-            // todo: collision filter 'default' and 'blocksound'
-            // const float OcclusionEndMargin = 48f;
-            // soundPlayer.OcclusionTrace = (listener, sound) =>
-            //     Scene.PhysicsWorld?.TraceRay(listener, sound) is { Hit: true } hit
-            //         && Vector3.DistanceSquared(hit.HitPosition, sound) > OcclusionEndMargin * OcclusionEndMargin;
+//            // todo: collision filter 'default' and 'blocksound'
+//            // const float OcclusionEndMargin = 48f;
+//            // soundPlayer.OcclusionTrace = (listener, sound) =>
+//            //     Scene.PhysicsWorld?.TraceRay(listener, sound) is { Hit: true } hit
+//            //         && Vector3.DistanceSquared(hit.HitPosition, sound) > OcclusionEndMargin * OcclusionEndMargin;
 
-            soundPlayer.Suspended = true; // start with fade-in
-            soundPlayer.Volume = Settings.Config.Volume;
-            soundPlayer.MixGroupVolume["Weapons"] = 0.7f;
-            soundPlayer.MixGroupVolume["Foley"] = 0.5f;
-            soundPlayer.MixGroupVolume["Footsteps"] = 0.4f;
-            soundPlayer.MixGroupVolume["PlayerDamage"] = 0.4f;
-            soundPlayer.DefaultMixGroupVolume = 0.1f;
+//            soundPlayer.Suspended = true; // start with fade-in
+//            soundPlayer.Volume = Settings.Config.Volume;
+//            soundPlayer.MixGroupVolume["Weapons"] = 0.7f;
+//            soundPlayer.MixGroupVolume["Foley"] = 0.5f;
+//            soundPlayer.MixGroupVolume["Footsteps"] = 0.4f;
+//            soundPlayer.MixGroupVolume["PlayerDamage"] = 0.4f;
+//            soundPlayer.DefaultMixGroupVolume = 0.1f;
         }
 
         public override void OnDetachedFromRenderLoop()
         {
             base.OnDetachedFromRenderLoop();
-            soundPlayer?.Suspended = true;
+            //VKTODO:
+            //soundPlayer?.Suspended = true;
         }
 
         protected override void OnUpdate(float frameTime)
         {
             base.OnUpdate(frameTime);
 
-            if (soundPlayer != null)
-            {
-                soundPlayer.Volume = Settings.Config.Volume;
-                soundPlayer.Suspended = Paused;
-            }
+            //if (soundPlayer != null)
+            //{
+            //    soundPlayer.Volume = Settings.Config.Volume;
+            //    soundPlayer.Suspended = Paused;
+            //}
 
             Input.EnableMouseLook = true;
 
-            if (loadedDefaultLighting && Input.NoClip && (CurrentlyPressedKeys & TrackedKeys.Control) != 0)
-            {
-                var delta = new Vector2(LastMouseDelta.Y, LastMouseDelta.X);
+            //if (loadedDefaultLighting && Input.NoClip && (CurrentlyPressedKeys & TrackedKeys.Control) != 0)
+            //{
+            //    var delta = new Vector2(LastMouseDelta.Y, LastMouseDelta.X);
 
-                sunAngles += delta;
-                Scene.AdjustEnvMapSunAngle(Matrix4x4.CreateRotationZ(-delta.Y / 80f));
-                UpdateSunAngles();
-                Scene.UpdateBuffers();
-                Input.EnableMouseLook = false;
-            }
+            //    sunAngles += delta;
+            //    Scene.AdjustEnvMapSunAngle(Matrix4x4.CreateRotationZ(-delta.Y / 80f));
+            //    UpdateSunAngles();
+            //    Scene.UpdateBuffers();
+            //    Input.EnableMouseLook = false;
+            //}
 
-            // Walk mode keeps simulating while the cursor is over the ui, otherwise player
-            // physics and teleports stay frozen until the mouse moves back over the viewport.
+            //// Walk mode keeps simulating while the cursor is over the ui, otherwise player
+            //// physics and teleports stay frozen until the mouse moves back over the viewport.
             if (MouseOverRenderArea || Input.ForceUpdate || Input.WalkMode)
             {
                 Input.MouseSensitivity = Settings.Config.MouseSensitivity;
@@ -562,19 +588,19 @@ namespace GUI.Types.GLViewers
 
                 Input.MouseSensitivity = Settings.Config.MouseSensitivity;
                 var wasWalkMode = Input.WalkMode;
-                Input.Tick(frameTime, pressedKeys, new Vector2(mouseDelta.X, mouseDelta.Y), Renderer.Camera);
+                Input.Tick(frameTime, pressedKeys, new Vector2(mouseDelta.X, mouseDelta.Y), camera);
                 LastMouseDelta = mouseDelta;
 
                 // cancel unintentional selection
                 if (!wasWalkMode && Input.WalkMode)
                 {
-                    SelectedNodeRenderer?.SelectNode(null);
+                    //VKTODO: SelectedNodeRenderer?.SelectNode(null);
 
-                    if (!roundStarted)
-                    {
-                        roundStarted = true;
-                        Scene.EntitySystem.StartRound();
-                    }
+                    //if (!roundStarted)
+                    //{
+                    //    roundStarted = true;
+                    //    Scene.EntitySystem.StartRound();
+                    //}
                 }
 
                 // Walk mode aims with the mouse, so it holds the cursor. Leaving walk mode, pausing,
@@ -595,296 +621,309 @@ namespace GUI.Types.GLViewers
         /// </summary>
         private void UpdateSoundPlayer()
         {
-            if (soundPlayer == null)
-            {
-                return;
-            }
+            //if (soundPlayer == null)
+            //{
+            //    return;
+            //}
 
-            if (!Paused)
-            {
-                using (new ProfilerScope("Update Sounds"))
-                {
-                    soundPlayer.Update(Renderer.Camera);
-                }
-            }
+            //if (!Paused)
+            //{
+            //    using (new ProfilerScope("Update Sounds"))
+            //    {
+            //        soundPlayer.Update(Renderer.Camera);
+            //    }
+            //}
         }
 
         protected void DrawLowerCornerText(ValveResourceFormat.Renderer.TextRenderer.TextMemory text, Color32 color, int lineFromBottom = 0)
         {
-            Debug.Assert(MainFramebuffer != null);
+            //Debug.Assert(MainFramebuffer != null);
 
-            TextRenderer.AddText(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
-            {
-                X = 2f,
-                Y = MainFramebuffer.Height - 4f - lineFromBottom * 16f,
-                Scale = 14f,
-                Color = color,
-                Text = text
-            });
+            //TextRenderer.AddText(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
+            //{
+            //    X = 2f,
+            //    Y = MainFramebuffer.Height - 4f - lineFromBottom * 16f,
+            //    Scale = 14f,
+            //    Color = color,
+            //    Text = text
+            //});
         }
 
-        protected void DrawWorldSpaceText(string text, float size, Vector3 position, Color32 color, Scene.RenderContext renderContext)
-        {
-            Scene.WantsSceneDepth = true;
-            TextRenderer.AddTextBillboard(position, new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
-            {
-                Scale = size,
-                Color = color,
-                Text = text,
-                CenterVertical = true,
-                CenterHorizontal = true,
-            }, renderContext.Camera, depthMask: true);
-        }
+        //VKTODO:
+        //protected void DrawWorldSpaceText(string text, float size, Vector3 position, Color32 color, Scene.RenderContext renderContext)
+        //{
+        //    //Scene.WantsSceneDepth = true;
+        //    //TextRenderer.AddTextBillboard(position, new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
+        //    //{
+        //    //    Scale = size,
+        //    //    Color = color,
+        //    //    Text = text,
+        //    //    CenterVertical = true,
+        //    //    CenterHorizontal = true,
+        //    //}, renderContext.Camera, depthMask: true);
+        //}
 
         protected override void BlitFramebufferToScreen()
         {
-            Debug.Assert(MainFramebuffer != null);
-            Debug.Assert(GLDefaultFramebuffer != null);
+            //CRITVKTODO:
+            //Debug.Assert(MainFramebuffer != null);
+            //Debug.Assert(GLDefaultFramebuffer != null);
 
-            Renderer.PostprocessRender(MainFramebuffer, GLDefaultFramebuffer);
+            //Renderer.PostprocessRender(MainFramebuffer, GLDefaultFramebuffer);
         }
 
         protected override void OnBufferSwapped(double blockedMs, double framePeriodMs)
         {
-            Renderer.PerfStats.Timings.SetBufferSwapTime(blockedMs, framePeriodMs);
+            //VKTODO:
+            //Renderer.PerfStats.Timings.SetBufferSwapTime(blockedMs, framePeriodMs);
         }
 
         protected override void OnPaint(float frameTime)
         {
-            Debug.Assert(MainFramebuffer != null);
-            Debug.Assert(Picker != null);
-            Debug.Assert(SelectedNodeRenderer != null);
+            //VKTODO
+            //Debug.Assert(MainFramebuffer != null);
+            //Debug.Assert(Picker != null);
+            //Debug.Assert(SelectedNodeRenderer != null);
 
-            Renderer.PerfStats.Capture = perfDisplay == PerfDisplay.Stats;
-            Renderer.PerfStats.Timings.Capture = perfDisplay == PerfDisplay.Timings;
-            Renderer.PerfStats.Allocations.Capture = perfDisplay == PerfDisplay.Allocations;
+            //Renderer.PerfStats.Capture = perfDisplay == PerfDisplay.Stats;
+            //Renderer.PerfStats.Timings.Capture = perfDisplay == PerfDisplay.Timings;
+            //Renderer.PerfStats.Allocations.Capture = perfDisplay == PerfDisplay.Allocations;
+            //
+            //Renderer.PerfStats.MarkFrameBegin();
 
-            Renderer.PerfStats.MarkFrameBegin();
-            GL.BeginQuery(QueryTarget.TimeElapsed, frametimeQuery1);
 
-            var renderContext = new Scene.RenderContext
-            {
-                Camera = Renderer.Camera,
-                Framebuffer = MainFramebuffer,
-                Textures = Renderer.Textures,
-                Scene = Scene,
-            };
+            //VKTODO
+            //GL.BeginQuery(QueryTarget.TimeElapsed, frametimeQuery1);
 
-            using (new GLDebugGroup("Update Loop"))
-            {
-                var updateContext = new Scene.UpdateContext
-                {
-                    TextRenderer = TextRenderer,
-                    Timestep = frameTime,
-                    Camera = Renderer.Camera,
-                };
+            //var renderContext = new Scene.RenderContext
+            //{
+            //    Camera = Renderer.Camera,
+            //    Framebuffer = MainFramebuffer,
+            //    Textures = Renderer.Textures,
+            //    Scene = Scene,
+            //};
 
-                Renderer.Update(updateContext);
+            //using (new GLDebugGroup("Update Loop"))
+            //{
+            //var updateContext = new Scene.UpdateContext
+            //{
+            //    //TextRenderer = TextRenderer,
+            //    Timestep = frameTime,
+            //    //Camera = Renderer.Camera,
+            //};
 
-                Input.LateUpdate(Renderer.Camera);
+            Renderer.Update(frameTime);
 
-                SelectedNodeRenderer.Update(renderContext, updateContext);
-            }
+            //    Input.LateUpdate(Renderer.Camera);
+
+            //    SelectedNodeRenderer.Update(renderContext, updateContext);
+            //}
 
             // After the update, so the listener is placed with this frame's camera vectors rather than
             // this frame's position and last frame's facing
             UpdateSoundPlayer();
 
-            Renderer.ForceResolveSceneDepth = ShowBaseGrid;
+            //Renderer.ForceResolveSceneDepth = ShowBaseGrid;
 
             var quadOverdrawThisFrame = false;
 
-            using (new GLDebugGroup("Scenes Render"))
+            //using (new GLDebugGroup("Scenes Render"))
+            //{
+            //    if (Picker.ActiveNextFrame)
+            //    {
+            //        using var _ = new GLDebugGroup("Picker Object Id Render");
+            //        renderContext.ReplacementShader = Picker.Shader;
+            //        renderContext.Framebuffer = Picker;
+
+            //        Renderer.RenderScenesWithView(renderContext);
+            //        Picker.Finish();
+            //    }
+            //    else if (Picker.IsDebugActive)
+            //    {
+            //        renderContext.ReplacementShader = Picker.DebugShader;
+            //    }
+            //    else if (QuadOverdrawRenderer?.IsActive == true)
+            //    {
+            //        QuadOverdrawRenderer.Prepare(MainFramebuffer.Width, MainFramebuffer.Height);
+
+            //        quadOverdrawThisFrame = true;
+            //    }
+
+            ViewContext viewContext = new()
             {
-                if (Picker.ActiveNextFrame)
-                {
-                    using var _ = new GLDebugGroup("Picker Object Id Render");
-                    renderContext.ReplacementShader = Picker.Shader;
-                    renderContext.Framebuffer = Picker;
+                Camera = camera,
+                Framebuffer = GLControl.Swapchain
+            };
 
-                    Renderer.RenderScenesWithView(renderContext);
-                    Picker.Finish();
-                }
-                else if (Picker.IsDebugActive)
-                {
-                    renderContext.ReplacementShader = Picker.DebugShader;
-                }
-                else if (QuadOverdrawRenderer?.IsActive == true)
-                {
-                    QuadOverdrawRenderer.Prepare(MainFramebuffer.Width, MainFramebuffer.Height);
+            Renderer.Render(viewContext);
 
-                    quadOverdrawThisFrame = true;
-                }
+            //    if (quadOverdrawThisFrame)
+            //    {
+            //        using (new GLDebugGroup("Quad Overdraw Counting Pass"))
+            //        {
+            //            QuadOverdrawRenderer!.BeginCountingPass(MainFramebuffer);
 
-                Renderer.Render(renderContext);
+            //            renderContext.OverdrawShader = QuadOverdrawRenderer.SceneShader;
+            //            Renderer.RenderScenesWithView(renderContext);
+            //            renderContext.OverdrawShader = null;
 
-                if (quadOverdrawThisFrame)
-                {
-                    using (new GLDebugGroup("Quad Overdraw Counting Pass"))
-                    {
-                        QuadOverdrawRenderer!.BeginCountingPass(MainFramebuffer);
+            //            QuadOverdrawRenderer.EndCountingPass(MainFramebuffer);
+            //        }
 
-                        renderContext.OverdrawShader = QuadOverdrawRenderer.SceneShader;
-                        Renderer.RenderScenesWithView(renderContext);
-                        renderContext.OverdrawShader = null;
+            //        QuadOverdrawRenderer!.Render();
+            //    }
+            //}
 
-                        QuadOverdrawRenderer.EndCountingPass(MainFramebuffer);
-                    }
+            //using (new GLDebugGroup("Lines Render"))
+            //{
+            //    SelectedNodeRenderer.Render();
 
-                    QuadOverdrawRenderer!.Render();
-                }
-            }
+            //    if (showStaticOctree && Scene.StaticOctree.DebugRenderer != null)
+            //    {
+            //        Scene.StaticOctree.DebugRenderer.Render();
+            //    }
 
-            using (new GLDebugGroup("Lines Render"))
-            {
-                SelectedNodeRenderer.Render();
+            //    if (showDynamicOctree && Scene.DynamicOctree.DebugRenderer != null)
+            //    {
+            //        Scene.DynamicOctree.DebugRenderer.Render();
+            //    }
 
-                if (showStaticOctree && Scene.StaticOctree.DebugRenderer != null)
-                {
-                    Scene.StaticOctree.DebugRenderer.Render();
-                }
+            //    if (Scene.OcclusionDebugEnabled && Scene.OcclusionDebug != null)
+            //    {
+            //        Scene.OcclusionDebug.Render();
+            //    }
 
-                if (showDynamicOctree && Scene.DynamicOctree.DebugRenderer != null)
-                {
-                    Scene.DynamicOctree.DebugRenderer.Render();
-                }
+            //    if (showPhysicsTraces && Scene.PhysicsWorld != null)
+            //    {
+            //        physicsTraceRenderer ??= new PhysicsTraceDebugRenderer(Scene.RendererContext);
+            //        physicsTraceRenderer.Render(Scene.PhysicsWorld, Input, Renderer.Camera);
+            //    }
 
-                if (Scene.OcclusionDebugEnabled && Scene.OcclusionDebug != null)
-                {
-                    Scene.OcclusionDebug.Render();
-                }
+            //    if (ShowBaseGrid && baseGrid != null)
+            //    {
+            //        baseGrid.Render();
 
-                if (showPhysicsTraces && Scene.PhysicsWorld != null)
-                {
-                    physicsTraceRenderer ??= new PhysicsTraceDebugRenderer(Scene.RendererContext);
-                    physicsTraceRenderer.Render(Scene.PhysicsWorld, Input, Renderer.Camera);
-                }
+            //        DrawWorldSpaceText("+X", 10f, Vector3.UnitX * 120f, Color32.Red, renderContext);
+            //        DrawWorldSpaceText("-X", 10f, -Vector3.UnitX * 120f, Color32.Red, renderContext);
+            //        DrawWorldSpaceText("+Y", 10f, Vector3.UnitY * 120f, Color32.Green, renderContext);
+            //        DrawWorldSpaceText("-Y", 10f, -Vector3.UnitY * 120f, Color32.Green, renderContext);
+            //    }
+            //}
 
-                if (ShowBaseGrid && baseGrid != null)
-                {
-                    baseGrid.Render();
+            //GL.EndQuery(QueryTarget.TimeElapsed);
 
-                    DrawWorldSpaceText("+X", 10f, Vector3.UnitX * 120f, Color32.Red, renderContext);
-                    DrawWorldSpaceText("-X", 10f, -Vector3.UnitX * 120f, Color32.Red, renderContext);
-                    DrawWorldSpaceText("+Y", 10f, Vector3.UnitY * 120f, Color32.Green, renderContext);
-                    DrawWorldSpaceText("-Y", 10f, -Vector3.UnitY * 120f, Color32.Green, renderContext);
-                }
-            }
+            //if (Paused)
+            //{
+            //    DrawLowerCornerText("Paused", new(255, 100, 0));
+            //}
+            //else if (Settings.Config.DisplayFps != 0)
+            //{
+            //    var currentTime = Stopwatch.GetTimestamp();
+            //    var fpsElapsed = Stopwatch.GetElapsedTime(lastFpsUpdate, currentTime);
 
-            GL.EndQuery(QueryTarget.TimeElapsed);
+            //    // Zero length frames (the first frame after resuming) would inflate the average.
+            //    if (frameTime > 0f)
+            //    {
+            //        frameTimes[frameTimeNextId++] = frameTime;
+            //        frameTimeNextId %= frameTimes.Length;
+            //        frameTimeCount = Math.Min(frameTimeCount + 1, frameTimes.Length);
+            //    }
 
-            if (Paused)
-            {
-                DrawLowerCornerText("Paused", new(255, 100, 0));
-            }
-            else if (Settings.Config.DisplayFps != 0)
-            {
-                var currentTime = Stopwatch.GetTimestamp();
-                var fpsElapsed = Stopwatch.GetElapsedTime(lastFpsUpdate, currentTime);
+            //    if (frameTimeCount > 0 && fpsElapsed >= FpsUpdateTimeSpan)
+            //    {
+            //        var frametimeQuery = frametimeQuery2;
+            //        frametimeQuery2 = frametimeQuery1;
+            //        frametimeQuery1 = frametimeQuery;
 
-                // Zero length frames (the first frame after resuming) would inflate the average.
-                if (frameTime > 0f)
-                {
-                    frameTimes[frameTimeNextId++] = frameTime;
-                    frameTimeNextId %= frameTimes.Length;
-                    frameTimeCount = Math.Min(frameTimeCount + 1, frameTimes.Length);
-                }
+            //        GL.GetQueryObject(frametimeQuery, GetQueryObjectParam.QueryResultNoWait, out long gpuTime);
+            //        var gpuFrameTime = gpuTime / 1_000_000f;
 
-                if (frameTimeCount > 0 && fpsElapsed >= FpsUpdateTimeSpan)
-                {
-                    var frametimeQuery = frametimeQuery2;
-                    frametimeQuery2 = frametimeQuery1;
-                    frametimeQuery1 = frametimeQuery;
+            //        var frameTimeSum = 0f;
 
-                    GL.GetQueryObject(frametimeQuery, GetQueryObjectParam.QueryResultNoWait, out long gpuTime);
-                    var gpuFrameTime = gpuTime / 1_000_000f;
+            //        // Only the samples written so far, the rest of the ring is still zeroed.
+            //        for (var i = 0; i < frameTimeCount; i++)
+            //        {
+            //            frameTimeSum += frameTimes[i];
+            //        }
 
-                    var frameTimeSum = 0f;
+            //        var fps = frameTimeCount / frameTimeSum;
+            //        var cpuFrameTime = Stopwatch.GetElapsedTime(LastUpdate, currentTime).TotalMilliseconds;
 
-                    // Only the samples written so far, the rest of the ring is still zeroed.
-                    for (var i = 0; i < frameTimeCount; i++)
-                    {
-                        frameTimeSum += frameTimes[i];
-                    }
+            //        lastFpsUpdate = currentTime;
+            //        fpsText.Format($"FPS: {fps,-3:0}  CPU: {cpuFrameTime,-4:0.0}ms  GPU: {gpuFrameTime,-4:0.0}ms");
+            //    }
 
-                    var fps = frameTimeCount / frameTimeSum;
-                    var cpuFrameTime = Stopwatch.GetElapsedTime(LastUpdate, currentTime).TotalMilliseconds;
-
-                    lastFpsUpdate = currentTime;
-                    fpsText.Format($"FPS: {fps,-3:0}  CPU: {cpuFrameTime,-4:0.0}ms  GPU: {gpuFrameTime,-4:0.0}ms");
-                }
-
-                DrawLowerCornerText(fpsText, Color32.White);
-            }
+            //    DrawLowerCornerText(fpsText, Color32.White);
+            //}
 
             BlitFramebufferToScreen();
 
-            if (Input.ShowCrosshair)
-            {
-                crosshairRenderer.Render(Renderer.Camera);
-            }
+            //if (Input.ShowCrosshair)
+            //{
+            //    crosshairRenderer.Render(Renderer.Camera);
+            //}
 
-            if (GrabbedMouse && ShowSpeed)
-            {
-                TextRenderer.AddTextRelative(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
-                {
-                    X = 0.5f,
-                    Y = 0.85f,
-                    Scale = 12f,
-                    Color = Color32.Yellow,
-                    Text = speedText.Format($"Speed: {Input.Velocity.AsVector2().Length():0.0} u/s"),
-                    CenterHorizontal = true,
-                }, Renderer.Camera);
-            }
+            //if (GrabbedMouse && ShowSpeed)
+            //{
+            //    TextRenderer.AddTextRelative(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
+            //    {
+            //        X = 0.5f,
+            //        Y = 0.85f,
+            //        Scale = 12f,
+            //        Color = Color32.Yellow,
+            //        Text = speedText.Format($"Speed: {Input.Velocity.AsVector2().Length():0.0} u/s"),
+            //        CenterHorizontal = true,
+            //    }, Renderer.Camera);
+            //}
 
-            if (showVisDebug && Scene.VoxelVisibility != null)
-            {
-                var pvsPos = Renderer.LockedCullPosition ?? Renderer.Camera.Location;
-                var cluster = Scene.VoxelVisibility.GetClusterForPosition(pvsPos);
-                var y = 18f;
+            //if (showVisDebug && Scene.VoxelVisibility != null)
+            //{
+            //    var pvsPos = Renderer.LockedCullPosition ?? Renderer.Camera.Location;
+            //    var cluster = Scene.VoxelVisibility.GetClusterForPosition(pvsPos);
+            //    var y = 18f;
 
-                void AddLine(string text, Color32 color)
-                {
-                    TextRenderer.AddText(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
-                    {
-                        X = 4f,
-                        Y = y,
-                        Scale = 14f,
-                        Color = color,
-                        Text = text,
-                    });
-                    y += 16f;
-                }
+            //    void AddLine(string text, Color32 color)
+            //    {
+            //        TextRenderer.AddText(new ValveResourceFormat.Renderer.TextRenderer.TextRenderRequest
+            //        {
+            //            X = 4f,
+            //            Y = y,
+            //            Scale = 14f,
+            //            Color = color,
+            //            Text = text,
+            //        });
+            //        y += 16f;
+            //    }
 
-                AddLine(
-                    cluster <= 1 ? "No PVS at this position" : $"PVS cluster {cluster}",
-                    cluster <= 1 ? new Color32(255, 0, 0) : Color32.White
-                );
+            //    AddLine(
+            //        cluster <= 1 ? "No PVS at this position" : $"PVS cluster {cluster}",
+            //        cluster <= 1 ? new Color32(255, 0, 0) : Color32.White
+            //    );
 
-                if (Scene.CurrentFramePvs != null)
-                {
-                    var visCount = Scene.CurrentFramePvs.Sum(b => BitOperations.PopCount(b));
-                    AddLine($"PVS visible: {visCount}/{Scene.VoxelVisibility.BaseClusterCount} clusters", Color32.White);
-                }
-            }
+            //    if (Scene.CurrentFramePvs != null)
+            //    {
+            //        var visCount = Scene.CurrentFramePvs.Sum(b => BitOperations.PopCount(b));
+            //        AddLine($"PVS visible: {visCount}/{Scene.VoxelVisibility.BaseClusterCount} clusters", Color32.White);
+            //    }
+            //}
 
-            if (perfDisplay == PerfDisplay.Stats)
-            {
-                Renderer.PerfStats.DisplayStats(TextRenderer, Renderer.Camera, Scene, SkyboxScene);
-            }
-            else if (perfDisplay == PerfDisplay.Timings)
-            {
-                Renderer.PerfStats.Timings.DisplayTimings(TextRenderer, Renderer.Camera);
-            }
-            else if (perfDisplay == PerfDisplay.Allocations)
-            {
-                Renderer.PerfStats.Allocations.DisplayAllocations(TextRenderer, Renderer.Camera);
-            }
+            //if (perfDisplay == PerfDisplay.Stats)
+            //{
+            //    Renderer.PerfStats.DisplayStats(TextRenderer, Renderer.Camera, Scene, SkyboxScene);
+            //}
+            //else if (perfDisplay == PerfDisplay.Timings)
+            //{
+            //    Renderer.PerfStats.Timings.DisplayTimings(TextRenderer, Renderer.Camera);
+            //}
+            //else if (perfDisplay == PerfDisplay.Allocations)
+            //{
+            //    Renderer.PerfStats.Allocations.DisplayAllocations(TextRenderer, Renderer.Camera);
+            //}
 
-            TextRenderer.Render(Renderer.Camera, Renderer.ResolvedSceneDepth);
-            Picker?.TriggerEventIfAny();
+            //TextRenderer.Render(Renderer.Camera, Renderer.ResolvedSceneDepth);
+            //Picker?.TriggerEventIfAny();
 
-            Renderer.PerfStats.MarkFrameEnd();
+            //Renderer.PerfStats.MarkFrameEnd();
         }
 
         protected void AddBaseGridControl()
@@ -893,19 +932,19 @@ namespace GUI.Types.GLViewers
 
             using var _ = UiControl.BeginGroup("Display");
 
-            var lightBackgroundCheckbox = UiControl.AddCheckBox("Light Background", ShowLightBackground, (v) =>
-            {
-                ShowLightBackground = v;
-                Renderer.BaseBackground!.SetLightBackground(ShowLightBackground);
-            });
+            //var lightBackgroundCheckbox = UiControl.AddCheckBox("Light Background", ShowLightBackground, (v) =>
+            //{
+            //    ShowLightBackground = v;
+            //    Renderer.BaseBackground!.SetLightBackground(ShowLightBackground);
+            //});
 
-            lightBackgroundCheckbox.Checked = Themer.CurrentTheme == Themer.AppTheme.Light;
+            //lightBackgroundCheckbox.Checked = Themer.CurrentTheme == Themer.AppTheme.Light;
 
-            UiControl.AddCheckBox("Solid Background", ShowSolidBackground, (v) =>
-            {
-                ShowSolidBackground = v;
-                Renderer.BaseBackground!.SetSolidBackground(ShowSolidBackground);
-            });
+            //UiControl.AddCheckBox("Solid Background", ShowSolidBackground, (v) =>
+            //{
+            //    ShowSolidBackground = v;
+            //    Renderer.BaseBackground!.SetSolidBackground(ShowSolidBackground);
+            //});
 
             if (this is not GLMaterialViewer)
             {
@@ -923,142 +962,142 @@ namespace GUI.Types.GLViewers
 
             Debug.Assert(UiControl != null);
 
-            UiControl.AddCheckBox("Show Wireframe", Renderer.IsWireframe, (v) => Renderer.IsWireframe = v);
+            //UiControl.AddCheckBox("Show Wireframe", Renderer.IsWireframe, (v) => Renderer.IsWireframe = v);
         }
 
         protected void AddRenderModeSelectionControl()
         {
-            if (renderModeComboBox != null)
-            {
-                return;
-            }
+            //if (renderModeComboBox != null)
+            //{
+            //    return;
+            //}
 
-            Debug.Assert(UiControl != null);
+            //Debug.Assert(UiControl != null);
 
-            renderModeComboBox = UiControl.AddSelection("Render Mode", (_, i) =>
-            {
-                if (renderModeCurrentIndex < -1)
-                {
-                    renderModeCurrentIndex = i;
-                    return;
-                }
+            //renderModeComboBox = UiControl.AddSelection("Render Mode", (_, i) =>
+            //{
+            //    if (renderModeCurrentIndex < -1)
+            //    {
+            //        renderModeCurrentIndex = i;
+            //        return;
+            //    }
 
-                if (i < 0)
-                {
-                    return;
-                }
+            //    if (i < 0)
+            //    {
+            //        return;
+            //    }
 
-                var renderMode = renderModes[i];
+            //    var renderMode = renderModes[i];
 
-                if (renderMode.IsHeader)
-                {
-                    renderModeComboBox!.SelectedIndex = renderModeCurrentIndex > i ? i - 1 : i + 1;
-                    return;
-                }
+            //    if (renderMode.IsHeader)
+            //    {
+            //        renderModeComboBox!.SelectedIndex = renderModeCurrentIndex > i ? i - 1 : i + 1;
+            //        return;
+            //    }
 
-                renderModeCurrentIndex = i;
-                SetRenderMode(renderMode.Name);
-            }, true, true);
+            //    renderModeCurrentIndex = i;
+            //    SetRenderMode(renderMode.Name);
+            //}, true, true);
 
-            SetAvailableRenderModes();
+            //SetAvailableRenderModes();
         }
 
         private void SetAvailableRenderModes(bool keepCurrentSelection = false)
         {
-            if (renderModeComboBox != null && Picker != null)
-            {
-                var selectedIndex = 0;
-                var currentlySelected = keepCurrentSelection ? renderModeComboBox.SelectedItem?.ToString() : null;
-                var supportedRenderModes = new HashSet<string>(Picker.Shader.RenderModes);
+            //if (renderModeComboBox != null && Picker != null)
+            //{
+            //    var selectedIndex = 0;
+            //    var currentlySelected = keepCurrentSelection ? renderModeComboBox.SelectedItem?.ToString() : null;
+            //    var supportedRenderModes = new HashSet<string>(Picker.Shader.RenderModes);
 
-                if (QuadOverdrawRenderer != null)
-                {
-                    supportedRenderModes.UnionWith(QuadOverdrawRenderer.SceneShader.RenderModes);
-                }
+            //    if (QuadOverdrawRenderer != null)
+            //    {
+            //        supportedRenderModes.UnionWith(QuadOverdrawRenderer.SceneShader.RenderModes);
+            //    }
 
-                foreach (var node in Scene.AllNodes)
-                {
-                    supportedRenderModes.UnionWith(node.GetSupportedRenderModes());
-                }
+            //    foreach (var node in Scene.AllNodes)
+            //    {
+            //        supportedRenderModes.UnionWith(node.GetSupportedRenderModes());
+            //    }
 
-                renderModes.Clear();
+            //    renderModes.Clear();
 
-                for (var i = 0; i < RenderModes.Items.Count; i++)
-                {
-                    var mode = RenderModes.Items[i];
+            //    for (var i = 0; i < RenderModes.Items.Count; i++)
+            //    {
+            //        var mode = RenderModes.Items[i];
 
-                    if (i > 0)
-                    {
-                        if (mode.IsHeader)
-                        {
-                            if (renderModes[^1].IsHeader)
-                            {
-                                // If we hit a header and the last added item is also a header, remove it
-                                renderModes.RemoveAt(renderModes.Count - 1);
-                            }
-                        }
-                        else if (!supportedRenderModes.Remove(mode.Name))
-                        {
-                            continue;
-                        }
-                    }
+            //        if (i > 0)
+            //        {
+            //            if (mode.IsHeader)
+            //            {
+            //                if (renderModes[^1].IsHeader)
+            //                {
+            //                    // If we hit a header and the last added item is also a header, remove it
+            //                    renderModes.RemoveAt(renderModes.Count - 1);
+            //                }
+            //            }
+            //            else if (!supportedRenderModes.Remove(mode.Name))
+            //            {
+            //                continue;
+            //            }
+            //        }
 
-                    if (mode.Name == currentlySelected)
-                    {
-                        selectedIndex = renderModes.Count;
-                    }
+            //        if (mode.Name == currentlySelected)
+            //        {
+            //            selectedIndex = renderModes.Count;
+            //        }
 
-                    renderModes.Add(mode);
-                }
+            //        renderModes.Add(mode);
+            //    }
 
-                renderModeComboBox.BeginUpdate();
-                renderModeComboBox.Items.Clear();
+            //    renderModeComboBox.BeginUpdate();
+            //    renderModeComboBox.Items.Clear();
 
-                foreach (var renderMode in renderModes)
-                {
-                    renderModeComboBox.Items.Add(new ThemedComboBoxItem { Text = renderMode.Name, IsHeader = renderMode.IsHeader });
-                }
+            //    foreach (var renderMode in renderModes)
+            //    {
+            //        renderModeComboBox.Items.Add(new ThemedComboBoxItem { Text = renderMode.Name, IsHeader = renderMode.IsHeader });
+            //    }
 
-                renderModeCurrentIndex = -10;
-                renderModeComboBox.SelectedIndex = selectedIndex;
-                renderModeComboBox.EndUpdate();
-            }
+            //    renderModeCurrentIndex = -10;
+            //    renderModeComboBox.SelectedIndex = selectedIndex;
+            //    renderModeComboBox.EndUpdate();
+            //}
         }
 
         protected void SetEnabledLayers(HashSet<string> layers)
         {
-            Scene.SetEnabledLayers(layers);
-            SkyboxScene?.SetEnabledLayers(layers);
+            //Scene.SetEnabledLayers(layers);
+            //SkyboxScene?.SetEnabledLayers(layers);
         }
 
         private void SetRenderMode(string renderMode)
         {
-            Debug.Assert(Picker != null);
-            Debug.Assert(SelectedNodeRenderer != null);
+            //Debug.Assert(Picker != null);
+            //Debug.Assert(SelectedNodeRenderer != null);
 
-            Renderer.ViewBuffer!.Data!.RenderMode = RenderModes.GetShaderId(renderMode);
+            //Renderer.ViewBuffer!.Data!.RenderMode = RenderModes.GetShaderId(renderMode);
 
-            Renderer.Postprocess.Enabled = Renderer.ViewBuffer.Data.RenderMode == 0;
+            //Renderer.Postprocess.Enabled = Renderer.ViewBuffer.Data.RenderMode == 0;
 
-            Scene.EnableCompaction = renderMode != "Meshlets";
-            SkyboxScene?.EnableCompaction = Scene.EnableCompaction;
+            //Scene.EnableCompaction = renderMode != "Meshlets";
+            //SkyboxScene?.EnableCompaction = Scene.EnableCompaction;
 
-            Picker.SetRenderMode(renderMode);
-            QuadOverdrawRenderer?.SetRenderMode(renderMode);
-            SelectedNodeRenderer.SetRenderMode(renderMode);
+            //Picker.SetRenderMode(renderMode);
+            //QuadOverdrawRenderer?.SetRenderMode(renderMode);
+            //SelectedNodeRenderer.SetRenderMode(renderMode);
 
-            foreach (var node in Scene.AllNodes)
-            {
-                node.SetRenderMode(renderMode);
-            }
+            //foreach (var node in Scene.AllNodes)
+            //{
+            //    node.SetRenderMode(renderMode);
+            //}
 
-            if (SkyboxScene != null)
-            {
-                foreach (var node in SkyboxScene.AllNodes)
-                {
-                    node.SetRenderMode(renderMode);
-                }
-            }
+            //if (SkyboxScene != null)
+            //{
+            //    foreach (var node in SkyboxScene.AllNodes)
+            //    {
+            //        node.SetRenderMode(renderMode);
+            //    }
+            //}
         }
 
         protected override void OnKeyDown(Keys keyData)
@@ -1089,25 +1128,25 @@ namespace GUI.Types.GLViewers
 #if DEBUG
         private void OnHotReload(object? sender, string? e)
         {
-            using var lockedGl = MakeCurrent();
+            //using var lockedGl = MakeCurrent();
 
             if (renderModeComboBox != null)
             {
                 SetAvailableRenderModes(true);
             }
 
-            foreach (var node in Scene.AllNodes)
-            {
-                node.UpdateVertexArrayObjects();
-            }
+            //foreach (var node in Scene.AllNodes)
+            //{
+            //    node.UpdateVertexArrayObjects();
+            //}
 
-            if (SkyboxScene != null)
-            {
-                foreach (var node in SkyboxScene.AllNodes)
-                {
-                    node.UpdateVertexArrayObjects();
-                }
-            }
+            //if (SkyboxScene != null)
+            //{
+            //    foreach (var node in SkyboxScene.AllNodes)
+            //    {
+            //        node.UpdateVertexArrayObjects();
+            //    }
+            //}
 
             GLControl?.Invalidate();
         }

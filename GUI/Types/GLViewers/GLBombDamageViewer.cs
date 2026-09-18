@@ -1,6 +1,6 @@
 using GUI.Utils;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.Renderer2;
+//using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes.GenericData.CS2;
 
 namespace GUI.Types.GLViewers
@@ -22,7 +22,8 @@ namespace GUI.Types.GLViewers
 
         protected override void LoadScene()
         {
-            CS2BombDamageSceneNode.AddBakedBombDamageToScene(bombDamageData, Scene);
+            //VKTODO:
+            //CS2BombDamageSceneNode.AddBakedBombDamageToScene(bombDamageData, Scene);
         }
     }
 }

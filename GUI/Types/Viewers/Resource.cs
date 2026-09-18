@@ -17,8 +17,8 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Graphs;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.Particles;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.Renderer2;
+//using ValveResourceFormat.Renderer.World;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.GenericData.CS2;
 using ValveResourceFormat.Serialization.KeyValues;
@@ -94,57 +94,63 @@ namespace GUI.Types.Viewers
             {
                 case ResourceType.Texture:
                 case ResourceType.PanoramaVectorGraphic:
-                    GLViewer = new GLTextureViewer(vrfGuiContext, rendererContext, resource);
-                    GLViewerTabName = "TEXTURE";
+                    //VKTODO:
+                    //GLViewer = new GLTextureViewer(vrfGuiContext, rendererContext, resource);
+                    //GLViewerTabName = "TEXTURE";
                     break;
 
                 case ResourceType.Particle:
-                    if (resource.DataBlock is ParticleSystem particleData)
-                    {
-                        GLViewer = new GLParticleViewer(vrfGuiContext, rendererContext, particleData);
-                        GLViewerTabName = "PARTICLE";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is ParticleSystem particleData)
+                    //{
+                    //    GLViewer = new GLParticleViewer(vrfGuiContext, rendererContext, particleData);
+                    //    GLViewerTabName = "PARTICLE";
+                    //}
                     break;
 
                 case ResourceType.ParticleSnapshot:
-                    if (resource.GetBlockByType(BlockType.SNAP) is ParticleSnapshot snapshot && SnapshotParticleSystem.CanPreview(snapshot))
-                    {
-                        GLViewer = new GLParticleViewer(vrfGuiContext, rendererContext, SnapshotParticleSystem.Create(snapshot), snapshot);
-                        GLViewerTabName = "SNAPSHOT";
-                    }
+                    //VKTODO:
+                    //if (resource.GetBlockByType(BlockType.SNAP) is ParticleSnapshot snapshot && SnapshotParticleSystem.CanPreview(snapshot))
+                    //{
+                    //    GLViewer = new GLParticleViewer(vrfGuiContext, rendererContext, SnapshotParticleSystem.Create(snapshot), snapshot);
+                    //    GLViewerTabName = "SNAPSHOT";
+                    //}
                     break;
 
                 case ResourceType.Map:
                 {
-                    var worldResource = vrfGuiContext.LoadFileCompiled(WorldLoader.GetWorldNameFromMap(resource.FileName!));
-                    var mapExternalReferences = resource.ExternalReferences;
-
-                    if (worldResource != null && worldResource.DataBlock is World mapWorldData)
-                    {
-                        GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, mapWorldData, mapExternalReferences);
-                        GLViewerTabName = "MAP";
-                    }
-                    else
-                    {
-                        worldResource?.Dispose();
-                    }
+                    //VKTODO:
+                    //var worldResource = vrfGuiContext.LoadFileCompiled(WorldLoader.GetWorldNameFromMap(resource.FileName!));
+                    //var mapExternalReferences = resource.ExternalReferences;
+                    //VKTODO:
+                    //if (worldResource != null && worldResource.DataBlock is World mapWorldData)
+                    //{
+                    //    GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, mapWorldData, mapExternalReferences);
+                    //    GLViewerTabName = "MAP";
+                    //}
+                    //else
+                    //{
+                    //    worldResource?.Dispose();
+                    //}
                     break;
                 }
 
                 case ResourceType.World:
-                    if (resource.DataBlock is World worldData)
-                    {
-                        GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, worldData);
-                        GLViewerTabName = "MAP";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is World worldData)
+                    //{
+                    //    GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, worldData);
+                    //    GLViewerTabName = "MAP";
+                    //}
                     break;
 
                 case ResourceType.WorldNode:
-                    if (resource.DataBlock is WorldNode worldNodeData)
-                    {
-                        GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, worldNodeData, resource.ExternalReferences);
-                        GLViewerTabName = "WORLD NODE";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is WorldNode worldNodeData)
+                    //{
+                    //    GLViewer = new GLWorldViewer(vrfGuiContext, rendererContext, worldNodeData, resource.ExternalReferences);
+                    //    GLViewerTabName = "WORLD NODE";
+                    //}
                     break;
 
                 case ResourceType.Model:
@@ -156,108 +162,121 @@ namespace GUI.Types.Viewers
                     break;
 
                 case ResourceType.Mesh:
-                    if (resource.DataBlock is Mesh meshData)
-                    {
-                        GLViewer = new GLMeshViewer(vrfGuiContext, rendererContext, meshData);
-                        GLViewerTabName = "MESH";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is Mesh meshData)
+                    //{
+                    //    GLViewer = new GLMeshViewer(vrfGuiContext, rendererContext, meshData);
+                    //    GLViewerTabName = "MESH";
+                    //}
                     break;
 
                 case ResourceType.SmartProp:
-                    if (resource.DataBlock is SmartProp smartPropData)
-                    {
-                        GLViewer = new GLSmartPropViewer(vrfGuiContext, rendererContext, smartPropData);
-                        GLViewerTabName = "SMART PROP";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is SmartProp smartPropData)
+                    //{
+                    //    GLViewer = new GLSmartPropViewer(vrfGuiContext, rendererContext, smartPropData);
+                    //    GLViewerTabName = "SMART PROP";
+                    //}
                     break;
 
                 case ResourceType.AnimationGraph:
-                    if (resource.DataBlock is AnimGraph animGraphData)
-                    {
-                        GLViewer = new AG1GraphViewer(vrfGuiContext, rendererContext, animGraphData.Data);
-                        GLViewerTabName = "AG1 ANIMATION GRAPH";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is AnimGraph animGraphData)
+                    //{
+                    //    GLViewer = new AG1GraphViewer(vrfGuiContext, rendererContext, animGraphData.Data);
+                    //    GLViewerTabName = "AG1 ANIMATION GRAPH";
+                    //}
                     break;
 
                 case ResourceType.NmClip:
-                    GLViewer = new GLAnimationViewer(vrfGuiContext, rendererContext, resource);
-                    GLViewerTabName = "ANIMATION CLIP";
+                    //VKTODO:
+                    //GLViewer = new GLAnimationViewer(vrfGuiContext, rendererContext, resource);
+                    //GLViewerTabName = "ANIMATION CLIP";
                     break;
 
                 case ResourceType.NmSkeleton:
-                    GLViewer = new GLAnimationViewer(vrfGuiContext, rendererContext, resource);
-                    GLViewerTabName = "SKELETON";
+                    //VKTODO:
+                    //GLViewer = new GLAnimationViewer(vrfGuiContext, rendererContext, resource);
+                    //GLViewerTabName = "SKELETON";
                     break;
 
                 case ResourceType.NmGraph:
-                    if (resource.DataBlock is BinaryKV3 binaryKV3)
-                    {
-                        GLViewer = new AG2GraphViewer(vrfGuiContext, rendererContext, binaryKV3.Data);
-                        GLViewerTabName = "AG2 ANIMATION GRAPH";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is BinaryKV3 binaryKV3)
+                    //{
+                    //    GLViewer = new AG2GraphViewer(vrfGuiContext, rendererContext, binaryKV3.Data);
+                    //    GLViewerTabName = "AG2 ANIMATION GRAPH";
+                    //}
                     break;
 
                 case ResourceType.PulseGraphDef:
-                    if (resource.DataBlock is BinaryKV3 graphDefKV3)
-                    {
-                        GLViewer = new PulseGraphViewer(vrfGuiContext, rendererContext, graphDefKV3.Data);
-                        GLViewerTabName = "PULSE GRAPH";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is BinaryKV3 graphDefKV3)
+                    //{
+                    //    GLViewer = new PulseGraphViewer(vrfGuiContext, rendererContext, graphDefKV3.Data);
+                    //    GLViewerTabName = "PULSE GRAPH";
+                    //}
                     break;
 
                 case ResourceType.EntityLump:
-                    if (resource.DataBlock is EntityLump entityLumpData)
-                    {
-                        GLViewer = new EntityIOGraphViewer(vrfGuiContext, rendererContext, entityLumpData);
-                        GLViewerTabName = "ENTITY I/O GRAPH";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is EntityLump entityLumpData)
+                    //{
+                    //    GLViewer = new EntityIOGraphViewer(vrfGuiContext, rendererContext, entityLumpData);
+                    //    GLViewerTabName = "ENTITY I/O GRAPH";
+                    //}
                     break;
 
                 case ResourceType.Material:
                 {
-                    if (resource.DataBlock is Material { ShaderName: "sky.vfx" })
-                    {
-                        GLViewer = new GLSkyboxViewer(vrfGuiContext, rendererContext, resource);
-                        GLViewerTabName = "SKYBOX";
-                    }
-                    else
-                    {
-                        GLViewer = new GLMaterialViewer(vrfGuiContext, rendererContext, resource);
-                        GLViewerTabName = "MATERIAL";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is Material { ShaderName: "sky.vfx" })
+                    //{
+                    //    GLViewer = new GLSkyboxViewer(vrfGuiContext, rendererContext, resource);
+                    //    GLViewerTabName = "SKYBOX";
+                    //}
+                    //else
+                    //{
+                    //    GLViewer = new GLMaterialViewer(vrfGuiContext, rendererContext, resource);
+                    //    GLViewerTabName = "MATERIAL";
+                    //}
                     break;
                 }
 
                 case ResourceType.PhysicsCollisionMesh:
-                    if (resource.DataBlock is PhysAggregateData physAggregateData)
-                    {
-                        GLViewer = new GLModelViewer(vrfGuiContext, rendererContext, physAggregateData);
-                        GLViewerTabName = "PHYSICS";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is PhysAggregateData physAggregateData)
+                    //{
+                    //    GLViewer = new GLModelViewer(vrfGuiContext, rendererContext, physAggregateData);
+                    //    GLViewerTabName = "PHYSICS";
+                    //}
                     break;
 
                 case ResourceType.WorldVisibility:
-                    if (resource.GetBlockByType(BlockType.VXVS) is VoxelVisibility { BaseClusterCount: > 0 } vxvs)
-                    {
-                        GLViewer = new GLVoxelVisibilityViewer(vrfGuiContext, rendererContext, vxvs);
-                        GLViewerTabName = "VISIBILITY";
-                    }
+                    //VKTODO:
+                    //if (resource.GetBlockByType(BlockType.VXVS) is VoxelVisibility { BaseClusterCount: > 0 } vxvs)
+                    //{
+                    //    GLViewer = new GLVoxelVisibilityViewer(vrfGuiContext, rendererContext, vxvs);
+                    //    GLViewerTabName = "VISIBILITY";
+                    //}
                     break;
 
                 case ResourceType.PostProcessing:
-                    if (resource.DataBlock is PostProcessing postProcessing && postProcessing.Data.ContainsKey("m_colorCorrectionVolumeData"))
-                    {
-                        GLViewer = new GLTextureViewer(vrfGuiContext, rendererContext, resource);
-                        GLViewerTabName = "LUT";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is PostProcessing postProcessing && postProcessing.Data.ContainsKey("m_colorCorrectionVolumeData"))
+                    //{
+                    //    GLViewer = new GLTextureViewer(vrfGuiContext, rendererContext, resource);
+                    //    GLViewerTabName = "LUT";
+                    //}
                     break;
 
                 case ResourceType.VData:
-                    if (resource.DataBlock is BombDamage bombDamage)
-                    {
-                        GLViewer = new GLBombDamageViewer(vrfGuiContext, rendererContext, bombDamage);
-                        GLViewerTabName = "BOMB DAMAGE";
-                    }
+                    //VKTODO:
+                    //if (resource.DataBlock is BombDamage bombDamage)
+                    //{
+                    //    GLViewer = new GLBombDamageViewer(vrfGuiContext, rendererContext, bombDamage);
+                    //    GLViewerTabName = "BOMB DAMAGE";
+                    //}
                     break;
             }
 
@@ -493,27 +512,27 @@ namespace GUI.Types.Viewers
                 {
                     glMaterialViewer.SetTabControl(resTabs);
                 }
+                //VKTODO:
+                //if (!isPreview && GLViewer is GLWorldViewer glWorldViewer && glWorldViewer.LoadedWorld is { } loadedWorld)
+                //{
+                //    if (resource.ResourceType == ResourceType.Map)
+                //    {
+                //        var worldTabPage = new ThemedTabPage("World Data");
+                //        resTabs.TabPages.Add(worldTabPage);
+                //        AddTextViewControl(ResourceType.WorldNode, loadedWorld.World, worldTabPage);
+                //    }
 
-                if (!isPreview && GLViewer is GLWorldViewer glWorldViewer && glWorldViewer.LoadedWorld is { } loadedWorld)
-                {
-                    if (resource.ResourceType == ResourceType.Map)
-                    {
-                        var worldTabPage = new ThemedTabPage("World Data");
-                        resTabs.TabPages.Add(worldTabPage);
-                        AddTextViewControl(ResourceType.WorldNode, loadedWorld.World, worldTabPage);
-                    }
+                //    if (loadedWorld.MainWorldNode != null)
+                //    {
+                //        var worldNodeTabPage = new ThemedTabPage("Node Data");
+                //        resTabs.TabPages.Add(worldNodeTabPage);
+                //        AddTextViewControl(ResourceType.WorldNode, loadedWorld.MainWorldNode, worldNodeTabPage);
+                //    }
 
-                    if (loadedWorld.MainWorldNode != null)
-                    {
-                        var worldNodeTabPage = new ThemedTabPage("Node Data");
-                        resTabs.TabPages.Add(worldNodeTabPage);
-                        AddTextViewControl(ResourceType.WorldNode, loadedWorld.MainWorldNode, worldNodeTabPage);
-                    }
-
-                    var entitiesTabPage = new ThemedTabPage("Entity List");
-                    entitiesTabPage.Controls.Add(new EntityViewer(vrfGuiContext, loadedWorld.Entities, glWorldViewer.SelectAndFocusEntity));
-                    resTabs.TabPages.Add(entitiesTabPage);
-                }
+                //    var entitiesTabPage = new ThemedTabPage("Entity List");
+                //    entitiesTabPage.Controls.Add(new EntityViewer(vrfGuiContext, loadedWorld.Entities, glWorldViewer.SelectAndFocusEntity));
+                //    resTabs.TabPages.Add(entitiesTabPage);
+                //}
 
                 if (!isPreview)
                 {
@@ -552,27 +571,27 @@ namespace GUI.Types.Viewers
             {
                 return;
             }
+            //VKTODO:
+            //if (GLViewer is GLWorldViewer { LoadedWorld: { } loadedWorld } glWorldViewer)
+            //{
+            //    var hasConnections = false;
 
-            if (GLViewer is GLWorldViewer { LoadedWorld: { } loadedWorld } glWorldViewer)
-            {
-                var hasConnections = false;
+            //    foreach (var entity in loadedWorld.Entities)
+            //    {
+            //        if (entity.Connections is { Count: > 0 })
+            //        {
+            //            hasConnections = true;
+            //            break;
+            //        }
+            //    }
 
-                foreach (var entity in loadedWorld.Entities)
-                {
-                    if (entity.Connections is { Count: > 0 })
-                    {
-                        hasConnections = true;
-                        break;
-                    }
-                }
+            //    if (hasConnections)
+            //    {
+            //        preparedGraphViewers.Add((new EntityIOGraphViewer(vrfGuiContext, rendererContext, loadedWorld.Entities, glWorldViewer.SelectAndFocusEntities), "ENTITY I/O GRAPH"));
+            //    }
 
-                if (hasConnections)
-                {
-                    preparedGraphViewers.Add((new EntityIOGraphViewer(vrfGuiContext, rendererContext, loadedWorld.Entities, glWorldViewer.SelectAndFocusEntities), "ENTITY I/O GRAPH"));
-                }
-
-                PrepareMapPulseGraphViewers(vrfGuiContext, loadedWorld.Entities);
-            }
+            //    PrepareMapPulseGraphViewers(vrfGuiContext, loadedWorld.Entities);
+            //}
 
             if (GLViewer is GLModelViewer && resource.DataBlock is Model model)
             {
@@ -607,8 +626,9 @@ namespace GUI.Types.Viewers
                 if (rendererContext.FileLoader.LoadFileCompiled(script)?.DataBlock is BinaryKV3 pulseData)
                 {
                     var tabName = scripts.Count > 1 ? $"PULSE GRAPH ({Path.GetFileNameWithoutExtension(script)})" : "PULSE GRAPH";
-                    var viewer = new PulseGraphViewer(vrfGuiContext, rendererContext, pulseData.Data);
-                    preparedGraphViewers.Add((viewer, tabName));
+                    //VKTODO:
+                    //var viewer = new PulseGraphViewer(vrfGuiContext, rendererContext, pulseData.Data);
+                    //preparedGraphViewers.Add((viewer, tabName));
                 }
             }
         }
@@ -651,23 +671,23 @@ namespace GUI.Types.Viewers
             {
                 GLGraphViewer viewer;
                 string baseName;
+                //VKTODO:
+                //switch (rendererContext.FileLoader.LoadFileCompiled(path)?.DataBlock)
+                //{
+                //    case AnimGraph ag1Data:
+                //        viewer = new AG1GraphViewer(vrfGuiContext, rendererContext, ag1Data.Data);
+                //        baseName = "AG1 ANIMATION GRAPH";
+                //        break;
+                //    case BinaryKV3 nmGraphData:
+                //        viewer = new AG2GraphViewer(vrfGuiContext, rendererContext, nmGraphData.Data);
+                //        baseName = "AG2 ANIMATION GRAPH";
+                //        break;
+                //    default:
+                //        continue;
+                //}
 
-                switch (rendererContext.FileLoader.LoadFileCompiled(path)?.DataBlock)
-                {
-                    case AnimGraph ag1Data:
-                        viewer = new AG1GraphViewer(vrfGuiContext, rendererContext, ag1Data.Data);
-                        baseName = "AG1 ANIMATION GRAPH";
-                        break;
-                    case BinaryKV3 nmGraphData:
-                        viewer = new AG2GraphViewer(vrfGuiContext, rendererContext, nmGraphData.Data);
-                        baseName = "AG2 ANIMATION GRAPH";
-                        break;
-                    default:
-                        continue;
-                }
-
-                var tabName = graphPaths.Count > 1 ? $"{baseName} ({Path.GetFileNameWithoutExtension(path)})" : baseName;
-                preparedGraphViewers.Add((viewer, tabName));
+                //var tabName = graphPaths.Count > 1 ? $"{baseName} ({Path.GetFileNameWithoutExtension(path)})" : baseName;
+                //preparedGraphViewers.Add((viewer, tabName));
             }
         }
 

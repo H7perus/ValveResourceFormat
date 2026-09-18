@@ -8,7 +8,7 @@ using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using SkiaSharp;
 using ValveResourceFormat.Graphs;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 
 namespace GUI.Types.GLViewers
 {
@@ -863,118 +863,121 @@ namespace GUI.Types.GLViewers
 
         protected override int GetRenderHash()
         {
-            Debug.Assert(MainFramebuffer != null);
+            //VKTODO:
+            return 1;
+            //Debug.Assert(MainFramebuffer != null);
 
-            return HashCode.Combine(
-                GetCurrentPositionAndScale(),
-                View.VisualVersion,
-                MainFramebuffer.Width,
-                MainFramebuffer.Height,
-                needsFit);
+            //return HashCode.Combine(
+            //    GetCurrentPositionAndScale(),
+            //    View.VisualVersion,
+            //    MainFramebuffer.Width,
+            //    MainFramebuffer.Height,
+            //    needsFit);
         }
 
         protected override void RenderToFramebuffer()
         {
-            Debug.Assert(MainFramebuffer != null);
+            //VKTODO:
+            //Debug.Assert(MainFramebuffer != null);
 
-            MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
+            //MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
 
-            if (grContext == null)
-            {
-                glInterface = GRGlInterface.Create();
-                grContext = GRContext.CreateGl(glInterface);
-            }
-            else
-            {
-                // The viewer loop issues its own GL calls (clears, framebuffer binds) between
-                // frames; make Skia re-sync its cached GL state or its offscreen mask/layer
-                // composites break at some zoom levels.
-                grContext.ResetContext();
-            }
+            //if (grContext == null)
+            //{
+            //    glInterface = GRGlInterface.Create();
+            //    grContext = GRContext.CreateGl(glInterface);
+            //}
+            //else
+            //{
+            //    // The viewer loop issues its own GL calls (clears, framebuffer binds) between
+            //    // frames; make Skia re-sync its cached GL state or its offscreen mask/layer
+            //    // composites break at some zoom levels.
+            //    grContext.ResetContext();
+            //}
 
-            var newSize = new SKSizeI(MainFramebuffer.Width, MainFramebuffer.Height);
+            //var newSize = new SKSizeI(MainFramebuffer.Width, MainFramebuffer.Height);
 
-            if (renderTarget == null || lastSize != newSize || !renderTarget.IsValid)
-            {
-                lastSize = newSize;
+            //if (renderTarget == null || lastSize != newSize || !renderTarget.IsValid)
+            //{
+            //    lastSize = newSize;
 
-                GL.GetInteger(GetPName.FramebufferBinding, out var framebuffer);
-                GL.GetInteger(GetPName.Samples, out var samples);
+            //    GL.GetInteger(GetPName.FramebufferBinding, out var framebuffer);
+            //    GL.GetInteger(GetPName.Samples, out var samples);
 
-                var maxSamples = grContext.GetMaxSurfaceSampleCount(SKColorType.Rgba8888);
-                if (samples > maxSamples)
-                {
-                    samples = maxSamples;
-                }
+            //    var maxSamples = grContext.GetMaxSurfaceSampleCount(SKColorType.Rgba8888);
+            //    if (samples > maxSamples)
+            //    {
+            //        samples = maxSamples;
+            //    }
 
-                var glInfo = new GRGlFramebufferInfo((uint)framebuffer, SKColorType.Rgba8888.ToGlSizedFormat());
+            //    var glInfo = new GRGlFramebufferInfo((uint)framebuffer, SKColorType.Rgba8888.ToGlSizedFormat());
 
-                surface?.Dispose();
-                surface = null;
-                renderTarget?.Dispose();
-                renderTarget = new GRBackendRenderTarget(newSize.Width, newSize.Height, samples, 0, glInfo);
-            }
+            //    surface?.Dispose();
+            //    surface = null;
+            //    renderTarget?.Dispose();
+            //    renderTarget = new GRBackendRenderTarget(newSize.Width, newSize.Height, samples, 0, glInfo);
+            //}
 
-            surface ??= SKSurface.Create(grContext, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
+            //surface ??= SKSurface.Create(grContext, renderTarget, GRSurfaceOrigin.BottomLeft, SKColorType.Rgba8888);
 
-            var canvas = surface.Canvas;
+            //var canvas = surface.Canvas;
 
-            if (needsFit)
-            {
-                graphBounds = View.GetGraphBounds();
-                OriginalWidth = (int)graphBounds.Width;
-                OriginalHeight = (int)graphBounds.Height;
-                FitToViewport();
-                needsFit = false;
-            }
-            else
-            {
-                // Update graphBounds and compensate Position for any origin shift
-                var newGraphBounds = View.GetGraphBounds();
+            //if (needsFit)
+            //{
+            //    graphBounds = View.GetGraphBounds();
+            //    OriginalWidth = (int)graphBounds.Width;
+            //    OriginalHeight = (int)graphBounds.Height;
+            //    FitToViewport();
+            //    needsFit = false;
+            //}
+            //else
+            //{
+            //    // Update graphBounds and compensate Position for any origin shift
+            //    var newGraphBounds = View.GetGraphBounds();
 
-                var deltaLeft = newGraphBounds.Left - graphBounds.Left;
-                var deltaTop = newGraphBounds.Top - graphBounds.Top;
+            //    var deltaLeft = newGraphBounds.Left - graphBounds.Left;
+            //    var deltaTop = newGraphBounds.Top - graphBounds.Top;
 
-                if (deltaLeft != 0 || deltaTop != 0)
-                {
-                    Position = new Vector2(
-                        Position.X - deltaLeft * TextureScale,
-                        Position.Y - deltaTop * TextureScale
-                    );
-                    TextureScaleChangeTime = 10f; // Skip interpolation for instant compensation
-                }
+            //    if (deltaLeft != 0 || deltaTop != 0)
+            //    {
+            //        Position = new Vector2(
+            //            Position.X - deltaLeft * TextureScale,
+            //            Position.Y - deltaTop * TextureScale
+            //        );
+            //        TextureScaleChangeTime = 10f; // Skip interpolation for instant compensation
+            //    }
 
-                if ((int)newGraphBounds.Width != OriginalWidth || (int)newGraphBounds.Height != OriginalHeight)
-                {
-                    OriginalWidth = (int)newGraphBounds.Width;
-                    OriginalHeight = (int)newGraphBounds.Height;
-                }
+            //    if ((int)newGraphBounds.Width != OriginalWidth || (int)newGraphBounds.Height != OriginalHeight)
+            //    {
+            //        OriginalWidth = (int)newGraphBounds.Width;
+            //        OriginalHeight = (int)newGraphBounds.Height;
+            //    }
 
-                graphBounds = newGraphBounds;
-            }
+            //    graphBounds = newGraphBounds;
+            //}
 
-            var (scale, position) = GetCurrentPositionAndScale();
+            //var (scale, position) = GetCurrentPositionAndScale();
 
-            canvas.Save();
+            //canvas.Save();
 
-            // Apply pan/zoom transform
-            canvas.Translate(-position.X, -position.Y);
-            canvas.Scale(scale, scale);
-            canvas.Translate(-graphBounds.Left, -graphBounds.Top);
+            //// Apply pan/zoom transform
+            //canvas.Translate(-position.X, -position.Y);
+            //canvas.Scale(scale, scale);
+            //canvas.Translate(-graphBounds.Left, -graphBounds.Top);
 
-            var visibleRect = new SKRect(
-                position.X / scale + graphBounds.Left,
-                position.Y / scale + graphBounds.Top,
-                (position.X + MainFramebuffer.Width) / scale + graphBounds.Left,
-                (position.Y + MainFramebuffer.Height) / scale + graphBounds.Top
-            );
-            visibleRect.Inflate(50f / scale, 50f / scale);
+            //var visibleRect = new SKRect(
+            //    position.X / scale + graphBounds.Left,
+            //    position.Y / scale + graphBounds.Top,
+            //    (position.X + MainFramebuffer.Width) / scale + graphBounds.Left,
+            //    (position.Y + MainFramebuffer.Height) / scale + graphBounds.Top
+            //);
+            //visibleRect.Inflate(50f / scale, 50f / scale);
 
-            View.RenderToCanvas(canvas, visibleRect, scale);
+            //View.RenderToCanvas(canvas, visibleRect, scale);
 
-            canvas.Restore();
-            canvas.Flush();
-            grContext.Flush();
+            //canvas.Restore();
+            //canvas.Flush();
+            //grContext.Flush();
         }
 
         /// <summary>
@@ -1118,35 +1121,36 @@ namespace GUI.Types.GLViewers
         /// assumes. Rasterizes the whole graph, independent of the viewport and its zoom, at native
         /// size unless that would put the long edge past 8192 px.
         /// </summary>
-        protected override SKBitmap ReadPixelsToBitmap()
-        {
-            var bounds = View.GetGraphBounds();
+        //VKTODO:
+        //protected override SKBitmap ReadPixelsToBitmap()
+        //{
+        //    var bounds = View.GetGraphBounds();
 
-            const float MaxCaptureDimension = 8192f;
-            var scale = Math.Min(1f, MaxCaptureDimension / Math.Max(bounds.Width, bounds.Height));
+        //    const float MaxCaptureDimension = 8192f;
+        //    var scale = Math.Min(1f, MaxCaptureDimension / Math.Max(bounds.Width, bounds.Height));
 
-            var width = Math.Max(1, (int)(bounds.Width * scale));
-            var height = Math.Max(1, (int)(bounds.Height * scale));
+        //    var width = Math.Max(1, (int)(bounds.Width * scale));
+        //    var height = Math.Max(1, (int)(bounds.Height * scale));
 
-            var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
+        //    var bitmap = new SKBitmap(new SKImageInfo(width, height, SKColorType.Bgra8888, SKAlphaType.Premul));
 
-            try
-            {
-                using var canvas = new SKCanvas(bitmap);
-                canvas.Scale(scale, scale);
-                canvas.Translate(-bounds.Left, -bounds.Top);
+        //    try
+        //    {
+        //        using var canvas = new SKCanvas(bitmap);
+        //        canvas.Scale(scale, scale);
+        //        canvas.Translate(-bounds.Left, -bounds.Top);
 
-                View.RenderToCanvas(canvas, bounds, scale);
+        //        View.RenderToCanvas(canvas, bounds, scale);
 
-                var bitmapToReturn = bitmap;
-                bitmap = null;
-                return bitmapToReturn;
-            }
-            finally
-            {
-                bitmap?.Dispose();
-            }
-        }
+        //        var bitmapToReturn = bitmap;
+        //        bitmap = null;
+        //        return bitmapToReturn;
+        //    }
+        //    finally
+        //    {
+        //        bitmap?.Dispose();
+        //    }
+        //}
 
         private bool disposed;
 

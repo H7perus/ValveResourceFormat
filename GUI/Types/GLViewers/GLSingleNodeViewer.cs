@@ -3,7 +3,7 @@ using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
 using SkiaSharp;
 using ValveResourceFormat;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 
 namespace GUI.Types.GLViewers
 {
@@ -12,7 +12,7 @@ namespace GUI.Types.GLViewers
     /// </summary>
     class GLSingleNodeViewer : GLSceneViewer, IDisposable
     {
-        private Framebuffer? SaveAsFbo;
+        //private Framebuffer? SaveAsFbo;
 
         public GLSingleNodeViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext)
             : base(vrfGuiContext, rendererContext, Frustum.CreateEmpty())
@@ -24,8 +24,8 @@ namespace GUI.Types.GLViewers
         {
             AddRenderModeAndWireframeControls();
             AddBaseGridControl();
-
-            Scene.ShowToolsMaterials = true;
+            //VKTODO:
+            //Scene.ShowToolsMaterials = true;
 
             base.AddUiControls();
         }
@@ -60,59 +60,59 @@ namespace GUI.Types.GLViewers
         {
             base.OnPaint(frameTime);
         }
-
-        protected override void OnPicked(object? sender, PickingTexture.PickingResponse pickingResponse)
-        {
-            //
-        }
-
+        //VKTODO:
+        //protected override void OnPicked(object? sender, PickingTexture.PickingResponse pickingResponse)
+        //{
+        //    //
+        //}
+        //VKTODO:
         // Render only the main scene nodes into a transparent framebuffer
-        protected override SKBitmap? ReadPixelsToBitmap()
-        {
-            if (MainFramebuffer is null)
-            {
-                return null;
-            }
+        //protected override SKBitmap? ReadPixelsToBitmap()
+        //{
+        //    if (MainFramebuffer is null)
+        //    {
+        //        return null;
+        //    }
 
-            using var lockedGl = MakeCurrent();
+        //    using var lockedGl = MakeCurrent();
 
-            var (w, h) = (MainFramebuffer.Width, MainFramebuffer.Height);
+        //    var (w, h) = (MainFramebuffer.Width, MainFramebuffer.Height);
 
-            using var _ = GraphicsContext.RenderState.Scope();
+        //    using var _ = GraphicsContext.RenderState.Scope();
 
-            MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
-            GL.ClearColor(new OpenTK.Mathematics.Color4(0, 0, 0, 0));
-            GL.Clear(MainFramebuffer.ClearMask);
+        //    MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
+        //    GL.ClearColor(new OpenTK.Mathematics.Color4(0, 0, 0, 0));
+        //    GL.Clear(MainFramebuffer.ClearMask);
 
-            Renderer.DrawMainScene();
+        //    Renderer.DrawMainScene();
 
-            if (SaveAsFbo is null)
-            {
-                SaveAsFbo = Framebuffer.Prepare(nameof(SaveAsFbo), w, h, 0, ImageFormat.RGBA8888, null);
-                SaveAsFbo.ClearMask = ClearBufferMask.ColorBufferBit;
-                SaveAsFbo.ClearColor = new OpenTK.Mathematics.Color4(0, 0, 0, 0);
-                SaveAsFbo.Initialize();
-            }
-            else
-            {
-                SaveAsFbo.Resize(w, h);
-            }
+        //    if (SaveAsFbo is null)
+        //    {
+        //        SaveAsFbo = Framebuffer.Prepare(nameof(SaveAsFbo), w, h, 0, ImageFormat.RGBA8888, null);
+        //        SaveAsFbo.ClearMask = ClearBufferMask.ColorBufferBit;
+        //        SaveAsFbo.ClearColor = new OpenTK.Mathematics.Color4(0, 0, 0, 0);
+        //        SaveAsFbo.Initialize();
+        //    }
+        //    else
+        //    {
+        //        SaveAsFbo.Resize(w, h);
+        //    }
 
-            SaveAsFbo.BindAndClear();
-            Renderer.PostprocessRender(MainFramebuffer, SaveAsFbo, flipY: true);
+        //    SaveAsFbo.BindAndClear();
+        //    Renderer.PostprocessRender(MainFramebuffer, SaveAsFbo, flipY: true);
 
-            GL.Flush();
-            GL.Finish();
+        //    GL.Flush();
+        //    GL.Finish();
 
-            SaveAsFbo.Bind(FramebufferTarget.ReadFramebuffer);
-            GL.ReadBuffer(ReadBufferMode.ColorAttachment0);
+        //    SaveAsFbo.Bind(FramebufferTarget.ReadFramebuffer);
+        //    GL.ReadBuffer(ReadBufferMode.ColorAttachment0);
 
-            var bitmap = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Unpremul);
-            var pixels = bitmap.GetPixels(out var length);
+        //    var bitmap = new SKBitmap(w, h, SKColorType.Bgra8888, SKAlphaType.Unpremul);
+        //    var pixels = bitmap.GetPixels(out var length);
 
-            GL.ReadPixels(0, 0, w, h, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
+        //    GL.ReadPixels(0, 0, w, h, PixelFormat.Bgra, PixelType.UnsignedByte, pixels);
 
-            return bitmap;
-        }
+        //    return bitmap;
+        //}
     }
 }

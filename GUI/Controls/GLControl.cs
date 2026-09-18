@@ -40,7 +40,6 @@ public class GLControl : Control
     /// <param name="e">An EventArgs instance (ignored).</param>
     protected override void OnHandleCreated(EventArgs e)
     {
-        S2vDevice.CreateRenderDevice();
 
         var surface = RenderDevice!.CreateSurfaceFromWindowHandle(Handle);
 

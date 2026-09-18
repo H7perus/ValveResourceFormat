@@ -12,11 +12,11 @@ using SkiaSharp;
 using Svg.Skia;
 using ValveResourceFormat;
 using ValveResourceFormat.Graphs;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Input;
-using ValveResourceFormat.Renderer.Materials;
-using ValveResourceFormat.Renderer.Shaders;
-using ValveResourceFormat.ResourceTypes;
+using ValveResourceFormat.Renderer2;
+//using ValveResourceFormat.Renderer.Input;
+//using ValveResourceFormat.Renderer.Materials;
+//using ValveResourceFormat.Renderer.Shaders;
+//using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.TextureDecoders;
 using static ValveResourceFormat.ResourceTypes.Texture;
 
@@ -48,8 +48,8 @@ namespace GUI.Types.GLViewers
         private Resource? Resource;
         private SKBitmap? Bitmap;
         private SKSvg? Svg;
-        private RenderTexture? texture;
-        private Shader? shader;
+        //private RenderTexture? texture;
+        //private Shader? shader;
 
         private SKBitmap? NextBitmapToSet;
         private int NextBitmapVersion;
@@ -73,7 +73,7 @@ namespace GUI.Types.GLViewers
         private CubemapProjection CubemapProjectionType;
         private TextureCodec decodeFlags;
         private const TextureCodec softwareDecodeOnlyOptions = TextureCodec.ForceLDR;
-        private Framebuffer? SaveAsFbo;
+        //private Framebuffer? SaveAsFbo;
 
         private CheckedListBox? decodeFlagsListBox;
         private bool ShowLightBackground;
@@ -133,7 +133,7 @@ namespace GUI.Types.GLViewers
         private GLTextureViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext) : base(rendererContext)
         {
             VrfGuiContext = vrfGuiContext;
-            rendererContext.MaxTextureSize = int.MaxValue;
+            //rendererContext.MaxTextureSize = int.MaxValue;
 
 #if DEBUG
             ShaderHotReload.ShadersReloaded += OnHotReload;
@@ -228,227 +228,228 @@ namespace GUI.Types.GLViewers
 
         private void InitializeUIControlsForResource()
         {
-            Debug.Assert(Resource != null);
-            Debug.Assert(UiControl != null);
+            //VKTODO:
+            //Debug.Assert(Resource != null);
+            //Debug.Assert(UiControl != null);
+            //VKTODO:
+            //if (Resource.ResourceType == ResourceType.PanoramaVectorGraphic)
+            //{
+            //    AddChannelsComboBox();
+            //    return;
+            //}
+            //else if (Resource.ResourceType == ResourceType.PostProcessing && Resource.DataBlock is PostProcessing postProcessingData)
+            //{
+            //    var resolution = postProcessingData.GetColorCorrectionLUTDimension();
 
-            if (Resource.ResourceType == ResourceType.PanoramaVectorGraphic)
-            {
-                AddChannelsComboBox();
-                return;
-            }
-            else if (Resource.ResourceType == ResourceType.PostProcessing && Resource.DataBlock is PostProcessing postProcessingData)
-            {
-                var resolution = postProcessingData.GetColorCorrectionLUTDimension();
+            //    UiControl.AddControl(new Label
+            //    {
+            //        Text = $"Color correction: {(postProcessingData.HasColorCorrection() ? "Yes" : "No")}",
+            //        Width = 200,
+            //    });
+            //    UiControl.AddControl(new Label
+            //    {
+            //        Text = $"Resolution: {resolution}",
+            //        Width = 200,
+            //    });
 
-                UiControl.AddControl(new Label
-                {
-                    Text = $"Color correction: {(postProcessingData.HasColorCorrection() ? "Yes" : "No")}",
-                    Width = 200,
-                });
-                UiControl.AddControl(new Label
-                {
-                    Text = $"Resolution: {resolution}",
-                    Width = 200,
-                });
+            //    // TODO: Kind of crappy.
+            //    var depthComboBox2 = UiControl.AddSelection("Depth", (name, index) =>
+            //    {
+            //        SelectedDepth = index;
+            //    });
 
-                // TODO: Kind of crappy.
-                var depthComboBox2 = UiControl.AddSelection("Depth", (name, index) =>
-                {
-                    SelectedDepth = index;
-                });
+            //    depthComboBox2.Items.AddRange(Enumerable.Range(0, resolution).Select(x => $"#{x}").ToArray());
+            //    depthComboBox2.SelectedIndex = 0;
 
-                depthComboBox2.Items.AddRange(Enumerable.Range(0, resolution).Select(x => $"#{x}").ToArray());
-                depthComboBox2.SelectedIndex = 0;
+            //    return;
+            //}
+            //VKTODO:
+            //if (Resource.DataBlock is not Texture textureData)
+            //{
+            //    return;
+            //}
 
-                return;
-            }
+            //ComboBox? cubemapProjectionComboBox = null;
+            //CheckBox? softwareDecodeCheckBox = null;
+            //ComboBox? depthComboBox = null;
+            //VKTODO:
+            //using (UiControl.BeginGroup("Texture"))
+            //{
+            //    UiControl.AddControl(new Label
+            //    {
+            //        Text = $"Size: {textureData.Width}x{textureData.Height}",
+            //        Width = 200,
+            //    });
+            //    UiControl.AddControl(new Label
+            //    {
+            //        Text = $"Format: {textureData.Format}",
+            //        Width = 200,
+            //    });
 
-            if (Resource.DataBlock is not Texture textureData)
-            {
-                return;
-            }
+            //    if (textureData.NumMipLevels > 1)
+            //    {
+            //        string GetMipLevelSizeString(int mipLevel)
+            //        {
+            //            var mipWidth = Math.Max(1, textureData.Width >> mipLevel);
+            //            var mipHeight = Math.Max(1, textureData.Height >> mipLevel);
 
-            ComboBox? cubemapProjectionComboBox = null;
-            CheckBox? softwareDecodeCheckBox = null;
-            ComboBox? depthComboBox = null;
+            //            if ((textureData.Flags & VTexFlags.VOLUME_TEXTURE) != 0)
+            //            {
+            //                var mipDepth = Math.Max(1, textureData.Depth >> mipLevel);
+            //                return $"(#{mipLevel}) {mipWidth}x{mipHeight}x{mipDepth}";
+            //            }
 
-            using (UiControl.BeginGroup("Texture"))
-            {
-                UiControl.AddControl(new Label
-                {
-                    Text = $"Size: {textureData.Width}x{textureData.Height}",
-                    Width = 200,
-                });
-                UiControl.AddControl(new Label
-                {
-                    Text = $"Format: {textureData.Format}",
-                    Width = 200,
-                });
+            //            return $"(#{mipLevel}) {mipWidth}x{mipHeight}";
+            //        }
 
-                if (textureData.NumMipLevels > 1)
-                {
-                    string GetMipLevelSizeString(int mipLevel)
-                    {
-                        var mipWidth = Math.Max(1, textureData.Width >> mipLevel);
-                        var mipHeight = Math.Max(1, textureData.Height >> mipLevel);
+            //        var mipComboBox = UiControl.AddSelection("Mip level", (name, index) =>
+            //        {
+            //            SelectedMip = index;
 
-                        if ((textureData.Flags & VTexFlags.VOLUME_TEXTURE) != 0)
-                        {
-                            var mipDepth = Math.Max(1, textureData.Depth >> mipLevel);
-                            return $"(#{mipLevel}) {mipWidth}x{mipHeight}x{mipDepth}";
-                        }
+            //            // Depth levels are also mip mapped, so we have to remove incorrect levels
+            //            if (depthComboBox != null && (textureData.Flags & VTexFlags.VOLUME_TEXTURE) != 0)
+            //            {
+            //                var depthMip = textureData.Depth >> SelectedMip;
+            //                var newSelectedDepth = Math.Min(SelectedDepth, depthMip - 1);
 
-                        return $"(#{mipLevel}) {mipWidth}x{mipHeight}";
-                    }
+            //                depthComboBox.BeginUpdate();
+            //                depthComboBox.Items.Clear();
+            //                depthComboBox.Items.AddRange(Enumerable.Range(0, depthMip).Select(x => $"#{x}").ToArray());
+            //                depthComboBox.SelectedIndex = newSelectedDepth;
+            //                depthComboBox.EndUpdate();
+            //            }
 
-                    var mipComboBox = UiControl.AddSelection("Mip level", (name, index) =>
-                    {
-                        SelectedMip = index;
+            //            if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
+            //            {
+            //                SetupTextureFromUi(true);
+            //            }
+            //        });
 
-                        // Depth levels are also mip mapped, so we have to remove incorrect levels
-                        if (depthComboBox != null && (textureData.Flags & VTexFlags.VOLUME_TEXTURE) != 0)
-                        {
-                            var depthMip = textureData.Depth >> SelectedMip;
-                            var newSelectedDepth = Math.Min(SelectedDepth, depthMip - 1);
+            //        mipComboBox.Items.AddRange(
+            //            [.. Enumerable.Range(0, textureData.NumMipLevels).Select(GetMipLevelSizeString)]);
+            //        mipComboBox.SelectedIndex = 0;
+            //    }
 
-                            depthComboBox.BeginUpdate();
-                            depthComboBox.Items.Clear();
-                            depthComboBox.Items.AddRange(Enumerable.Range(0, depthMip).Select(x => $"#{x}").ToArray());
-                            depthComboBox.SelectedIndex = newSelectedDepth;
-                            depthComboBox.EndUpdate();
-                        }
+            //    if (textureData.Depth > 1)
+            //    {
+            //        depthComboBox = UiControl.AddSelection("Depth", (name, index) =>
+            //        {
+            //            SelectedDepth = index;
 
-                        if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
-                        {
-                            SetupTextureFromUi(true);
-                        }
-                    });
+            //            if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
+            //            {
+            //                SetupTextureFromUi(true);
+            //            }
+            //        });
 
-                    mipComboBox.Items.AddRange(
-                        [.. Enumerable.Range(0, textureData.NumMipLevels).Select(GetMipLevelSizeString)]);
-                    mipComboBox.SelectedIndex = 0;
-                }
+            //        depthComboBox.Items.AddRange(Enumerable.Range(0, textureData.Depth).Select(x => $"#{x}").ToArray());
+            //        depthComboBox.SelectedIndex = 0;
+            //    }
 
-                if (textureData.Depth > 1)
-                {
-                    depthComboBox = UiControl.AddSelection("Depth", (name, index) =>
-                    {
-                        SelectedDepth = index;
+            //    if ((textureData.Flags & VTexFlags.CUBE_TEXTURE) != 0)
+            //    {
+            //        ComboBox? cubeFaceComboBox = null;
 
-                        if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
-                        {
-                            SetupTextureFromUi(true);
-                        }
-                    });
+            //        cubemapProjectionComboBox = UiControl.AddSelection("Projection type", (name, index) =>
+            //        {
+            //            cubeFaceComboBox!.Enabled = index == 0;
 
-                    depthComboBox.Items.AddRange(Enumerable.Range(0, textureData.Depth).Select(x => $"#{x}").ToArray());
-                    depthComboBox.SelectedIndex = 0;
-                }
+            //            if (softwareDecodeCheckBox == null)
+            //            {
+            //                CubemapProjectionType = (CubemapProjection)index;
+            //                return;
+            //            }
 
-                if ((textureData.Flags & VTexFlags.CUBE_TEXTURE) != 0)
-                {
-                    ComboBox? cubeFaceComboBox = null;
+            //            var oldTextureSize = ActualTextureSizeScaled;
 
-                    cubemapProjectionComboBox = UiControl.AddSelection("Projection type", (name, index) =>
-                    {
-                        cubeFaceComboBox!.Enabled = index == 0;
+            //            CubemapProjectionType = (CubemapProjection)index;
 
-                        if (softwareDecodeCheckBox == null)
-                        {
-                            CubemapProjectionType = (CubemapProjection)index;
-                            return;
-                        }
+            //            TextureScaleChangeTime = 0f;
+            //            TextureScaleOld = TextureScale;
 
-                        var oldTextureSize = ActualTextureSizeScaled;
+            //            PositionOld = Position;
+            //            CenterPosition();
+            //        });
 
-                        CubemapProjectionType = (CubemapProjection)index;
+            //        cubeFaceComboBox = UiControl.AddSelection("Cube face", (name, index) =>
+            //        {
+            //            SelectedCubeFace = index;
 
-                        TextureScaleChangeTime = 0f;
-                        TextureScaleOld = TextureScale;
+            //            if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
+            //            {
+            //                SetupTextureFromUi(true);
+            //            }
+            //        });
 
-                        PositionOld = Position;
-                        CenterPosition();
-                    });
+            //        cubeFaceComboBox.Items.AddRange(Enum.GetNames<CubemapFace>());
+            //        cubeFaceComboBox.SelectedIndex = 0;
 
-                    cubeFaceComboBox = UiControl.AddSelection("Cube face", (name, index) =>
-                    {
-                        SelectedCubeFace = index;
+            //        cubemapProjectionComboBox.Items.AddRange(Enum.GetNames<CubemapProjection>());
+            //        cubemapProjectionComboBox.SelectedIndex = (int)CubemapProjection.Equirectangular;
+            //        SelectedFiltering = Filtering.Linear;
+            //    }
 
-                        if (softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked)
-                        {
-                            SetupTextureFromUi(true);
-                        }
-                    });
+            //    decodeFlags = textureData.RetrieveCodecFromResourceEditInfo();
+            //}
 
-                    cubeFaceComboBox.Items.AddRange(Enum.GetNames<CubemapFace>());
-                    cubeFaceComboBox.SelectedIndex = 0;
+            //decodeFlagsListBox = UiControl.AddMultiSelection("Texture Conversion",
+            //    SetInitialDecodeFlagsState,
+            //    checkedItemNames =>
+            //    {
+            //        decodeFlags = TextureCodec.None;
 
-                    cubemapProjectionComboBox.Items.AddRange(Enum.GetNames<CubemapProjection>());
-                    cubemapProjectionComboBox.SelectedIndex = (int)CubemapProjection.Equirectangular;
-                    SelectedFiltering = Filtering.Linear;
-                }
+            //        foreach (var itemName in checkedItemNames)
+            //        {
+            //            decodeFlags |= Enum.Parse<TextureCodec>(itemName);
+            //        }
 
-                decodeFlags = textureData.RetrieveCodecFromResourceEditInfo();
-            }
+            //        SetupTextureFromUi(softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked);
+            //    }
+            //);
 
-            decodeFlagsListBox = UiControl.AddMultiSelection("Texture Conversion",
-                SetInitialDecodeFlagsState,
-                checkedItemNames =>
-                {
-                    decodeFlags = TextureCodec.None;
+            //using (UiControl.BeginGroup("View"))
+            //{
+            //    AddChannelsComboBox();
 
-                    foreach (var itemName in checkedItemNames)
-                    {
-                        decodeFlags |= Enum.Parse<TextureCodec>(itemName);
-                    }
+            //    var forceSoftwareDecode = textureData.IsRawAnyImage;
+            //    var projectionBeforeSoftwareDecode = (int)CubemapProjection.Equirectangular;
+            //    softwareDecodeCheckBox = UiControl.AddCheckBox("Software decode", forceSoftwareDecode, (state) =>
+            //    {
+            //        if (cubemapProjectionComboBox != null)
+            //        {
+            //            if (state)
+            //            {
+            //                // Software decode can't project cubemaps; force a single face, remembering the projection.
+            //                projectionBeforeSoftwareDecode = cubemapProjectionComboBox.SelectedIndex;
+            //                cubemapProjectionComboBox.SelectedIndex = (int)CubemapProjection.None;
+            //                cubemapProjectionComboBox.Enabled = false;
+            //            }
+            //            else
+            //            {
+            //                cubemapProjectionComboBox.SelectedIndex = projectionBeforeSoftwareDecode;
+            //                cubemapProjectionComboBox.Enabled = true;
+            //            }
+            //        }
 
-                    SetupTextureFromUi(softwareDecodeCheckBox != null && softwareDecodeCheckBox.Checked);
-                }
-            );
+            //        SetupTextureFromUi(state);
+            //    });
 
-            using (UiControl.BeginGroup("View"))
-            {
-                AddChannelsComboBox();
+            //    UiControl.AddCheckBox("Show UV Tiling", false, (state) =>
+            //    {
+            //        var previousSize = ActualTextureSizeScaled;
 
-                var forceSoftwareDecode = textureData.IsRawAnyImage;
-                var projectionBeforeSoftwareDecode = (int)CubemapProjection.Equirectangular;
-                softwareDecodeCheckBox = UiControl.AddCheckBox("Software decode", forceSoftwareDecode, (state) =>
-                {
-                    if (cubemapProjectionComboBox != null)
-                    {
-                        if (state)
-                        {
-                            // Software decode can't project cubemaps; force a single face, remembering the projection.
-                            projectionBeforeSoftwareDecode = cubemapProjectionComboBox.SelectedIndex;
-                            cubemapProjectionComboBox.SelectedIndex = (int)CubemapProjection.None;
-                            cubemapProjectionComboBox.Enabled = false;
-                        }
-                        else
-                        {
-                            cubemapProjectionComboBox.SelectedIndex = projectionBeforeSoftwareDecode;
-                            cubemapProjectionComboBox.Enabled = true;
-                        }
-                    }
+            //        VisualizeTiling = state;
 
-                    SetupTextureFromUi(state);
-                });
+            //        TextureDimensionsChanged(previousSize);
 
-                UiControl.AddCheckBox("Show UV Tiling", false, (state) =>
-                {
-                    var previousSize = ActualTextureSizeScaled;
+            //        SetTextureFilteringFromUi();
+            //    });
 
-                    VisualizeTiling = state;
-
-                    TextureDimensionsChanged(previousSize);
-
-                    SetTextureFilteringFromUi();
-                });
-
-                if (forceSoftwareDecode)
-                {
-                    softwareDecodeCheckBox.Enabled = false;
-                }
-            }
+            //    if (forceSoftwareDecode)
+            //    {
+            //        softwareDecodeCheckBox.Enabled = false;
+            //    }
+            //}
         }
 
         public GLTextureViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext, SKBitmap? bitmap) : this(vrfGuiContext, rendererContext)
@@ -464,15 +465,15 @@ namespace GUI.Types.GLViewers
         public GLTextureViewer(VrfGuiContext vrfGuiContext, RendererContext rendererContext, Resource resource) : this(vrfGuiContext, rendererContext)
         {
             Resource = resource;
+            //VKTODO:
+            //if (resource.ResourceType == ResourceType.PanoramaVectorGraphic && resource.DataBlock is Panorama panoramaData)
+            //{
+            //    using var ms = new MemoryStream(panoramaData.Data);
+            //    var svg = new SKSvg();
+            //    svg.Load(ms);
 
-            if (resource.ResourceType == ResourceType.PanoramaVectorGraphic && resource.DataBlock is Panorama panoramaData)
-            {
-                using var ms = new MemoryStream(panoramaData.Data);
-                var svg = new SKSvg();
-                svg.Load(ms);
-
-                SetSvg(svg);
-            }
+            //    SetSvg(svg);
+            //}
         }
 
         private void SetSvg(SKSvg svg)
@@ -526,38 +527,40 @@ namespace GUI.Types.GLViewers
 
         private void SetTextureFiltering()
         {
-            if (texture != null)
-            {
-                var (min, mag) = SelectedFiltering switch
-                {
-                    Filtering.Point => (TextureMinFilter.NearestMipmapNearest, TextureMagFilter.Nearest),
-                    Filtering.Linear => (TextureMinFilter.LinearMipmapNearest, TextureMagFilter.Linear),
-                    _ => throw new UnreachableException(),
-                };
+            //VKTODO:
+            //if (texture != null)
+            //{
+            //    var (min, mag) = SelectedFiltering switch
+            //    {
+            //        Filtering.Point => (TextureMinFilter.NearestMipmapNearest, TextureMagFilter.Nearest),
+            //        Filtering.Linear => (TextureMinFilter.LinearMipmapNearest, TextureMagFilter.Linear),
+            //        _ => throw new UnreachableException(),
+            //    };
 
-                texture.SetFiltering(min, mag);
-                texture.SetWrapMode(VisualizeTiling ? RsTextureAddressMode.Wrap : RsTextureAddressMode.Clamp);
-            }
+            //    texture.SetFiltering(min, mag);
+            //    texture.SetWrapMode(VisualizeTiling ? RsTextureAddressMode.Wrap : RsTextureAddressMode.Clamp);
+            //}
         }
 
         /// <param name="oldTextureSize">The texture size before changing viewer state.</param>
         private void TextureDimensionsChanged(Vector2 oldTextureSize)
         {
-            if (texture == null)
-            {
-                return;
-            }
+            //VKTODO:
+            //if (texture == null)
+            //{
+            //    return;
+            //}
 
-            TextureScaleChangeTime = 0f;
-            TextureScaleOld = TextureScale;
+            //TextureScaleChangeTime = 0f;
+            //TextureScaleOld = TextureScale;
 
-            PositionOld = Position;
+            //PositionOld = Position;
 
-            var imageCount = (float)DisplayedImageCount;
-            Position -= oldTextureSize / imageCount;
-            Position += ActualTextureSizeScaled / imageCount;
+            //var imageCount = (float)DisplayedImageCount;
+            //Position -= oldTextureSize / imageCount;
+            //Position += ActualTextureSizeScaled / imageCount;
 
-            ClampPosition();
+            //ClampPosition();
         }
 
         private void OnVisibleChanged(object? sender, EventArgs e)
@@ -639,185 +642,186 @@ namespace GUI.Types.GLViewers
 
         private void OnSaveButtonClick(object? sender, EventArgs e)
         {
-            if (!CanSaveVisual)
-            {
-                return;
-            }
+            //if (!CanSaveVisual)
+            //{
+            //    return;
+            //}
 
-            var fileName = (Resource != null
-                ? Path.GetFileNameWithoutExtension(Resource.FileName)
-                : Path.GetFileNameWithoutExtension(VrfGuiContext.FileName)) ?? string.Empty;
+            //var fileName = (Resource != null
+            //    ? Path.GetFileNameWithoutExtension(Resource.FileName)
+            //    : Path.GetFileNameWithoutExtension(VrfGuiContext.FileName)) ?? string.Empty;
 
-            // The svg export picks format (and raster resolution) up front, before the file dialog.
-            if (Svg?.Picture != null)
-            {
-                SaveSvg(fileName);
-                return;
-            }
+            //// The svg export picks format (and raster resolution) up front, before the file dialog.
+            //if (Svg?.Picture != null)
+            //{
+            //    SaveSvg(fileName);
+            //    return;
+            //}
 
-            var filter = "PNG Image|*.png|JPG Image|*.jpg";
-            var alternativeImageFormatIndex = 2;
+            //var filter = "PNG Image|*.png|JPG Image|*.jpg";
+            //var alternativeImageFormatIndex = 2;
 
-            var isHdrTexture = Resource?.DataBlock is Texture textureData && textureData.IsHighDynamicRange;
+            //var isHdrTexture = Resource?.DataBlock is Texture textureData && textureData.IsHighDynamicRange;
 
-            if (isHdrTexture)
-            {
-                filter = "EXR Image|*.exr|" + filter;
-                alternativeImageFormatIndex++;
-            }
+            //if (isHdrTexture)
+            //{
+            //    filter = "EXR Image|*.exr|" + filter;
+            //    alternativeImageFormatIndex++;
+            //}
 
-            var savePath = AppFileDialogs.SaveFile("Save an Image File", fileName, null, filter, out var selectedFilterIndex);
+            //var savePath = AppFileDialogs.SaveFile("Save an Image File", fileName, null, filter, out var selectedFilterIndex);
 
-            if (savePath == null)
-            {
-                return;
-            }
+            //if (savePath == null)
+            //{
+            //    return;
+            //}
 
-            using var fs = File.Create(savePath);
+            //using var fs = File.Create(savePath);
 
-            if (isHdrTexture && selectedFilterIndex == 1)
-            {
-                using var hdrBitmap = ReadTexturePixels(hdr: true);
-                fs.Write(ValveResourceFormat.IO.TextureExtract.ToExrImage(hdrBitmap));
-                return;
-            }
+            //if (isHdrTexture && selectedFilterIndex == 1)
+            //{
+            //    using var hdrBitmap = ReadTexturePixels(hdr: true);
+            //    fs.Write(ValveResourceFormat.IO.TextureExtract.ToExrImage(hdrBitmap));
+            //    return;
+            //}
 
-            var format = SKEncodedImageFormat.Png;
+            //var format = SKEncodedImageFormat.Png;
 
-            switch (selectedFilterIndex - alternativeImageFormatIndex)
-            {
-                case 0:
-                    format = SKEncodedImageFormat.Jpeg;
-                    break;
-            }
+            //switch (selectedFilterIndex - alternativeImageFormatIndex)
+            //{
+            //    case 0:
+            //        format = SKEncodedImageFormat.Jpeg;
+            //        break;
+            //}
 
-            // TODO: nonpow2 sizes?
-            using var bitmap = ReadPixelsToBitmap();
-            using var bitmapPixmap = bitmap.PeekPixels();
-            bitmapPixmap.Encode(fs, format, 100);
+            //// TODO: nonpow2 sizes?
+            //using var bitmap = ReadPixelsToBitmap();
+            //using var bitmapPixmap = bitmap.PeekPixels();
+            //bitmapPixmap.Encode(fs, format, 100);
         }
 
         private void SaveSvg(string fileName)
         {
-            Debug.Assert(Svg?.Picture != null);
+            //VKTODO:
+            //Debug.Assert(Svg?.Picture != null);
 
-            using var exportForm = new SvgExportForm(OriginalWidth, OriginalHeight, Resource?.DataBlock is Panorama);
-            if (exportForm.ShowDialog(UiControl) != DialogResult.OK)
-            {
-                return;
-            }
+            //using var exportForm = new SvgExportForm(OriginalWidth, OriginalHeight, Resource?.DataBlock is Panorama);
+            //if (exportForm.ShowDialog(UiControl) != DialogResult.OK)
+            //{
+            //    return;
+            //}
 
-            var (filter, extension) = exportForm.SelectedFormat switch
-            {
-                SvgExportFormat.Svg => ("SVG (Scalable Vector Graphics)|*.svg", "svg"),
-                SvgExportFormat.Jpg => ("JPG Image|*.jpg", "jpg"),
-                _ => ("PNG Image|*.png", "png"),
-            };
+            //var (filter, extension) = exportForm.SelectedFormat switch
+            //{
+            //    SvgExportFormat.Svg => ("SVG (Scalable Vector Graphics)|*.svg", "svg"),
+            //    SvgExportFormat.Jpg => ("JPG Image|*.jpg", "jpg"),
+            //    _ => ("PNG Image|*.png", "png"),
+            //};
 
-            var savePath = AppFileDialogs.SaveFile("Save an Image File", $"{fileName}.{extension}", null, filter);
+            //var savePath = AppFileDialogs.SaveFile("Save an Image File", $"{fileName}.{extension}", null, filter);
 
-            if (savePath == null)
-            {
-                return;
-            }
+            //if (savePath == null)
+            //{
+            //    return;
+            //}
 
-            using var fs = File.Create(savePath);
+            //using var fs = File.Create(savePath);
 
-            if (exportForm.SelectedFormat == SvgExportFormat.Svg && Resource?.DataBlock is Panorama panoramaData)
-            {
-                fs.Write(panoramaData.Data);
-                return;
-            }
+            //if (exportForm.SelectedFormat == SvgExportFormat.Svg && Resource?.DataBlock is Panorama panoramaData)
+            //{
+            //    fs.Write(panoramaData.Data);
+            //    return;
+            //}
 
-            var scale = exportForm.SelectedScale;
-            var format = exportForm.SelectedFormat == SvgExportFormat.Jpg ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png;
+            //var scale = exportForm.SelectedScale;
+            //var format = exportForm.SelectedFormat == SvgExportFormat.Jpg ? SKEncodedImageFormat.Jpeg : SKEncodedImageFormat.Png;
 
-            using var svgBitmap = RasterizeSvg(Svg.Picture, OriginalWidth * scale, OriginalHeight * scale);
-            using var pixmap = svgBitmap.PeekPixels();
-            pixmap.Encode(fs, format, 100);
+            //using var svgBitmap = RasterizeSvg(Svg.Picture, OriginalWidth * scale, OriginalHeight * scale);
+            //using var pixmap = svgBitmap.PeekPixels();
+            //pixmap.Encode(fs, format, 100);
         }
+        //VKTODO:
+        //protected override SKBitmap ReadPixelsToBitmap()
+        //{
+        //    if (Svg?.Picture != null)
+        //    {
+        //        var (svgWidth, svgHeight) = GetSvgExportSize();
+        //        return RasterizeSvg(Svg.Picture, svgWidth, svgHeight);
+        //    }
 
-        protected override SKBitmap ReadPixelsToBitmap()
-        {
-            if (Svg?.Picture != null)
-            {
-                var (svgWidth, svgHeight) = GetSvgExportSize();
-                return RasterizeSvg(Svg.Picture, svgWidth, svgHeight);
-            }
+        //    return ReadTexturePixels(hdr: false);
+        //}
+        //VKTODO:
+        //private SKBitmap ReadTexturePixels(bool hdr)
+        //{
+        //    var removeFlags = hdr
+        //        ? (TextureCodec.ColorSpaceLinear | TextureCodec.ColorSpaceSrgb)
+        //        : TextureCodec.None;
 
-            return ReadTexturePixels(hdr: false);
-        }
+        //    var size = ActualTextureSize;
 
-        private SKBitmap ReadTexturePixels(bool hdr)
-        {
-            var removeFlags = hdr
-                ? (TextureCodec.ColorSpaceLinear | TextureCodec.ColorSpaceSrgb)
-                : TextureCodec.None;
+        //    if (SelectedMip > 0)
+        //    {
+        //        size /= 1 << SelectedMip;
+        //    }
 
-            var size = ActualTextureSize;
+        //    var bitmapFormat = hdr ? HdrBitmapColorType : DefaultBitmapColorType;
+        //    var bitmap = new SKBitmap((int)size.X, (int)size.Y, bitmapFormat, SKAlphaType.Unpremul);
 
-            if (SelectedMip > 0)
-            {
-                size /= 1 << SelectedMip;
-            }
+        //    try
+        //    {
+        //        var pixels = bitmap.GetPixels(out var length);
 
-            var bitmapFormat = hdr ? HdrBitmapColorType : DefaultBitmapColorType;
-            var bitmap = new SKBitmap((int)size.X, (int)size.Y, bitmapFormat, SKAlphaType.Unpremul);
+        //        using var lockedGl = MakeCurrent();
 
-            try
-            {
-                var pixels = bitmap.GetPixels(out var length);
+        //        // extract pixels from framebuffer
+        //        GL.Viewport(0, 0, bitmap.Width, bitmap.Height);
 
-                using var lockedGl = MakeCurrent();
+        //        var fboFormat = hdr ? GLTextureDecoder.HDRFormat : GLTextureDecoder.LDRFormat;
 
-                // extract pixels from framebuffer
-                GL.Viewport(0, 0, bitmap.Width, bitmap.Height);
+        //        if (SaveAsFbo is not null)
+        //        {
+        //            if (SaveAsFbo.ColorFormat != fboFormat)
+        //            {
+        //                SaveAsFbo.Delete();
+        //                SaveAsFbo = null;
+        //            }
+        //            else
+        //            {
+        //                SaveAsFbo.Resize(bitmap.Width, bitmap.Height);
+        //            }
+        //        }
 
-                var fboFormat = hdr ? GLTextureDecoder.HDRFormat : GLTextureDecoder.LDRFormat;
+        //        if (SaveAsFbo is null)
+        //        {
+        //            SaveAsFbo = Framebuffer.Prepare(nameof(SaveAsFbo), bitmap.Width, bitmap.Height, 0, fboFormat, null);
+        //            SaveAsFbo.Initialize();
+        //        }
 
-                if (SaveAsFbo is not null)
-                {
-                    if (SaveAsFbo.ColorFormat != fboFormat)
-                    {
-                        SaveAsFbo.Delete();
-                        SaveAsFbo = null;
-                    }
-                    else
-                    {
-                        SaveAsFbo.Resize(bitmap.Width, bitmap.Height);
-                    }
-                }
+        //        SaveAsFbo.BindAndClear(FramebufferTarget.DrawFramebuffer);
 
-                if (SaveAsFbo is null)
-                {
-                    SaveAsFbo = Framebuffer.Prepare(nameof(SaveAsFbo), bitmap.Width, bitmap.Height, 0, fboFormat, null);
-                    SaveAsFbo.Initialize();
-                }
+        //        Draw(SaveAsFbo, captureFullSizeImage: true, removeFlags);
 
-                SaveAsFbo.BindAndClear(FramebufferTarget.DrawFramebuffer);
+        //        GL.Flush();
+        //        GL.Finish();
 
-                Draw(SaveAsFbo, captureFullSizeImage: true, removeFlags);
+        //        SaveAsFbo.Bind(FramebufferTarget.ReadFramebuffer);
+        //        GL.ReadBuffer(ReadBufferMode.ColorAttachment0);
+        //        var readFormat = MaterialLoader.GetImageExportFormat(hdr);
+        //        GL.ReadPixels(0, 0, bitmap.Width, bitmap.Height, readFormat.ToGLPixelFormat(), readFormat.ToGLPixelType(), pixels);
 
-                GL.Flush();
-                GL.Finish();
+        //        Debug.Assert(MainFramebuffer is not null);
+        //        MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
 
-                SaveAsFbo.Bind(FramebufferTarget.ReadFramebuffer);
-                GL.ReadBuffer(ReadBufferMode.ColorAttachment0);
-                var readFormat = MaterialLoader.GetImageExportFormat(hdr);
-                GL.ReadPixels(0, 0, bitmap.Width, bitmap.Height, readFormat.ToGLPixelFormat(), readFormat.ToGLPixelType(), pixels);
-
-                Debug.Assert(MainFramebuffer is not null);
-                MainFramebuffer.Bind(FramebufferTarget.Framebuffer);
-
-                var bitmapToReturn = bitmap;
-                bitmap = null;
-                return bitmapToReturn;
-            }
-            finally
-            {
-                bitmap?.Dispose();
-            }
-        }
+        //        var bitmapToReturn = bitmap;
+        //        bitmap = null;
+        //        return bitmapToReturn;
+        //    }
+        //    finally
+        //    {
+        //        bitmap?.Dispose();
+        //    }
+        //}
 
         private void ResetZoom()
         {
@@ -876,72 +880,73 @@ namespace GUI.Types.GLViewers
 
         private void HandleArrowKeyMovement(float frameTime)
         {
-            var movementKeys = CurrentlyPressedKeys &
-                (TrackedKeys.W | TrackedKeys.S |
-                 TrackedKeys.A | TrackedKeys.D);
+            //VKTODO:
+            //var movementKeys = CurrentlyPressedKeys &
+            //    (TrackedKeys.W | TrackedKeys.S |
+            //     TrackedKeys.A | TrackedKeys.D);
 
-            var isMovingThisFrame = movementKeys != TrackedKeys.None;
+            //var isMovingThisFrame = movementKeys != TrackedKeys.None;
 
-            if (!isMovingThisFrame)
-            {
-                WasMovingLastFrame = false;
-                return;
-            }
+            //if (!isMovingThisFrame)
+            //{
+            //    WasMovingLastFrame = false;
+            //    return;
+            //}
 
-            var baseSpeed = 300f;
-            var speedMultiplier = 1f;
+            //var baseSpeed = 300f;
+            //var speedMultiplier = 1f;
 
-            if (CurrentlyPressedKeys.HasFlag(TrackedKeys.Shift))
-            {
-                speedMultiplier = 4f;
-            }
-            else if (CurrentlyPressedKeys.HasFlag(TrackedKeys.Control))
-            {
-                speedMultiplier = 2f;
-            }
+            //if (CurrentlyPressedKeys.HasFlag(TrackedKeys.Shift))
+            //{
+            //    speedMultiplier = 4f;
+            //}
+            //else if (CurrentlyPressedKeys.HasFlag(TrackedKeys.Control))
+            //{
+            //    speedMultiplier = 2f;
+            //}
 
-            var moveDistance = baseSpeed * speedMultiplier * frameTime;
+            //var moveDistance = baseSpeed * speedMultiplier * frameTime;
 
-            var delta = Vector2.Zero;
+            //var delta = Vector2.Zero;
 
-            if (CurrentlyPressedKeys.HasFlag(TrackedKeys.W))
-            {
-                delta.Y -= moveDistance;
-            }
+            //if (CurrentlyPressedKeys.HasFlag(TrackedKeys.W))
+            //{
+            //    delta.Y -= moveDistance;
+            //}
 
-            if (CurrentlyPressedKeys.HasFlag(TrackedKeys.S))
-            {
-                delta.Y += moveDistance;
-            }
+            //if (CurrentlyPressedKeys.HasFlag(TrackedKeys.S))
+            //{
+            //    delta.Y += moveDistance;
+            //}
 
-            if (CurrentlyPressedKeys.HasFlag(TrackedKeys.A))
-            {
-                delta.X -= moveDistance;
-            }
+            //if (CurrentlyPressedKeys.HasFlag(TrackedKeys.A))
+            //{
+            //    delta.X -= moveDistance;
+            //}
 
-            if (CurrentlyPressedKeys.HasFlag(TrackedKeys.D))
-            {
-                delta.X += moveDistance;
-            }
+            //if (CurrentlyPressedKeys.HasFlag(TrackedKeys.D))
+            //{
+            //    delta.X += moveDistance;
+            //}
 
-            if (delta != Vector2.Zero)
-            {
-                if (!IsZoomedIn)
-                {
-                    MovedFromOrigin_Unzoomed = true;
-                }
+            //if (delta != Vector2.Zero)
+            //{
+            //    if (!IsZoomedIn)
+            //    {
+            //        MovedFromOrigin_Unzoomed = true;
+            //    }
 
-                if (!WasMovingLastFrame)
-                {
-                    (TextureScaleOld, PositionOld) = GetCurrentPositionAndScale();
-                    TextureScaleChangeTime = 0f;
-                }
+            //    if (!WasMovingLastFrame)
+            //    {
+            //        (TextureScaleOld, PositionOld) = GetCurrentPositionAndScale();
+            //        TextureScaleChangeTime = 0f;
+            //    }
 
-                WasMovingLastFrame = true;
+            //    WasMovingLastFrame = true;
 
-                Position += delta;
-                ClampPosition();
-            }
+            //    Position += delta;
+            //    ClampPosition();
+            //}
         }
 
         protected override void OnMouseMove(int x, int y)
@@ -984,10 +989,11 @@ namespace GUI.Types.GLViewers
 
         protected override void OnMouseWheel(int delta, System.Drawing.Point location)
         {
-            var isShiftPressed = (CurrentlyPressedKeys & TrackedKeys.Shift) > 0;
-            var isCtrlPressed = (CurrentlyPressedKeys & TrackedKeys.Control) > 0;
+            //VKTODO:
+            //var isShiftPressed = (CurrentlyPressedKeys & TrackedKeys.Shift) > 0;
+            //var isCtrlPressed = (CurrentlyPressedKeys & TrackedKeys.Control) > 0;
 
-            HandleMouseWheel(delta, location, isShiftPressed, isCtrlPressed);
+            //HandleMouseWheel(delta, location, isShiftPressed, isCtrlPressed);
         }
 
         private void HandleMouseWheel(int delta, System.Drawing.Point location, bool isShiftPressed, bool isCtrlPressed)
@@ -999,10 +1005,11 @@ namespace GUI.Types.GLViewers
                 ClickPosition = null;
 
                 var panSpeed = 50f;
-                if ((CurrentlyPressedKeys & TrackedKeys.Alt) > 0)
-                {
-                    panSpeed *= 2f;
-                }
+                //VKTODO:
+                //if ((CurrentlyPressedKeys & TrackedKeys.Alt) > 0)
+                //{
+                //    panSpeed *= 2f;
+                //}
 
                 var panDelta = Vector2.Zero;
 
@@ -1131,56 +1138,59 @@ namespace GUI.Types.GLViewers
         protected override void OnResize(int w, int h)
         {
             base.OnResize(w, h);
-
-            if (texture != null)
-            {
-                ClampPosition();
-            }
+            //VKTODO:
+            //if (texture != null)
+            //{
+            //    ClampPosition();
+            //}
         }
 
         private void SetupTextureFromUi(bool softwareDecode)
         {
-            using var lockedGl = MakeCurrent();
+            //VKTODO:
+            //using var lockedGl = MakeCurrent();
             SetupTexture(softwareDecode);
         }
 
         private void SetTextureFilteringFromUi()
         {
-            using var lockedGl = MakeCurrent();
+            //VKTODO:
+            //using var lockedGl = MakeCurrent();
             SetTextureFiltering();
         }
 
         private void SetupTexture(bool forceSoftwareDecode)
         {
-            texture?.Delete();
+            //VKTODO:
+            //texture?.Delete();
 
-            UploadTexture(forceSoftwareDecode);
+            //UploadTexture(forceSoftwareDecode);
 
-            Debug.Assert(texture != null);
+            //Debug.Assert(texture != null);
 
-            SetTextureFiltering();
+            //SetTextureFiltering();
 
-            if (Svg == null)
-            {
-                OriginalWidth = texture.Width;
-                OriginalHeight = texture.Height;
+            //if (Svg == null)
+            //{
+            //    OriginalWidth = texture.Width;
+            //    OriginalHeight = texture.Height;
 
-                // Render software mips at full size
-                if (forceSoftwareDecode && SelectedMip > 0 && Resource?.DataBlock is Texture textureData)
-                {
-                    OriginalWidth = textureData.Width;
-                    OriginalHeight = textureData.Height;
-                }
-            }
+            //    // Render software mips at full size
+            //    if (forceSoftwareDecode && SelectedMip > 0 && Resource?.DataBlock is Texture textureData)
+            //    {
+            //        OriginalWidth = textureData.Width;
+            //        OriginalHeight = textureData.Height;
+            //    }
+            //}
 
-            var textureType = GLTextureDecoder.GetTextureTypeDefine(texture.Target);
+            //var textureType = GLTextureDecoder.GetTextureTypeDefine(texture.Target);
 
-            if (shader != null && shader.Parameters.ContainsKey(textureType))
-            {
-                return;
-            }
+            //if (shader != null && shader.Parameters.ContainsKey(textureType))
+            //{
+            //    return;
+            //}
 
-            shader = RendererContext.ShaderLoader.LoadShader("texture_decode", (textureType, 1));
+            //shader = RendererContext.ShaderLoader.LoadShader("texture_decode", (textureType, 1));
         }
 
         private void UploadTexture(bool forceSoftwareDecode)
@@ -1213,61 +1223,62 @@ namespace GUI.Types.GLViewers
             {
                 return;
             }
+            //VKTODO:
+            //if (Resource.ResourceType == ResourceType.PostProcessing && Resource.DataBlock is PostProcessing postProcessingData)
+            //{
+            //    var resolution = postProcessingData.GetColorCorrectionLUTDimension();
+            //    var data = postProcessingData.GetColorCorrectionLUT();
 
-            if (Resource.ResourceType == ResourceType.PostProcessing && Resource.DataBlock is PostProcessing postProcessingData)
-            {
-                var resolution = postProcessingData.GetColorCorrectionLUTDimension();
-                var data = postProcessingData.GetColorCorrectionLUT();
+            //    texture = RenderTexture.Create3D(TextureTarget.Texture3D, resolution, resolution, resolution, ImageFormat.RGBA8888, 1, "ColorCorrectionLUT");
 
-                texture = RenderTexture.Create3D(TextureTarget.Texture3D, resolution, resolution, resolution, ImageFormat.RGBA8888, 1, "ColorCorrectionLUT");
+            //    GL.TextureSubImage3D(texture.Handle, 0, 0, 0, 0, resolution, resolution, resolution, PixelFormat.Rgba, PixelType.UnsignedByte, data);
 
-                GL.TextureSubImage3D(texture.Handle, 0, 0, 0, 0, resolution, resolution, resolution, PixelFormat.Rgba, PixelType.UnsignedByte, data);
+            //    return;
+            //}
 
-                return;
-            }
+            //if (Resource.DataBlock is not Texture textureData)
+            //{
+            //    return;
+            //}
 
-            if (Resource.DataBlock is not Texture textureData)
-            {
-                return;
-            }
+            //var isCpuDecodedFormat = textureData.IsRawAnyImage;
+            //var swDecodeFlags = decodeFlags & softwareDecodeOnlyOptions;
 
-            var isCpuDecodedFormat = textureData.IsRawAnyImage;
-            var swDecodeFlags = decodeFlags & softwareDecodeOnlyOptions;
+            //if (isCpuDecodedFormat || forceSoftwareDecode)
+            //{
+            //    SKBitmap bitmap;
 
-            if (isCpuDecodedFormat || forceSoftwareDecode)
-            {
-                SKBitmap bitmap;
+            //    // GUI provides hardware decoder for texture decoding, but here we do not want to use it
+            //    var decoder = HardwareAcceleratedTextureDecoder.Decoder;
+            //    HardwareAcceleratedTextureDecoder.Decoder = null;
 
-                // GUI provides hardware decoder for texture decoding, but here we do not want to use it
-                var decoder = HardwareAcceleratedTextureDecoder.Decoder;
-                HardwareAcceleratedTextureDecoder.Decoder = null;
+            //    try
+            //    {
+            //        bitmap = textureData.GenerateBitmap((uint)SelectedDepth, (CubemapFace)SelectedCubeFace, (uint)SelectedMip, swDecodeFlags);
+            //    }
+            //    finally
+            //    {
+            //        HardwareAcceleratedTextureDecoder.Decoder = decoder;
+            //    }
 
-                try
-                {
-                    bitmap = textureData.GenerateBitmap((uint)SelectedDepth, (CubemapFace)SelectedCubeFace, (uint)SelectedMip, swDecodeFlags);
-                }
-                finally
-                {
-                    HardwareAcceleratedTextureDecoder.Decoder = decoder;
-                }
+            //    using (bitmap)
+            //    {
+            //        UploadBitmap(bitmap);
+            //    }
 
-                using (bitmap)
-                {
-                    UploadBitmap(bitmap);
-                }
+            //    return;
+            //}
 
-                return;
-            }
-
-            texture = RendererContext.MaterialLoader.LoadTexture(Resource);
+            //texture = RendererContext.MaterialLoader.LoadTexture(Resource);
             InvalidateRender();
         }
 
         private void UploadBitmap(SKBitmap bitmap)
         {
-            Debug.Assert(bitmap != null);
-            texture = MaterialLoader.LoadBitmapTexture(bitmap);
-            InvalidateRender();
+            //VKTODO:
+            //Debug.Assert(bitmap != null);
+            //texture = MaterialLoader.LoadBitmapTexture(bitmap);
+            //InvalidateRender();
         }
 
         /// <summary>
@@ -1335,15 +1346,16 @@ namespace GUI.Types.GLViewers
 
         protected void UseDefaultFramebuffer()
         {
-            if (MainFramebuffer != GLDefaultFramebuffer)
-            {
-                MainFramebuffer?.Delete();
-                MainFramebuffer = GLDefaultFramebuffer;
-            }
+            //VKTODO:
+            //if (MainFramebuffer != GLDefaultFramebuffer)
+            //{
+            //    MainFramebuffer?.Delete();
+            //    MainFramebuffer = GLDefaultFramebuffer;
+            //}
 
-            Debug.Assert(MainFramebuffer != null);
-            MainFramebuffer.ClearColor = OpenTK.Mathematics.Color4.White;
-            MainFramebuffer.ClearMask = ClearBufferMask.ColorBufferBit;
+            //Debug.Assert(MainFramebuffer != null);
+            //MainFramebuffer.ClearColor = OpenTK.Mathematics.Color4.White;
+            //MainFramebuffer.ClearMask = ClearBufferMask.ColorBufferBit;
         }
 
         protected override void OnFirstPaint()
@@ -1387,71 +1399,74 @@ namespace GUI.Types.GLViewers
 
         protected override void OnPaint(float frameTime)
         {
-            Debug.Assert(MainFramebuffer is not null);
-            Debug.Assert(GLControl is not null);
+            //VKTODO:
+            //Debug.Assert(MainFramebuffer is not null);
+            //Debug.Assert(GLControl is not null);
 
             base.OnPaint(frameTime);
+            //VKTODO:
+            //if (NextBitmapToSet != null)
+            //{
+            //    texture?.Delete();
 
-            if (NextBitmapToSet != null)
-            {
-                texture?.Delete();
+            //    using (NextBitmapToSet)
+            //    {
+            //        UploadBitmap(NextBitmapToSet);
+            //    }
 
-                using (NextBitmapToSet)
-                {
-                    UploadBitmap(NextBitmapToSet);
-                }
+            //    NextBitmapToSet = null;
+            //}
 
-                NextBitmapToSet = null;
-            }
+            //var renderHash = GetRenderHash();
 
-            var renderHash = GetRenderHash();
+            //if (renderHash != LastRenderHash)
+            //{
+            //    LastRenderHash = renderHash;
+            //    InvalidateRender();
+            //}
 
-            if (renderHash != LastRenderHash)
-            {
-                LastRenderHash = renderHash;
-                InvalidateRender();
-            }
+            //if (RenderUpToDate)
+            //{
+            //    SkipBufferSwap = true;
+            //    return;
+            //}
 
-            if (RenderUpToDate)
-            {
-                SkipBufferSwap = true;
-                return;
-            }
-
-            RenderUpToDate = true;
-            RenderToFramebuffer();
+            //RenderUpToDate = true;
+            //RenderToFramebuffer();
         }
 
         protected virtual int GetRenderHash()
         {
-            Debug.Assert(MainFramebuffer is not null);
-
-            return HashCode.Combine(
-                HashCode.Combine(
-                    GetCurrentPositionAndScale(),
-                    SelectedMip,
-                    SelectedDepth,
-                    SelectedCubeFace,
-                    SelectedChannels.PackedValue,
-                    ChannelSplitMode
-                ),
-                decodeFlags,
-                SelectedFiltering,
-                VisualizeTiling,
-                ShowLightBackground,
-                MainFramebuffer.Width,
-                MainFramebuffer.Height
-            );
+            //VKTODO:
+            //Debug.Assert(MainFramebuffer is not null);
+            return 1;
+            //return HashCode.Combine(
+            //    HashCode.Combine(
+            //        GetCurrentPositionAndScale(),
+            //        SelectedMip,
+            //        SelectedDepth,
+            //        SelectedCubeFace,
+            //        SelectedChannels.PackedValue,
+            //        ChannelSplitMode
+            //    ),
+            //    decodeFlags,
+            //    SelectedFiltering,
+            //    VisualizeTiling,
+            //    ShowLightBackground,
+            //    MainFramebuffer.Width,
+            //    MainFramebuffer.Height
+            //);
         }
 
         protected virtual void RenderToFramebuffer()
         {
-            Debug.Assert(MainFramebuffer is not null);
-            Debug.Assert(GLControl is not null);
+            //VKTODO:
+            //Debug.Assert(MainFramebuffer is not null);
+            //Debug.Assert(GLControl is not null);
 
-            GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
-            MainFramebuffer.BindAndClear();
-            Draw(MainFramebuffer);
+            //GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
+            //MainFramebuffer.BindAndClear();
+            //Draw(MainFramebuffer);
         }
 
         protected void InvalidateRender()
@@ -1460,47 +1475,47 @@ namespace GUI.Types.GLViewers
             GLControl?.Invalidate();
         }
 
-        protected void Draw(Framebuffer fbo, bool captureFullSizeImage = false, TextureCodec removeFlags = TextureCodec.None)
-        {
-            GL.DepthMask(false);
-            GL.Disable(EnableCap.DepthTest);
+        //protected void Draw(Framebuffer fbo, bool captureFullSizeImage = false, TextureCodec removeFlags = TextureCodec.None)
+        //{
+        //    GL.DepthMask(false);
+        //    GL.Disable(EnableCap.DepthTest);
 
-            Debug.Assert(shader != null);
-            Debug.Assert(texture != null);
+        //    Debug.Assert(shader != null);
+        //    Debug.Assert(texture != null);
 
-            shader.Use();
+        //    shader.Use();
 
-            shader.SetUniform("g_bTextureViewer", true);
-            shader.SetUniform("g_bShowLightBackground", ShowLightBackground);
-            shader.SetUniform("g_vViewportSize", new Vector2(fbo.Width, fbo.Height));
+        //    shader.SetUniform("g_bTextureViewer", true);
+        //    shader.SetUniform("g_bShowLightBackground", ShowLightBackground);
+        //    shader.SetUniform("g_vViewportSize", new Vector2(fbo.Width, fbo.Height));
 
-            var theme1 = Themer.CurrentTheme == Themer.AppTheme.Dark
-                ? Themer.CurrentThemeColors.Border
-                : Themer.CurrentThemeColors.AppMiddle;
-            shader.SetUniform("g_vCheckerboardTheme", new Vector3(theme1.R, theme1.G, theme1.B) / 255f);
+        //    var theme1 = Themer.CurrentTheme == Themer.AppTheme.Dark
+        //        ? Themer.CurrentThemeColors.Border
+        //        : Themer.CurrentThemeColors.AppMiddle;
+        //    shader.SetUniform("g_vCheckerboardTheme", new Vector3(theme1.R, theme1.G, theme1.B) / 255f);
 
-            var (scale, position) = captureFullSizeImage
-                ? (1f / (1 << SelectedMip), Vector2.Zero)
-                : GetCurrentPositionAndScale();
+        //    var (scale, position) = captureFullSizeImage
+        //        ? (1f / (1 << SelectedMip), Vector2.Zero)
+        //        : GetCurrentPositionAndScale();
 
-            shader.SetUniform("g_bCapturingScreenshot", captureFullSizeImage);
-            shader.SetUniform("g_vViewportPosition", position);
-            shader.SetUniform("g_flScale", scale);
+        //    shader.SetUniform("g_bCapturingScreenshot", captureFullSizeImage);
+        //    shader.SetUniform("g_vViewportPosition", position);
+        //    shader.SetUniform("g_flScale", scale);
 
-            shader.SetTexture(0, "g_tInputTexture", texture);
-            shader.SetUniform("g_vInputTextureSize", new Vector4(OriginalWidth, OriginalHeight, texture.Depth, texture.NumMipLevels));
-            shader.SetUniform("g_nSelectedMip", SelectedMip);
-            shader.SetUniform("g_nSelectedDepth", SelectedDepth);
-            shader.SetUniform("g_nSelectedCubeFace", SelectedCubeFace);
-            shader.SetUniform("g_nSelectedChannels", SelectedChannels.PackedValue);
-            shader.SetUniform("g_bVisualizeTiling", VisualizeTiling);
-            shader.SetUniform("g_nChannelSplitMode", (int)ChannelSplitMode);
-            shader.SetUniform("g_nCubemapProjectionType", (int)CubemapProjectionType);
-            shader.SetUniform("g_nDecodeFlags", (int)(decodeFlags & ~removeFlags));
+        //    shader.SetTexture(0, "g_tInputTexture", texture);
+        //    shader.SetUniform("g_vInputTextureSize", new Vector4(OriginalWidth, OriginalHeight, texture.Depth, texture.NumMipLevels));
+        //    shader.SetUniform("g_nSelectedMip", SelectedMip);
+        //    shader.SetUniform("g_nSelectedDepth", SelectedDepth);
+        //    shader.SetUniform("g_nSelectedCubeFace", SelectedCubeFace);
+        //    shader.SetUniform("g_nSelectedChannels", SelectedChannels.PackedValue);
+        //    shader.SetUniform("g_bVisualizeTiling", VisualizeTiling);
+        //    shader.SetUniform("g_nChannelSplitMode", (int)ChannelSplitMode);
+        //    shader.SetUniform("g_nCubemapProjectionType", (int)CubemapProjectionType);
+        //    shader.SetUniform("g_nDecodeFlags", (int)(decodeFlags & ~removeFlags));
 
-            GL.BindVertexArray(RendererContext.MeshBufferCache.EmptyVAO);
-            GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
-        }
+        //    GL.BindVertexArray(RendererContext.MeshBufferCache.EmptyVAO);
+        //    GL.DrawArrays(PrimitiveType.Triangles, 0, 3);
+        //}
 
         protected (float Scale, Vector2 Position) GetCurrentPositionAndScale()
         {

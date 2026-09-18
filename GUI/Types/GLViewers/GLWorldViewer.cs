@@ -8,13 +8,13 @@ using GUI.Forms;
 using GUI.Utils;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Entities;
-using ValveResourceFormat.Renderer.Input;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
-using ValveResourceFormat.Renderer.Utils;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.Renderer2;
+//using ValveResourceFormat.Renderer.Entities;
+//using ValveResourceFormat.Renderer.Input;
+//using ValveResourceFormat.Renderer.SceneEnvironment;
+//using ValveResourceFormat.Renderer.SceneNodes;
+//using ValveResourceFormat.Renderer.Utils;
+//using ValveResourceFormat.Renderer.World;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static GUI.Controls.SavedCameraPositionsControl;
@@ -37,8 +37,8 @@ namespace GUI.Types.GLViewers
         private EntityInfoForm? entityInfoForm;
         private bool ignoreLayersChangeEvents = true;
         private List<Matrix4x4> CameraMatrices = [];
-        private WorldNodeLoader? LoadedWorldNode;
-        public WorldLoader? LoadedWorld;
+        //private WorldNodeLoader? LoadedWorldNode;
+        //public WorldLoader? LoadedWorld;
         private EntityLump.Entity? entityInfoEntity;
 
         /// <summary>Jump from the entity info popup to the entity's node in the I/O graph tab, when the map has one.</summary>
@@ -74,39 +74,41 @@ namespace GUI.Types.GLViewers
 
         private void AddSceneExposureSlider()
         {
-            Debug.Assert(UiControl != null);
+            //VKTODO:
+            //Debug.Assert(UiControl != null);
 
-            var exposureLabel = new Label();
-            void UpdateExposureText(float exposure)
-            {
-                exposureLabel.Text = $"Exposure: {exposure:0.00}";
-            }
+            //var exposureLabel = new Label();
+            //void UpdateExposureText(float exposure)
+            //{
+            //    exposureLabel.Text = $"Exposure: {exposure:0.00}";
+            //}
 
-            UiControl.AddControl(exposureLabel);
+            //UiControl.AddControl(exposureLabel);
 
-            var exposureSlider = UiControl.AddTrackBar((exposureAmount) =>
-            {
-                var exposure = exposureAmount * 10;
-                UpdateExposureText(exposure);
-                Renderer.Postprocess.CustomExposure = exposure;
+            //var exposureSlider = UiControl.AddTrackBar((exposureAmount) =>
+            //{
+            //    var exposure = exposureAmount * 10;
+            //    UpdateExposureText(exposure);
+            //    Renderer.Postprocess.CustomExposure = exposure;
 
-                // also set auto exposure to off for debugging, in case this is slowing things down
-                Renderer.Postprocess.State = Renderer.Postprocess.State with { ExposureSettings = Renderer.Postprocess.State.ExposureSettings with { AutoExposureEnabled = false } };
-            });
+            //    // also set auto exposure to off for debugging, in case this is slowing things down
+            //    Renderer.Postprocess.State = Renderer.Postprocess.State with { ExposureSettings = Renderer.Postprocess.State.ExposureSettings with { AutoExposureEnabled = false } };
+            //});
 
-            var sceneExposure = Renderer.Postprocess.CurrentExposure;
-            exposureSlider.Slider.Value = sceneExposure / 10;
-            UpdateExposureText(sceneExposure);
+            //var sceneExposure = Renderer.Postprocess.CurrentExposure;
+            //exposureSlider.Slider.Value = sceneExposure / 10;
+            //UpdateExposureText(sceneExposure);
         }
 
         private void OnGetOrSetPositionFromClipboardRequest(object? sender, bool isSetRequest)
         {
             if (!isSetRequest)
             {
-                var loc = Renderer.Camera.Location;
-                var cameraAngles = Renderer.Camera.GetQAngle();
-
-                AppClipboard.SetText($"setpos {loc.X:F6} {loc.Y:F6} {loc.Z:F6}; setang {cameraAngles.X:F6} {cameraAngles.Y:F6} {cameraAngles.Z:F6}");
+                //VKTODO
+                //var loc = Renderer.Camera.Location;
+                //var cameraAngles = Renderer.Camera.GetQAngle();
+                //VKTODO
+                //AppClipboard.SetText($"setpos {loc.X:F6} {loc.Y:F6} {loc.Z:F6}; setang {cameraAngles.X:F6} {cameraAngles.Y:F6} {cameraAngles.Z:F6}");
 
                 return;
             }
@@ -131,10 +133,10 @@ namespace GUI.Types.GLViewers
                     float.Parse(ang.Groups["yaw"].Value, CultureInfo.InvariantCulture),
                     0f)
                 : Vector3.Zero;
-
-            Input.SaveCameraForTransition(exitWalkMode: false);
-            Input.Camera.SetLocation(new Vector3(x, y, z));
-            Input.Camera.SetFromQAngle(viewAngles);
+            //VKTODO:
+            //Input.SaveCameraForTransition(exitWalkMode: false);
+            //Input.Camera.SetLocation(new Vector3(x, y, z));
+            //Input.Camera.SetFromQAngle(viewAngles);
         }
 
         private void OnRestoreCameraRequest(object? sender, RestoreCameraRequestEvent e)
@@ -143,31 +145,34 @@ namespace GUI.Types.GLViewers
             {
                 if (savedFloats.Length == 5)
                 {
-                    Input.SaveCameraForTransition();
+                    //VKTODO:
+                    //Input.SaveCameraForTransition();
 
                     // Saved cameras predate the camera holding pitch the engine's way round, and are
                     // stored positive upwards, so already saved ones keep pointing where they did.
-                    Input.Camera.SetLocationPitchYaw(
-                        new Vector3(savedFloats[0], savedFloats[1], savedFloats[2]),
-                        -savedFloats[3],
-                        savedFloats[4]);
+                    //VKTODO:
+                    //Input.Camera.SetLocationPitchYaw(
+                    //    new Vector3(savedFloats[0], savedFloats[1], savedFloats[2]),
+                    //    -savedFloats[3],
+                    //    savedFloats[4]);
                 }
             }
         }
 
         private void OnSaveCameraRequest(object? sender, EventArgs e)
         {
-            var cam = Renderer.Camera;
-            var saveName = $"Camera at {cam.Location.X:F0} {cam.Location.Y:F0} {cam.Location.Z:F0}";
-            var originalName = saveName;
-            var duplicateCameraIndex = 1;
-
-            while (Settings.Config.SavedCameras.ContainsKey(saveName))
-            {
-                saveName = $"{originalName} (#{duplicateCameraIndex++})";
-            }
-
-            Settings.Config.SavedCameras.Add(saveName, [cam.Location.X, cam.Location.Y, cam.Location.Z, -cam.Pitch, cam.Yaw]);
+            //VKTODO:
+            //var cam = Renderer.Camera;
+            //var saveName = $"Camera at {cam.Location.X:F0} {cam.Location.Y:F0} {cam.Location.Z:F0}";
+            //var originalName = saveName;
+            //var duplicateCameraIndex = 1;
+            //VKTODO:
+            //while (Settings.Config.SavedCameras.ContainsKey(saveName))
+            //{
+            //    saveName = $"{originalName} (#{duplicateCameraIndex++})";
+            //}
+            //VKTODO:
+            //Settings.Config.SavedCameras.Add(saveName, [cam.Location.X, cam.Location.Y, cam.Location.Z, -cam.Pitch, cam.Yaw]);
             Settings.InvokeRefreshCamerasOnSave();
         }
 
@@ -178,18 +183,18 @@ namespace GUI.Types.GLViewers
             if (worldNode != null)
             {
                 base.LoadDefaultLighting();
-
-                Scene.LightingInfo.CubemapType = CubemapType.None; // default envmap actually looks bad
-                Scene.LightingInfo.UseSceneBoundsForSunLightFrustum = false;
-                Scene.LightingInfo.SunLightShadowCoverageScale = 2f;
-
-                var post = new ScenePostProcessVolume(Scene)
-                {
-                    HasBloom = true,
-                    IsMaster = true,
-                };
-
-                Scene.PostProcessInfo.AddPostProcessVolume(post);
+                //VKTODO:
+                //Scene.LightingInfo.CubemapType = CubemapType.None; // default envmap actually looks bad
+                //Scene.LightingInfo.UseSceneBoundsForSunLightFrustum = false;
+                //Scene.LightingInfo.SunLightShadowCoverageScale = 2f;
+                //VKTODO:
+                //var post = new ScenePostProcessVolume(Scene)
+                //{
+                //    HasBloom = true,
+                //    IsMaster = true,
+                //};
+                //
+                //Scene.PostProcessInfo.AddPostProcessVolume(post);
             }
         }
 
@@ -203,68 +208,70 @@ namespace GUI.Types.GLViewers
 
             if (world != null)
             {
-                LoadedWorld = new WorldLoader(world, Scene)
-                {
-                    LoadingProgress = GuiContext.LoadingProgress,
-                };
-
-                LoadedWorld.Load(mapExternalReferences);
-
-                if (LoadedWorld.SkyboxScene != null)
-                {
-                    Renderer.SkyboxScene = LoadedWorld.SkyboxScene;
-                }
-
-                if (LoadedWorld.Skybox2D != null)
-                {
-                    Renderer.Skybox2D = LoadedWorld.Skybox2D;
-                }
-
-                NavMeshSceneNode.AddNavNodesToScene(LoadedWorld.NavMesh, Scene);
-                CS2BombDamageSceneNode.AddBakedBombDamageToScene(LoadedWorld.BombDamage, Scene);
-
-                if (LoadedWorld.CameraMatrices.Count > 0)
-                {
-                    CameraMatrices = LoadedWorld.CameraMatrices;
-                }
-
-                if (LoadedWorld.SpawnCameraMatrix is { } spawn)
-                {
-                    Input.Camera.SetFromTransformMatrix(spawn);
-                    cameraSet = true;
-                }
+                //VKTODO:
+                //LoadedWorld = new WorldLoader(world, Scene)
+                //{
+                //    LoadingProgress = GuiContext.LoadingProgress,
+                //};
+                //VKTODO:
+                //LoadedWorld.Load(mapExternalReferences);
+                //
+                //if (LoadedWorld.SkyboxScene != null)
+                //{
+                //    Renderer.SkyboxScene = LoadedWorld.SkyboxScene;
+                //}
+                //VKTODO:
+                //if (LoadedWorld.Skybox2D != null)
+                //{
+                //    Renderer.Skybox2D = LoadedWorld.Skybox2D;
+                //}
+                //VKTODO:
+                //NavMeshSceneNode.AddNavNodesToScene(LoadedWorld.NavMesh, Scene);
+                //CS2BombDamageSceneNode.AddBakedBombDamageToScene(LoadedWorld.BombDamage, Scene);
+                //VKTODO:
+                //if (LoadedWorld.CameraMatrices.Count > 0)
+                //{
+                //    CameraMatrices = LoadedWorld.CameraMatrices;
+                //}
+                //VKTODO:
+                //if (LoadedWorld.SpawnCameraMatrix is { } spawn)
+                //{
+                //    Input.Camera.SetFromTransformMatrix(spawn);
+                //    cameraSet = true;
+                //}
 
                 ReportLoadingStatus("Loading player model…");
-
-                Input.TryLoadViewmodel(Scene);
-
-                var kzMapPrefixes = new[] { "bhop", "surf", "kz", "dr" };
-                var mapName = Path.GetFileName(LoadedWorld.MapName);
-                var isKzMap = kzMapPrefixes.Any(prefix => mapName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
-
-                ShowSpeed = isKzMap;
-                Input.PlayerMovement.PrestrafeEnabled = isKzMap;
-                Input.PlayerMovement.AutoBunnyHop = isKzMap;
-                Input.PlayerMovement.AirAccelerate = isKzMap
-                    ? PlayerMovement.AirAccelerateMovementMaps
-                    : PlayerMovement.AirAccelerateCompetitive;
-
-                Input.EntitySystem = Scene.EntitySystem;
-                Scene.EntitySystem.SpawnPlayer(Input.PlayerMovement);
+                //VKTODO:
+                //Input.TryLoadViewmodel(Scene);
+                //VKTODO:
+                //var kzMapPrefixes = new[] { "bhop", "surf", "kz", "dr" };
+                //var mapName = Path.GetFileName(LoadedWorld.MapName);
+                //var isKzMap = kzMapPrefixes.Any(prefix => mapName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
+                //VKTODO:
+                //ShowSpeed = isKzMap;
+                //Input.PlayerMovement.PrestrafeEnabled = isKzMap;
+                //Input.PlayerMovement.AutoBunnyHop = isKzMap;
+                //Input.PlayerMovement.AirAccelerate = isKzMap
+                //    ? PlayerMovement.AirAccelerateMovementMaps
+                //    : PlayerMovement.AirAccelerateCompetitive;
+                //VKTODO:
+                //Input.EntitySystem = Scene.EntitySystem;
+                //Scene.EntitySystem.SpawnPlayer(Input.PlayerMovement);
             }
 
             if (!cameraSet)
             {
-                Input.Camera.SetLocation(new Vector3(256));
-                Input.Camera.LookAt(Vector3.Zero);
+                //VKTODO:
+                //Input.Camera.SetLocation(new Vector3(256));
+                //Input.Camera.LookAt(Vector3.Zero);
             }
 
             if (worldNode != null)
             {
                 ReportLoadingStatus("Loading world geometry…");
-
-                LoadedWorldNode = new WorldNodeLoader(Scene.RendererContext, worldNode, mapExternalReferences);
-                LoadedWorldNode.Load(Scene);
+                //VKTODO:
+                //LoadedWorldNode = new WorldNodeLoader(Scene.RendererContext, worldNode, mapExternalReferences);
+                //LoadedWorldNode.Load(Scene);
             }
         }
 
@@ -272,11 +279,12 @@ namespace GUI.Types.GLViewers
 
         protected override void OnFirstPaint()
         {
-            Input.MoveCamera(new Vector3(0, -150f, 0));
-
-            base.OnFirstPaint();
-
-            Input.MoveCamera(new Vector3(0, 150f, 0), transition: true);
+            //VKTODO:
+            //Input.MoveCamera(new Vector3(0, -150f, 0));
+            //
+            //base.OnFirstPaint();
+            //
+            //Input.MoveCamera(new Vector3(0, 150f, 0), transition: true);
         }
 
         protected override void AddUiControls()
@@ -315,140 +323,141 @@ namespace GUI.Types.GLViewers
                 savedCameraPositionsControl.RestoreCameraRequest += OnRestoreCameraRequest;
                 savedCameraPositionsControl.GetOrSetPositionFromClipboardRequest += OnGetOrSetPositionFromClipboardRequest;
                 UiControl.AddControl(savedCameraPositionsControl);
-
-                if (LoadedWorld != null && LoadedWorld.CameraMatrices.Count > 0)
-                {
-                    cameraComboBox = UiControl.AddSelection("Map Camera", (cameraName, index) =>
-                    {
-                        if (index > 0)
-                        {
-                            Input.SaveCameraForTransition();
-                            Input.Camera.SetFromTransformMatrix(CameraMatrices[index - 1]);
-                        }
-                    });
-                    cameraComboBox.BeginUpdate();
-                    cameraComboBox.Items.Add("Set view to camera…");
-                    cameraComboBox.Items.AddRange([.. LoadedWorld.CameraNames]);
-                    cameraComboBox.SelectedIndex = 0;
-                    cameraComboBox.EndUpdate();
-                }
+                //VKTODO:
+                //if (LoadedWorld != null && LoadedWorld.CameraMatrices.Count > 0)
+                //{
+                //    cameraComboBox = UiControl.AddSelection("Map Camera", (cameraName, index) =>
+                //    {
+                //        if (index > 0)
+                //        {
+                //            Input.SaveCameraForTransition();
+                //            Input.Camera.SetFromTransformMatrix(CameraMatrices[index - 1]);
+                //        }
+                //    });
+                //    cameraComboBox.BeginUpdate();
+                //    cameraComboBox.Items.Add("Set view to camera…");
+                //    cameraComboBox.Items.AddRange([.. LoadedWorld.CameraNames]);
+                //    cameraComboBox.SelectedIndex = 0;
+                //    cameraComboBox.EndUpdate();
+                //}
             }
 
             if (world != null)
             {
                 var uniqueWorldLayers = new HashSet<string>(4);
                 var uniquePhysicsGroups = new HashSet<string>();
-
-                foreach (var node in Scene.AllNodes)
-                {
-                    if (node.LayerName?.StartsWith("Internal -", StringComparison.Ordinal) == true)
-                    {
-                        continue;
-                    }
-
-                    if (node.LayerName != null)
-                    {
-                        uniqueWorldLayers.Add(node.LayerName);
-                    }
-
-                    if (node is PhysSceneNode physSceneNode)
-                    {
-                        uniquePhysicsGroups.Add(physSceneNode.PhysGroupName);
-                    }
-                }
-
-                if (uniqueWorldLayers.Count > 0 && LoadedWorld != null)
-                {
-                    Debug.Assert(worldLayersComboBox != null);
-
-                    worldLayersComboBox.BeginUpdate();
-
-                    SetAvailableLayers(uniqueWorldLayers);
-
-                    foreach (var worldLayer in LoadedWorld.DefaultEnabledLayers)
-                    {
-                        var checkboxIndex = worldLayersComboBox.FindStringExact(worldLayer);
-
-                        if (checkboxIndex > -1)
-                        {
-                            worldLayersComboBox.SetItemCheckState(checkboxIndex, CheckState.Checked);
-                        }
-                    }
-
-                    worldLayersComboBox.EndUpdate();
-
-                    Scene.SetEnabledLayers(LoadedWorld.DefaultEnabledLayers);
-                    SkyboxScene?.SetEnabledLayers(LoadedWorld.DefaultEnabledLayers);
-                }
-
-                if (uniquePhysicsGroups.Count > 0)
-                {
-                    SetAvailablePhysicsGroups(uniquePhysicsGroups);
-                }
-
-                using (UiControl.BeginGroup("World"))
-                {
-                    if (Renderer.SkyboxScene != null)
-                    {
-                        UiControl.AddCheckBox("Show Skybox", Renderer.ShowSkybox, (v) => Renderer.ShowSkybox = v);
-                    }
-
-                    UiControl.AddCheckBox("Show Fog", Scene.FogEnabled, v => Scene.FogEnabled = v);
-
-                    UiControl.AddCheckBox("Entity System", Scene.EntitySystem.Enabled, v => Scene.EntitySystem.Enabled = v);
-
-                    UiControl.AddCheckBox("Color Correction", Renderer.Postprocess.ColorCorrectionEnabled, v => Renderer.Postprocess.ColorCorrectionEnabled = v);
-
-                    // TODO: PVS culling is not implemented yet
-                    // if (Scene.VoxelVisibility != null)
-                    // {
-                    //     UiControl.AddCheckBox("PVS Culling", Scene.EnablePvsCulling, v => Scene.EnablePvsCulling = v);
-                    // }
-
-                    CheckBox? occlusionCullingCheckBox = null;
-
-                    if (GLEnvironment.SlowMultiDrawIndirect)
-                    {
-                        Scene.EnableIndirectDraws = false;
-                        SkyboxScene?.EnableIndirectDraws = false;
-                    }
-
-                    UiControl.AddCheckBox("GPU Culling", Scene.EnableIndirectDraws, v =>
-                    {
-                        Scene.EnableIndirectDraws = v;
-                        SkyboxScene?.EnableIndirectDraws = v;
-
-                        if (occlusionCullingCheckBox != null)
-                        {
-                            occlusionCullingCheckBox.Enabled = v;
-                        }
-                    });
-
-                    occlusionCullingCheckBox = UiControl.AddCheckBox("GPU Occlusion Culling", Scene.EnableOcclusionCulling, (v) => Scene.EnableOcclusionCulling = v);
-                    occlusionCullingCheckBox.Enabled = Scene.EnableIndirectDraws;
-
-                    UiControl.AddCheckBox("Depth Prepass", Scene.EnableDepthPrepass, (v) => Scene.EnableDepthPrepass = v);
-
-                    UiControl.AddCheckBox("Barn Lights", Renderer.EnableBarnLights, v => Renderer.EnableBarnLights = v);
-                    UiControl.AddCheckBox("Tiled Light Culling", Scene.EnableTiledLightCulling, v => Scene.EnableTiledLightCulling = v);
-
-                    AddSceneExposureSlider();
-                }
+                //VKTODO:
+                //foreach (var node in Scene.AllNodes)
+                //{
+                //    if (node.LayerName?.StartsWith("Internal -", StringComparison.Ordinal) == true)
+                //    {
+                //        continue;
+                //    }
+                //
+                //    if (node.LayerName != null)
+                //    {
+                //        uniqueWorldLayers.Add(node.LayerName);
+                //    }
+                //
+                //    if (node is PhysSceneNode physSceneNode)
+                //    {
+                //        uniquePhysicsGroups.Add(physSceneNode.PhysGroupName);
+                //    }
+                //}
+                //VKTODO:
+                //if (uniqueWorldLayers.Count > 0 && LoadedWorld != null)
+                //{
+                //    Debug.Assert(worldLayersComboBox != null);
+                //
+                //    worldLayersComboBox.BeginUpdate();
+                //
+                //    SetAvailableLayers(uniqueWorldLayers);
+                //
+                //    foreach (var worldLayer in LoadedWorld.DefaultEnabledLayers)
+                //    {
+                //        var checkboxIndex = worldLayersComboBox.FindStringExact(worldLayer);
+                //
+                //        if (checkboxIndex > -1)
+                //        {
+                //            worldLayersComboBox.SetItemCheckState(checkboxIndex, CheckState.Checked);
+                //        }
+                //    }
+                //
+                //    worldLayersComboBox.EndUpdate();
+                //
+                //    Scene.SetEnabledLayers(LoadedWorld.DefaultEnabledLayers);
+                //    SkyboxScene?.SetEnabledLayers(LoadedWorld.DefaultEnabledLayers);
+                //}
+                //
+                //if (uniquePhysicsGroups.Count > 0)
+                //{
+                //    SetAvailablePhysicsGroups(uniquePhysicsGroups);
+                //}
+                //
+                //using (UiControl.BeginGroup("World"))
+                //{
+                //    if (Renderer.SkyboxScene != null)
+                //    {
+                //        UiControl.AddCheckBox("Show Skybox", Renderer.ShowSkybox, (v) => Renderer.ShowSkybox = v);
+                //    }
+                //
+                //    UiControl.AddCheckBox("Show Fog", Scene.FogEnabled, v => Scene.FogEnabled = v);
+                //
+                //    UiControl.AddCheckBox("Entity System", Scene.EntitySystem.Enabled, v => Scene.EntitySystem.Enabled = v);
+                //
+                //    UiControl.AddCheckBox("Color Correction", Renderer.Postprocess.ColorCorrectionEnabled, v => Renderer.Postprocess.ColorCorrectionEnabled = v);
+                //
+                //    // TODO: PVS culling is not implemented yet
+                //    // if (Scene.VoxelVisibility != null)
+                //    // {
+                //    //     UiControl.AddCheckBox("PVS Culling", Scene.EnablePvsCulling, v => Scene.EnablePvsCulling = v);
+                //    // }
+                //
+                //    CheckBox? occlusionCullingCheckBox = null;
+                //
+                //    if (GLEnvironment.SlowMultiDrawIndirect)
+                //    {
+                //        Scene.EnableIndirectDraws = false;
+                //        SkyboxScene?.EnableIndirectDraws = false;
+                //    }
+                //
+                //    UiControl.AddCheckBox("GPU Culling", Scene.EnableIndirectDraws, v =>
+                //    {
+                //        Scene.EnableIndirectDraws = v;
+                //        SkyboxScene?.EnableIndirectDraws = v;
+                //
+                //        if (occlusionCullingCheckBox != null)
+                //        {
+                //            occlusionCullingCheckBox.Enabled = v;
+                //        }
+                //    });
+                //
+                //    occlusionCullingCheckBox = UiControl.AddCheckBox("GPU Occlusion Culling", Scene.EnableOcclusionCulling, (v) => Scene.EnableOcclusionCulling = v);
+                //    occlusionCullingCheckBox.Enabled = Scene.EnableIndirectDraws;
+                //
+                //    UiControl.AddCheckBox("Depth Prepass", Scene.EnableDepthPrepass, (v) => Scene.EnableDepthPrepass = v);
+                //
+                //    UiControl.AddCheckBox("Barn Lights", Renderer.EnableBarnLights, v => Renderer.EnableBarnLights = v);
+                //    UiControl.AddCheckBox("Tiled Light Culling", Scene.EnableTiledLightCulling, v => Scene.EnableTiledLightCulling = v);
+                //
+                //    AddSceneExposureSlider();
+                //}
             }
 
             if (worldNode != null && worldLayersComboBox != null)
             {
-                var worldLayers = Scene.AllNodes
-                    .Select(static r => r.LayerName)
-                    .OfType<string>()
-                    .Distinct()
-                    .ToList();
-                SetAvailableLayers(worldLayers);
-
-                for (var i = 0; i < worldLayersComboBox.Items.Count; i++)
-                {
-                    worldLayersComboBox.SetItemChecked(i, true);
-                }
+                //VKTODO:
+                //var worldLayers = Scene.AllNodes
+                //    .Select(static r => r.LayerName)
+                //    .OfType<string>()
+                //    .Distinct()
+                //    .ToList();
+                //SetAvailableLayers(worldLayers);
+                //
+                //for (var i = 0; i < worldLayersComboBox.Items.Count; i++)
+                //{
+                //    worldLayersComboBox.SetItemChecked(i, true);
+                //}
             }
 
             savedCameraPositionsControl.RefreshSavedPositions();
@@ -488,7 +497,8 @@ namespace GUI.Types.GLViewers
 
             void dofCheckBoxAction(bool v)
             {
-                Renderer.Postprocess.DOF.Enabled = v;
+                //VKTODO:
+                //Renderer.Postprocess.DOF.Enabled = v;
 
                 controlsContainer.Enabled = v;
                 controlsContainer.Visible = v;
@@ -496,58 +506,58 @@ namespace GUI.Types.GLViewers
                 var height = v ? 230 : 60;
                 groupBoxPanel.Height = UiControl.AdjustForDPI(height);
             }
+            //VKTODO:
+            //dofCheckBoxAction(Renderer.Postprocess.DOF.Enabled);
 
-            dofCheckBoxAction(Renderer.Postprocess.DOF.Enabled);
+            //var checkBox = RendererControl.CreateCheckBox("Enabled", Renderer.Postprocess.DOF.Enabled, dofCheckBoxAction);
+            //checkBox.Dock = DockStyle.Top;
 
-            var checkBox = RendererControl.CreateCheckBox("Enabled", Renderer.Postprocess.DOF.Enabled, dofCheckBoxAction);
-            checkBox.Dock = DockStyle.Top;
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Far blurry", val =>
-            {
-                Renderer.Postprocess.DOF.FarBlurry = val;
-            }, Renderer.Postprocess.DOF.FarBlurry, 0, 10000));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Far crisp", val =>
-            {
-                Renderer.Postprocess.DOF.FarCrisp = val;
-            }, Renderer.Postprocess.DOF.FarCrisp, 0, 10000));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Near blurry", val =>
-            {
-                Renderer.Postprocess.DOF.NearBlurry = -val;
-            }, Renderer.Postprocess.DOF.NearBlurry, 0, 100));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Near crisp", val =>
-            {
-                Renderer.Postprocess.DOF.NearCrisp = val;
-            }, Renderer.Postprocess.DOF.NearCrisp, 0, 1000));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Max Blur Size", val =>
-            {
-                Renderer.Postprocess.DOF.MaxBlurSize = val;
-            }, Renderer.Postprocess.DOF.MaxBlurSize, 0, 100));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Radius Scale", val =>
-            {
-                Renderer.Postprocess.DOF.RadScale = val;
-            }, Renderer.Postprocess.DOF.RadScale, 0, 1));
-
-            controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Focal Distance", val =>
-            {
-                Renderer.Postprocess.DOF.FocalDistance = val;
-            }, Renderer.Postprocess.DOF.FocalDistance, 0, 10000));
-
-            foreach (Control control in controlsContainer.Controls)
-            {
-                control.Dock = DockStyle.Top;
-                control.Margin = new Padding(4);
-            }
-
-            groupBox.Controls.Add(controlsContainer);
-            groupBox.Controls.Add(checkBox);
-            groupBoxPanel.Controls.Add(groupBox);
-
-            UiControl.AddControl(groupBoxPanel);
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Far blurry", val =>
+            //{
+            //    Renderer.Postprocess.DOF.FarBlurry = val;
+            //}, Renderer.Postprocess.DOF.FarBlurry, 0, 10000));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Far crisp", val =>
+            //{
+            //    Renderer.Postprocess.DOF.FarCrisp = val;
+            //}, Renderer.Postprocess.DOF.FarCrisp, 0, 10000));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Near blurry", val =>
+            //{
+            //    Renderer.Postprocess.DOF.NearBlurry = -val;
+            //}, Renderer.Postprocess.DOF.NearBlurry, 0, 100));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Near crisp", val =>
+            //{
+            //    Renderer.Postprocess.DOF.NearCrisp = val;
+            //}, Renderer.Postprocess.DOF.NearCrisp, 0, 1000));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Max Blur Size", val =>
+            //{
+            //    Renderer.Postprocess.DOF.MaxBlurSize = val;
+            //}, Renderer.Postprocess.DOF.MaxBlurSize, 0, 100));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Radius Scale", val =>
+            //{
+            //    Renderer.Postprocess.DOF.RadScale = val;
+            //}, Renderer.Postprocess.DOF.RadScale, 0, 1));
+            //
+            //controlsContainer.Controls.Add(RendererControl.CreateFloatInput("Focal Distance", val =>
+            //{
+            //    Renderer.Postprocess.DOF.FocalDistance = val;
+            //}, Renderer.Postprocess.DOF.FocalDistance, 0, 10000));
+            //
+            //foreach (Control control in controlsContainer.Controls)
+            //{
+            //    control.Dock = DockStyle.Top;
+            //    control.Margin = new Padding(4);
+            //}
+            //
+            //groupBox.Controls.Add(controlsContainer);
+            //groupBox.Controls.Add(checkBox);
+            //groupBoxPanel.Controls.Add(groupBox);
+            //
+            //UiControl.AddControl(groupBoxPanel);
         }
 
         public void SelectAndFocusEntity(EntityLump.Entity entity)
@@ -556,24 +566,24 @@ namespace GUI.Types.GLViewers
             {
                 tabControl.SelectTab(tabPage);
             }
-
-            var node = Scene.Find(entity);
-
-            if (node == null && SkyboxScene != null)
-            {
-                node = SkyboxScene.Find(entity);
-            }
-
-            if (node == null)
-            {
-                // Tool entities (logic, sounds, finished particles) have no renderable
-                // scene node; fly to the entity origin instead.
-                var origin = entity.GetVector3Property("origin");
-                FocusCameraOnBounds(new AABB(origin - new Vector3(32f), origin + new Vector3(32f)));
-                return;
-            }
-
-            SelectAndFocusNode(node);
+            //VKTODO:
+            //var node = Scene.Find(entity);
+            //
+            //if (node == null && SkyboxScene != null)
+            //{
+            //    node = SkyboxScene.Find(entity);
+            //}
+            //VKTODO:
+            //if (node == null)
+            //{
+            //    // Tool entities (logic, sounds, finished particles) have no renderable
+            //    // scene node; fly to the entity origin instead.
+            //    var origin = entity.GetVector3Property("origin");
+            //    FocusCameraOnBounds(new AABB(origin - new Vector3(32f), origin + new Vector3(32f)));
+            //    return;
+            //}
+            //
+            //SelectAndFocusNode(node);
         }
 
         public void SelectAndFocusEntities(IReadOnlyList<EntityLump.Entity> entities)
@@ -588,75 +598,75 @@ namespace GUI.Types.GLViewers
             {
                 tabControl.SelectTab(tabPage);
             }
-
-            Debug.Assert(SelectedNodeRenderer != null);
+            //VKTODO:
+            //Debug.Assert(SelectedNodeRenderer != null);
 
             var hasBounds = false;
             var bounds = default(AABB);
             var selectedAny = false;
-
-            foreach (var entity in entities)
-            {
-                var node = Scene.Find(entity) ?? SkyboxScene?.Find(entity);
-
-                AABB entityBounds;
-
-                if (node != null)
-                {
-                    if (selectedAny)
-                    {
-                        SelectedNodeRenderer.ToggleNode(node);
-                    }
-                    else
-                    {
-                        SelectedNodeRenderer.SelectNode(node, forceDisableDepth: true);
-                        selectedAny = true;
-                    }
-
-                    EnsureNodeVisible(node);
-                    entityBounds = SelectionBounds(node);
-                }
-                else
-                {
-                    var origin = entity.GetVector3Property("origin");
-                    entityBounds = new AABB(origin - new Vector3(32f), origin + new Vector3(32f));
-                }
-
-                bounds = hasBounds ? bounds.Union(entityBounds) : entityBounds;
-                hasBounds = true;
-            }
+            //VKTODO:
+            //foreach (var entity in entities)
+            //{
+            //    var node = Scene.Find(entity) ?? SkyboxScene?.Find(entity);
+            //
+            //    AABB entityBounds;
+            //
+            //    if (node != null)
+            //    {
+            //        if (selectedAny)
+            //        {
+            //            SelectedNodeRenderer.ToggleNode(node);
+            //        }
+            //        else
+            //        {
+            //            SelectedNodeRenderer.SelectNode(node, forceDisableDepth: true);
+            //            selectedAny = true;
+            //        }
+            //
+            //        EnsureNodeVisible(node);
+            //        entityBounds = SelectionBounds(node);
+            //    }
+            //    else
+            //    {
+            //        var origin = entity.GetVector3Property("origin");
+            //        entityBounds = new AABB(origin - new Vector3(32f), origin + new Vector3(32f));
+            //    }
+            //
+            //    bounds = hasBounds ? bounds.Union(entityBounds) : entityBounds;
+            //    hasBounds = true;
+            //}
 
             if (hasBounds)
             {
                 FocusCameraOnBounds(bounds);
             }
         }
-
-        private void SelectAndFocusNode(SceneNode node)
-        {
-            ArgumentNullException.ThrowIfNull(node);
-
-            Debug.Assert(SelectedNodeRenderer != null);
-
-            SelectedNodeRenderer.SelectNode(node, forceDisableDepth: true);
-            FocusCameraOnBounds(SelectionBounds(node));
-            EnsureNodeVisible(node);
-        }
-
-        private static AABB SelectionBounds(SceneNode node)
-        {
-            var bbox = node.BoundingBox;
-            var maxSpan = Math.Max(Math.Max(bbox.Size.X, bbox.Size.Y), bbox.Size.Z);
-
-            // Empty or degenerate bounds (e.g. a particle system that finished playing)
-            // would put the camera inside the node or at a garbage position.
-            if (!float.IsFinite(maxSpan) || maxSpan < 1f)
-            {
-                bbox = new AABB(node.Transform.Translation - new Vector3(32f), node.Transform.Translation + new Vector3(32f));
-            }
-
-            return bbox;
-        }
+        //VKTODO:
+        //private void SelectAndFocusNode(SceneNode node)
+        //{
+        //    ArgumentNullException.ThrowIfNull(node);
+        //
+        //    Debug.Assert(SelectedNodeRenderer != null);
+        //
+        //    SelectedNodeRenderer.SelectNode(node, forceDisableDepth: true);
+        //    FocusCameraOnBounds(SelectionBounds(node));
+        //    EnsureNodeVisible(node);
+        //}
+        //VKTODO:
+        //private static AABB SelectionBounds(SceneNode node)
+        //{
+        //    var bbox = node.BoundingBox;
+        //    var maxSpan = Math.Max(Math.Max(bbox.Size.X, bbox.Size.Y), bbox.Size.Z);
+        //
+        //    // Empty or degenerate bounds (e.g. a particle system that finished playing)
+        //    // would put the camera inside the node or at a garbage position.
+        //    if (!float.IsFinite(maxSpan) || maxSpan < 1f)
+        //    {
+        //        bbox = new AABB(node.Transform.Translation - new Vector3(32f), node.Transform.Translation + new Vector3(32f));
+        //    }
+        //
+        //    return bbox;
+        //}
 
         private void FocusCameraOnBounds(in AABB bbox)
         {
@@ -671,149 +681,150 @@ namespace GUI.Types.GLViewers
 
             // Orbit far enough out to frame the bounds, then let the physics probe move the camera
             // off any wall or ceiling it would otherwise be spawned inside of.
-            var distance = Math.Max(maxDimension * 2.5f, 64f);
-            var location = CameraPlacement.FindOrbitPosition(Scene.PhysicsWorld, center, distance, maxDimension * 0.5f);
-
-            Input.SaveCameraForTransition();
-            Input.Camera.SetLocation(location);
-            Input.Camera.LookAt(center);
+            //VKTODO:
+            //var distance = Math.Max(maxDimension * 2.5f, 64f);
+            //var location = CameraPlacement.FindOrbitPosition(Scene.PhysicsWorld, center, distance, maxDimension * 0.5f);
+            //
+            //Input.SaveCameraForTransition();
+            //Input.Camera.SetLocation(location);
+            //Input.Camera.LookAt(center);
         }
-
-        private void EnsureNodeVisible(SceneNode node)
-        {
-            if (!node.LayerEnabled && worldLayersComboBox != null && node.LayerName != null)
-            {
-                var layerId = worldLayersComboBox.Items.IndexOf(node.LayerName);
-
-                if (layerId >= 0)
-                {
-                    worldLayersComboBox.SetItemChecked(layerId, true);
-                }
-            }
-
-            if (node is PhysSceneNode physNode && !physNode.Enabled && physicsGroupsComboBox != null && physNode.PhysGroupName != null)
-            {
-                var physId = physicsGroupsComboBox.Items.IndexOf(physNode.PhysGroupName);
-
-                if (physId >= 0)
-                {
-                    physicsGroupsComboBox.SetItemChecked(physId, true);
-                }
-            }
-        }
-
-        private void ShowSceneNodeDetails(SceneNode sceneNode)
-        {
-            var isEntity = sceneNode.EntityData != null;
-            entityInfoEntity = sceneNode.EntityData;
-
-            if (entityInfoForm == null)
-            {
-                entityInfoForm = new EntityInfoForm(GuiContext);
-
-                if (ShowEntityInGraph != null)
-                {
-                    entityInfoForm.AddShowInGraphButton(OnShowInGraphButtonClick);
-                }
-
-                entityInfoForm.Show();
-                entityInfoForm.EntityInfoControl.OutputsGrid.CellDoubleClick += OnEntityInfoOutputsCellDoubleClick;
-                entityInfoForm.EntityInfoControl.InputsGrid.CellDoubleClick += OnEntityInfoInputsCellDoubleClick;
-                entityInfoForm.EntityInfoControl.Disposed += OnEntityInfoFormDisposed;
-            }
-
-            Debug.Assert(entityInfoForm != null);
-
-            if (entityInfoForm.ShowInGraphButton != null)
-            {
-                entityInfoForm.ShowInGraphButton.Visible = isEntity
-                    && entityInfoEntity != null
-                    && (EntityHasGraphNode?.Invoke(entityInfoEntity) ?? false);
-            }
-
-            entityInfoForm.EntityInfoControl.Clear();
-
-            if (isEntity)
-            {
-                ShowEntityProperties(sceneNode);
-            }
-            else
-            {
-                entityInfoForm.Text = $"{sceneNode.GetType().Name}: {sceneNode.Name}";
-
-                static string FormatVector(Vector3 vector)
-                {
-                    return $"{vector.X:F2} {vector.Y:F2} {vector.Z:F2}";
-                }
-
-                static string ToRenderColor(Vector4 tint)
-                {
-                    tint *= 255.0f;
-                    return $"{tint.X:F0} {tint.Y:F0} {tint.Z:F0}";
-                }
-
-                if (sceneNode is SceneAggregate.Fragment sceneFragment)
-                {
-                    var material = sceneFragment.DrawCall.Material.Material;
-                    entityInfoForm.EntityInfoControl.AddProperty("Shader", material.ShaderName);
-                    entityInfoForm.EntityInfoControl.AddProperty("Material", material.Name);
-                    entityInfoForm.EntityInfoControl.AddProperty("Aggregate Model", sceneFragment.Name!);
-
-                    var tris = sceneFragment.DrawCall.IndexCount / 3;
-                    if (sceneFragment.DrawCall.NumMeshlets > 0)
-                    {
-                        var clusters = sceneFragment.DrawCall.NumMeshlets;
-                        var trisPerCluster = tris / clusters;
-                        entityInfoForm.EntityInfoControl.AddProperty("Triangles / Clusters / Per Cluster", $"{tris} / {clusters} / {trisPerCluster}");
-                    }
-                    else
-                    {
-                        entityInfoForm.EntityInfoControl.AddProperty("Triangles", $"{tris}");
-                    }
-
-                    entityInfoForm.EntityInfoControl.AddProperty("Model Tint", ToRenderColor(sceneFragment.DrawCall.TintColor));
-                    entityInfoForm.EntityInfoControl.AddProperty("Model Alpha", $"{sceneFragment.DrawCall.TintColor.W:F6}");
-
-                    if (sceneFragment.Tint != Vector4.One)
-                    {
-                        entityInfoForm.EntityInfoControl.AddProperty("Instance Tint", ToRenderColor(sceneFragment.Tint));
-                        entityInfoForm.EntityInfoControl.AddProperty("Final Tint", ToRenderColor(sceneFragment.DrawCall.TintColor * sceneFragment.Tint));
-                    }
-                }
-                else if (sceneNode is ModelSceneNode modelSceneNode)
-                {
-                    entityInfoForm.EntityInfoControl.AddProperty("Model", modelSceneNode.Name!);
-                    entityInfoForm.EntityInfoControl.AddProperty("Model Tint", ToRenderColor(modelSceneNode.Tint));
-                    entityInfoForm.EntityInfoControl.AddProperty("Model Alpha", $"{modelSceneNode.Tint.W:F6}");
-
-                    if (modelSceneNode.LightingOrigin.HasValue)
-                    {
-                        entityInfoForm.EntityInfoControl.AddProperty("Custom Lighting Origin", FormatVector(modelSceneNode.LightingOrigin.Value));
-                    }
-                }
-
-                if (sceneNode.CubeMapPrecomputedHandshake > 0)
-                {
-                    entityInfoForm.EntityInfoControl.AddProperty("Cubemap Handshake", $"{sceneNode.CubeMapPrecomputedHandshake}");
-                }
-
-                if (sceneNode.LightProbeVolumePrecomputedHandshake > 0)
-                {
-                    entityInfoForm.EntityInfoControl.AddProperty("Light Probe Handshake", $"{sceneNode.LightProbeVolumePrecomputedHandshake}");
-                }
-
-                entityInfoForm.EntityInfoControl.AddProperty("Flags", sceneNode.Flags.ToString());
-                entityInfoForm.EntityInfoControl.AddProperty("Layer", sceneNode.LayerName ?? string.Empty);
-            }
-
-            if (SkyboxScene != null && sceneNode.Scene == SkyboxScene)
-            {
-                entityInfoForm.Text += " (in 3D skybox)";
-            }
-
-            entityInfoForm.EntityInfoControl.ShowPopulatedTabs();
-            entityInfoForm.EntityInfoControl.Show();
-        }
+        //VKTODO:
+        //private void EnsureNodeVisible(SceneNode node)
+        //{
+        //    if (!node.LayerEnabled && worldLayersComboBox != null && node.LayerName != null)
+        //    {
+        //        var layerId = worldLayersComboBox.Items.IndexOf(node.LayerName);
+        //
+        //        if (layerId >= 0)
+        //        {
+        //            worldLayersComboBox.SetItemChecked(layerId, true);
+        //        }
+        //    }
+        //
+        //    if (node is PhysSceneNode physNode && !physNode.Enabled && physicsGroupsComboBox != null && physNode.PhysGroupName != null)
+        //    {
+        //        var physId = physicsGroupsComboBox.Items.IndexOf(physNode.PhysGroupName);
+        //
+        //        if (physId >= 0)
+        //        {
+        //            physicsGroupsComboBox.SetItemChecked(physId, true);
+        //        }
+        //    }
+        //}
+        //
+        //private void ShowSceneNodeDetails(SceneNode sceneNode)
+        //{
+        //    var isEntity = sceneNode.EntityData != null;
+        //    entityInfoEntity = sceneNode.EntityData;
+        //
+        //    if (entityInfoForm == null)
+        //    {
+        //        entityInfoForm = new EntityInfoForm(GuiContext);
+        //
+        //        if (ShowEntityInGraph != null)
+        //        {
+        //            entityInfoForm.AddShowInGraphButton(OnShowInGraphButtonClick);
+        //        }
+        //
+        //        entityInfoForm.Show();
+        //        entityInfoForm.EntityInfoControl.OutputsGrid.CellDoubleClick += OnEntityInfoOutputsCellDoubleClick;
+        //        entityInfoForm.EntityInfoControl.InputsGrid.CellDoubleClick += OnEntityInfoInputsCellDoubleClick;
+        //        entityInfoForm.EntityInfoControl.Disposed += OnEntityInfoFormDisposed;
+        //    }
+        //
+        //    Debug.Assert(entityInfoForm != null);
+        //
+        //    if (entityInfoForm.ShowInGraphButton != null)
+        //    {
+        //        entityInfoForm.ShowInGraphButton.Visible = isEntity
+        //            && entityInfoEntity != null
+        //            && (EntityHasGraphNode?.Invoke(entityInfoEntity) ?? false);
+        //    }
+        //
+        //    entityInfoForm.EntityInfoControl.Clear();
+        //
+        //    if (isEntity)
+        //    {
+        //        ShowEntityProperties(sceneNode);
+        //    }
+        //    else
+        //    {
+        //        entityInfoForm.Text = $"{sceneNode.GetType().Name}: {sceneNode.Name}";
+        //
+        //        static string FormatVector(Vector3 vector)
+        //        {
+        //            return $"{vector.X:F2} {vector.Y:F2} {vector.Z:F2}";
+        //        }
+        //
+        //        static string ToRenderColor(Vector4 tint)
+        //        {
+        //            tint *= 255.0f;
+        //            return $"{tint.X:F0} {tint.Y:F0} {tint.Z:F0}";
+        //        }
+        //
+        //        if (sceneNode is SceneAggregate.Fragment sceneFragment)
+        //        {
+        //            var material = sceneFragment.DrawCall.Material.Material;
+        //            entityInfoForm.EntityInfoControl.AddProperty("Shader", material.ShaderName);
+        //            entityInfoForm.EntityInfoControl.AddProperty("Material", material.Name);
+        //            entityInfoForm.EntityInfoControl.AddProperty("Aggregate Model", sceneFragment.Name!);
+        //
+        //            var tris = sceneFragment.DrawCall.IndexCount / 3;
+        //            if (sceneFragment.DrawCall.NumMeshlets > 0)
+        //            {
+        //                var clusters = sceneFragment.DrawCall.NumMeshlets;
+        //                var trisPerCluster = tris / clusters;
+        //                entityInfoForm.EntityInfoControl.AddProperty("Triangles / Clusters / Per Cluster", $"{tris} / {clusters} / {trisPerCluster}");
+        //            }
+        //            else
+        //            {
+        //                entityInfoForm.EntityInfoControl.AddProperty("Triangles", $"{tris}");
+        //            }
+        //
+        //            entityInfoForm.EntityInfoControl.AddProperty("Model Tint", ToRenderColor(sceneFragment.DrawCall.TintColor));
+        //            entityInfoForm.EntityInfoControl.AddProperty("Model Alpha", $"{sceneFragment.DrawCall.TintColor.W:F6}");
+        //
+        //            if (sceneFragment.Tint != Vector4.One)
+        //            {
+        //                entityInfoForm.EntityInfoControl.AddProperty("Instance Tint", ToRenderColor(sceneFragment.Tint));
+        //                entityInfoForm.EntityInfoControl.AddProperty("Final Tint", ToRenderColor(sceneFragment.DrawCall.TintColor * sceneFragment.Tint));
+        //            }
+        //        }
+        //        else if (sceneNode is ModelSceneNode modelSceneNode)
+        //        {
+        //            entityInfoForm.EntityInfoControl.AddProperty("Model", modelSceneNode.Name!);
+        //            entityInfoForm.EntityInfoControl.AddProperty("Model Tint", ToRenderColor(modelSceneNode.Tint));
+        //            entityInfoForm.EntityInfoControl.AddProperty("Model Alpha", $"{modelSceneNode.Tint.W:F6}");
+        //
+        //            if (modelSceneNode.LightingOrigin.HasValue)
+        //            {
+        //                entityInfoForm.EntityInfoControl.AddProperty("Custom Lighting Origin", FormatVector(modelSceneNode.LightingOrigin.Value));
+        //            }
+        //        }
+        //
+        //        if (sceneNode.CubeMapPrecomputedHandshake > 0)
+        //        {
+        //            entityInfoForm.EntityInfoControl.AddProperty("Cubemap Handshake", $"{sceneNode.CubeMapPrecomputedHandshake}");
+        //        }
+        //
+        //        if (sceneNode.LightProbeVolumePrecomputedHandshake > 0)
+        //        {
+        //            entityInfoForm.EntityInfoControl.AddProperty("Light Probe Handshake", $"{sceneNode.LightProbeVolumePrecomputedHandshake}");
+        //        }
+        //
+        //        entityInfoForm.EntityInfoControl.AddProperty("Flags", sceneNode.Flags.ToString());
+        //        entityInfoForm.EntityInfoControl.AddProperty("Layer", sceneNode.LayerName ?? string.Empty);
+        //    }
+        //
+        //    if (SkyboxScene != null && sceneNode.Scene == SkyboxScene)
+        //    {
+        //        entityInfoForm.Text += " (in 3D skybox)";
+        //    }
+        //
+        //    entityInfoForm.EntityInfoControl.ShowPopulatedTabs();
+        //    entityInfoForm.EntityInfoControl.Show();
+        //}
 
         private void OnEntityInfoOutputsCellDoubleClick(object? sender, DataGridViewCellEventArgs e)
         {
@@ -833,21 +844,21 @@ namespace GUI.Types.GLViewers
             {
                 return;
             }
+            //VKTODO:
+            //var node = Scene.FindNodeByTargetName(entityName);
 
-            var node = Scene.FindNodeByTargetName(entityName);
+            //if (node == null && SkyboxScene != null)
+            //{
+            //    node = SkyboxScene.FindNodeByTargetName(entityName);
+            //}
 
-            if (node == null && SkyboxScene != null)
-            {
-                node = SkyboxScene.FindNodeByTargetName(entityName);
-            }
+            //if (node == null)
+            //{
+            //    return;
+            //}
 
-            if (node == null)
-            {
-                return;
-            }
-
-            SelectAndFocusNode(node);
-            ShowSceneNodeDetails(node);
+            //SelectAndFocusNode(node);
+            //ShowSceneNodeDetails(node);
         }
 
         private void OnEntityInfoInputsCellDoubleClick(object? sender, DataGridViewCellEventArgs e)
@@ -866,21 +877,21 @@ namespace GUI.Types.GLViewers
             {
                 return;
             }
+            //VKTODO:
+            //var node = Scene.Find(sourceEntity);
 
-            var node = Scene.Find(sourceEntity);
+            //if (node == null && SkyboxScene != null)
+            //{
+            //    node = SkyboxScene.Find(sourceEntity);
+            //}
 
-            if (node == null && SkyboxScene != null)
-            {
-                node = SkyboxScene.Find(sourceEntity);
-            }
+            //if (node == null)
+            //{
+            //    return;
+            //}
 
-            if (node == null)
-            {
-                return;
-            }
-
-            SelectAndFocusNode(node);
-            ShowSceneNodeDetails(node);
+            //SelectAndFocusNode(node);
+            //ShowSceneNodeDetails(node);
         }
 
         private void OnShowInGraphButtonClick(object? sender, EventArgs e)
@@ -903,174 +914,176 @@ namespace GUI.Types.GLViewers
             entityInfoForm.EntityInfoControl.Disposed -= OnEntityInfoFormDisposed;
             entityInfoForm = null;
         }
+        //VKTODO:
+        //protected override void OnPicked(object? sender, PickingResponse pickingResponse)
+        //{
 
-        protected override void OnPicked(object? sender, PickingResponse pickingResponse)
-        {
-            Debug.Assert(SelectedNodeRenderer != null);
+        //Debug.Assert(SelectedNodeRenderer != null);
 
-            var pixelInfo = pickingResponse.PixelInfo;
+        //var pixelInfo = pickingResponse.PixelInfo;
 
-            // Void
-            if (pixelInfo.ObjectId == 0 || pixelInfo.Unused2 != 0)
-            {
-                SelectedNodeRenderer.SelectNode(null);
-                return;
-            }
+        //// Void
+        //if (pixelInfo.ObjectId == 0 || pixelInfo.Unused2 != 0)
+        //{
+        //    SelectedNodeRenderer.SelectNode(null);
+        //    return;
+        //}
 
-            var isInSkybox = pixelInfo.IsSkybox > 0;
-            var sceneNode = isInSkybox ? SkyboxScene?.Find(pixelInfo.ObjectId) : Scene.Find(pixelInfo.ObjectId);
+        //var isInSkybox = pixelInfo.IsSkybox > 0;
+        //var sceneNode = isInSkybox ? SkyboxScene?.Find(pixelInfo.ObjectId) : Scene.Find(pixelInfo.ObjectId);
 
-            if (sceneNode == null)
-            {
-                return;
-            }
+        //if (sceneNode == null)
+        //{
+        //    return;
+        //}
 
-            if (pickingResponse.Intent == PickingIntent.Select)
-            {
-                if ((Control.ModifierKeys & Keys.Control) > 0)
-                {
-                    SelectedNodeRenderer.ToggleNode(sceneNode);
-                }
-                else
-                {
-                    SelectedNodeRenderer.SelectNode(sceneNode);
-                }
+        //if (pickingResponse.Intent == PickingIntent.Select)
+        //{
+        //    if ((Control.ModifierKeys & Keys.Control) > 0)
+        //    {
+        //        SelectedNodeRenderer.ToggleNode(sceneNode);
+        //    }
+        //    else
+        //    {
+        //        SelectedNodeRenderer.SelectNode(sceneNode);
+        //    }
 
-                //Update the entity properties window if it was opened
-                if (entityInfoForm != null)
-                {
-                    Program.MainForm.Invoke(() =>
-                    {
-                        ShowSceneNodeDetails(sceneNode);
-                    });
-                }
-                return;
-            }
+        //    //Update the entity properties window if it was opened
+        //    if (entityInfoForm != null)
+        //    {
+        //        Program.MainForm.Invoke(() =>
+        //        {
+        //            ShowSceneNodeDetails(sceneNode);
+        //        });
+        //    }
+        //    return;
+        //}
 
-            if (pickingResponse.Intent == PickingIntent.Details)
-            {
-                Program.MainForm.Invoke(() =>
-                {
-                    ShowSceneNodeDetails(sceneNode);
-                    entityInfoForm?.EntityInfoControl.Focus();
-                });
-                return;
-            }
+        //if (pickingResponse.Intent == PickingIntent.Details)
+        //{
+        //    Program.MainForm.Invoke(() =>
+        //    {
+        //        ShowSceneNodeDetails(sceneNode);
+        //        entityInfoForm?.EntityInfoControl.Focus();
+        //    });
+        //    return;
+        //}
 
-            Log.Info(nameof(GLWorldViewer), $"Opening {sceneNode.Name} (Id: {pixelInfo.ObjectId})");
+        //Log.Info(nameof(GLWorldViewer), $"Opening {sceneNode.Name} (Id: {pixelInfo.ObjectId})");
 
-            var filename = sceneNode.Name;
+        //var filename = sceneNode.Name;
 
-            if (sceneNode.EntityData != null)
-            {
-                // Perhaps this needs to check for correct classname?
-                var particle = sceneNode.EntityData.GetStringProperty("effect_name");
+        //if (sceneNode.EntityData != null)
+        //{
+        //    // Perhaps this needs to check for correct classname?
+        //    var particle = sceneNode.EntityData.GetStringProperty("effect_name");
 
-                if (particle != null)
-                {
-                    filename = particle;
-                }
-            }
+        //    if (particle != null)
+        //    {
+        //        filename = particle;
+        //    }
+        //}
 
-            var foundFile = GuiContext.FindFileWithContext(filename + GameFileLoader.CompiledFileSuffix);
+        //var foundFile = GuiContext.FindFileWithContext(filename + GameFileLoader.CompiledFileSuffix);
 
-            if (foundFile.Context == null)
-            {
-                return;
-            }
+        //if (foundFile.Context == null)
+        //{
+        //    return;
+        //}
 
-            if (!Matrix4x4.Invert(sceneNode.Transform * Renderer.Camera.CameraViewMatrix, out var transform))
-            {
-                throw new InvalidOperationException("Matrix invert failed");
-            }
+        //if (!Matrix4x4.Invert(sceneNode.Transform * Renderer.Camera.CameraViewMatrix, out var transform))
+        //{
+        //    throw new InvalidOperationException("Matrix invert failed");
+        //}
 
-            FullScreenForm?.Close();
+        //FullScreenForm?.Close();
 
-            foundFile.Context.GLPostLoadAction = (viewerControl) =>
-            {
-                // The inverse of a view matrix, so its third row is the camera's backward direction
-                var forward = -new Vector3(transform.M31, transform.M32, transform.M33);
+        //foundFile.Context.GLPostLoadAction = (viewerControl) =>
+        //{
+        //    // The inverse of a view matrix, so its third row is the camera's backward direction
+        //    var forward = -new Vector3(transform.M31, transform.M32, transform.M33);
 
-                if (viewerControl is GLSceneViewer sceneViewer)
-                {
-                    sceneViewer.Input.Camera.CopyFrom(Renderer.Camera);
-                    sceneViewer.Input.Camera.SetLocation(transform.Translation);
-                    sceneViewer.Input.Camera.SetFromQAngle(EntityTransformHelper.ForwardDirectionToEulerAngles(forward));
-                }
+        //    if (viewerControl is GLSceneViewer sceneViewer)
+        //    {
+        //        sceneViewer.Input.Camera.CopyFrom(Renderer.Camera);
+        //        sceneViewer.Input.Camera.SetLocation(transform.Translation);
+        //        sceneViewer.Input.Camera.SetFromQAngle(EntityTransformHelper.ForwardDirectionToEulerAngles(forward));
+        //    }
 
-                if (viewerControl is not GLModelViewer glModelViewer || sceneNode is not ModelSceneNode worldModel)
-                {
-                    return;
-                }
+        //    if (viewerControl is not GLModelViewer glModelViewer || sceneNode is not ModelSceneNode worldModel)
+        //    {
+        //        return;
+        //    }
 
-                // Set same mesh groups
-                if (glModelViewer.meshGroupListBox != null)
-                {
-                    foreach (int checkedItemIndex in glModelViewer.meshGroupListBox.CheckedIndices)
-                    {
-                        glModelViewer.meshGroupListBox.SetItemChecked(checkedItemIndex, false);
-                    }
+        //    // Set same mesh groups
+        //    if (glModelViewer.meshGroupListBox != null)
+        //    {
+        //        foreach (int checkedItemIndex in glModelViewer.meshGroupListBox.CheckedIndices)
+        //        {
+        //            glModelViewer.meshGroupListBox.SetItemChecked(checkedItemIndex, false);
+        //        }
 
-                    foreach (var group in worldModel.GetActiveMeshGroups())
-                    {
-                        var item = glModelViewer.meshGroupListBox.FindStringExact(group);
+        //        foreach (var group in worldModel.GetActiveMeshGroups())
+        //        {
+        //            var item = glModelViewer.meshGroupListBox.FindStringExact(group);
 
-                        if (item != ListBox.NoMatches)
-                        {
-                            glModelViewer.meshGroupListBox.SetItemChecked(item, true);
-                        }
-                    }
-                }
+        //            if (item != ListBox.NoMatches)
+        //            {
+        //                glModelViewer.meshGroupListBox.SetItemChecked(item, true);
+        //            }
+        //        }
+        //    }
 
-                // Set same material group
-                if (glModelViewer.materialGroupListBox != null && worldModel.ActiveMaterialGroup != null)
-                {
-                    var skinId = glModelViewer.materialGroupListBox.FindStringExact(worldModel.ActiveMaterialGroup);
+        //    // Set same material group
+        //    if (glModelViewer.materialGroupListBox != null && worldModel.ActiveMaterialGroup != null)
+        //    {
+        //        var skinId = glModelViewer.materialGroupListBox.FindStringExact(worldModel.ActiveMaterialGroup);
 
-                    if (skinId != -1)
-                    {
-                        glModelViewer.materialGroupListBox.SelectedIndex = skinId;
-                    }
-                }
+        //        if (skinId != -1)
+        //        {
+        //            glModelViewer.materialGroupListBox.SelectedIndex = skinId;
+        //        }
+        //    }
 
-                // Set animation
-                if (glModelViewer.animationComboBox != null && worldModel.AnimationController.ActiveAnimation != null)
-                {
-                    var animationId = glModelViewer.animationComboBox.FindStringExact(worldModel.AnimationController.ActiveAnimation.Name);
+        //    // Set animation
+        //    if (glModelViewer.animationComboBox != null && worldModel.AnimationController.ActiveAnimation != null)
+        //    {
+        //        var animationId = glModelViewer.animationComboBox.FindStringExact(worldModel.AnimationController.ActiveAnimation.Name);
 
-                    if (animationId != -1)
-                    {
-                        glModelViewer.animationComboBox.SelectedIndex = animationId;
-                    }
-                }
-            };
+        //        if (animationId != -1)
+        //        {
+        //            glModelViewer.animationComboBox.SelectedIndex = animationId;
+        //        }
+        //    }
+        //};
 
-            Program.MainForm.Invoke(() =>
-            {
-                Program.MainForm.OpenFile(foundFile.Context, foundFile.PackageEntry);
-            });
-        }
+        //Program.MainForm.Invoke(() =>
+        //{
+        //    Program.MainForm.OpenFile(foundFile.Context, foundFile.PackageEntry);
+        //});
+        //}
 
-        private void ShowEntityProperties(SceneNode sceneNode)
-        {
-            Debug.Assert(entityInfoForm != null);
-            Debug.Assert(sceneNode.EntityData != null);
+        //VKTODO:
+        //private void ShowEntityProperties(SceneNode sceneNode)
+        //{
+        //    Debug.Assert(entityInfoForm != null);
+        //    Debug.Assert(sceneNode.EntityData != null);
 
-            if (LoadedWorld is null)
-            {
-                entityInfoForm.EntityInfoControl.PopulateFromEntity(sceneNode.EntityData);
-            }
-            else
-            {
-                entityInfoForm.EntityInfoControl.PopulateFromEntity(LoadedWorld.Entities, sceneNode.EntityData);
-            }
+        //    if (LoadedWorld is null)
+        //    {
+        //        entityInfoForm.EntityInfoControl.PopulateFromEntity(sceneNode.EntityData);
+        //    }
+        //    else
+        //    {
+        //        entityInfoForm.EntityInfoControl.PopulateFromEntity(LoadedWorld.Entities, sceneNode.EntityData);
+        //    }
 
-            var classname = sceneNode.EntityData.GetStringProperty("classname");
-            var targetName = sceneNode.EntityData.FriendlyTargetName;
-            entityInfoForm.Text = string.IsNullOrEmpty(targetName)
-                ? $"Entity: {classname}"
-                : $"Entity: {classname} ({targetName})";
-        }
+        //    var classname = sceneNode.EntityData.GetStringProperty("classname");
+        //    var targetName = sceneNode.EntityData.FriendlyTargetName;
+        //    entityInfoForm.Text = string.IsNullOrEmpty(targetName)
+        //        ? $"Entity: {classname}"
+        //        : $"Entity: {classname} ({targetName})";
+        //}
 
         private void SetAvailableLayers(IEnumerable<string> worldLayers)
         {
@@ -1123,17 +1136,17 @@ namespace GUI.Types.GLViewers
             {
                 physicsGroups.Remove(PhysicsRenderAsOpaque);
             }
+            //VKTODO:
+            //foreach (var physNode in Scene.AllNodes.OfType<PhysSceneNode>())
+            //{
+            //    physNode.Enabled = physicsGroups.Contains(physNode.PhysGroupName);
+            //    physNode.IsTranslucentRenderMode = renderTranslucent;
+            //}
 
-            foreach (var physNode in Scene.AllNodes.OfType<PhysSceneNode>())
-            {
-                physNode.Enabled = physicsGroups.Contains(physNode.PhysGroupName);
-                physNode.IsTranslucentRenderMode = renderTranslucent;
-            }
+            //using var lockedGl = MakeCurrent();
 
-            using var lockedGl = MakeCurrent();
-
-            Scene.UpdateOctrees();
-            SkyboxScene?.UpdateOctrees();
+            //Scene.UpdateOctrees();
+            //SkyboxScene?.UpdateOctrees();
         }
     }
 }

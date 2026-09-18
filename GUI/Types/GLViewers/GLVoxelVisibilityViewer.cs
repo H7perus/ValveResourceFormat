@@ -1,6 +1,6 @@
 using GUI.Utils;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2;
 using ValveResourceFormat.Renderer.SceneNodes;
 using static ValveResourceFormat.Renderer.PickingTexture;
 
@@ -18,15 +18,16 @@ namespace GUI.Types.GLViewers
 
         protected override void LoadScene()
         {
-            var sceneNode = new VisibilitySceneNode(Scene, voxelVisibility)
-            {
-                LayerName = "Visibility clusters",
-            };
-            Scene.Add(sceneNode, false);
+            //VKTODO:
+            //var sceneNode = new VisibilitySceneNode(Scene, voxelVisibility)
+            //{
+            //    LayerName = "Visibility clusters",
+            //};
+            //Scene.Add(sceneNode, false);
         }
 
-        protected override void OnPicked(object? sender, PickingResponse pixelInfo)
-        {
-        }
+        //protected override void OnPicked(object? sender, PickingResponse pixelInfo)
+        //{
+        //}
     }
 }

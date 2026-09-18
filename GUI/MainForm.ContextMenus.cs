@@ -84,7 +84,8 @@ namespace GUI
         {
             if (GLBaseControl.FindHostedIn(FetchToolstripTabContext(sender)) is GLSceneViewer viewer)
             {
-                viewer.Muted = !viewer.Muted;
+                //VKTODO:
+                //viewer.Muted = !viewer.Muted;
             }
         }
 
