@@ -1,19 +1,28 @@
 // File containing vertex inputs and functions to deal with compressed normals and tangents.
 import Core;
+import utils;
 
 [ConstantRange(0, 2)]
 extern static const int D_COMPRESSED_NORMALS_AND_TANGENTS = 0;
 
 public struct NormalData
 {
-    private Conditional<float3, D_COMPRESSED_NORMALS_AND_TANGENTS < 2> m_raw : NORMAL;
+    private Conditional < float4, D_COMPRESSED_NORMALS_AND_TANGENTS < 2> optionallyCompressedNormal : NORMAL;
+    private Conditional < float4, D_COMPRESSED_NORMALS_AND_TANGENTS == 0> rawTangent : TANGENT;
     private Conditional<uint, D_COMPRESSED_NORMALS_AND_TANGENTS == 2> m_packed : NORMAL;
 
     public property float3 normal
     {
         get
         {
-            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0 || D_COMPRESSED_NORMALS_AND_TANGENTS == 1) return m_raw.get().value;
+            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0)
+            {
+                return optionallyCompressedNormal.get().value.xyz;
+            }
+            else if (D_COMPRESSED_NORMALS_AND_TANGENTS == 1)
+            {
+                return DecompressNormal(optionallyCompressedNormal.get().value * 255.f);
+            }
             else {
                 float3 normal;
                 float4 tangent;
@@ -26,7 +35,14 @@ public struct NormalData
     {
         get
         {
-            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0 || D_COMPRESSED_NORMALS_AND_TANGENTS == 1) return m_raw.get().value;
+            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0)
+            {
+                return rawTangent.get().value.xyz;
+            }
+            else if (D_COMPRESSED_NORMALS_AND_TANGENTS == 1)
+            {
+                return DecompressTangent(optionallyCompressedNormal.get().value * 255.f).xyz;
+            }
             else {
                 float3 normal;
                 float4 tangent;
@@ -39,7 +55,16 @@ public struct NormalData
     {
         get
         {
-            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0 || D_COMPRESSED_NORMALS_AND_TANGENTS == 1) return m_raw.get().value;
+            if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0)
+            {
+                return cross(optionallyCompressedNormal.get().value.xyz, tangent) * rawTangent.get().value.w;
+            }
+            else if (D_COMPRESSED_NORMALS_AND_TANGENTS == 1)
+            {
+                var decompNormal = DecompressNormal(optionallyCompressedNormal.get().value * 255.f);
+                var decompTangent = DecompressTangent(optionallyCompressedNormal.get().value * 255.f);
+                return cross(decompNormal, decompTangent.xyz) * decompTangent.w;
+            }
             else {
                 float3 normal;
                 float4 tangent;
@@ -50,52 +75,50 @@ public struct NormalData
     }
 }
 
+// Decompress a byte4 normal in the 0..255 range to a float4 tangent
+float4 DecompressTangent( float4 inputNormal )
+{
+    float fOne = 1.0f;
+    float4 ztztSignBits = float4(inputNormal < float4(128.0f)); // sign bits for zs and bitangent (1 or 0)  set-less-than (slt) asm instruction
+    float4 xyxyAbs = abs(inputNormal - 128.0f) - ztztSignBits;        // 0..127
+    float4 xyxySignBits = float4(xyxyAbs < float4(64.0f));       // sign bits for xs and ys (1 or 0)
+    float4 normTan		= (abs( xyxyAbs - 64.0f ) - xyxySignBits) / 63.0f;	// abs({nX, nY, tX, tY})
 
-//Decompress a byte4 normal in the 0..255 range to a float4 tangent
-//vec4 DecompressTangent( uint8_t4 inputNormal )
-//{
-//    float fOne   = 1.0f;
-//    vec4 ztztSignBits	= vec4(lessThan(inputNormal, vec4(128.0f)));        // sign bits for zs and bitangent (1 or 0)  set-less-than (slt) asm instruction
-//    vec4 xyxyAbs		= abs( inputNormal - 128.0f ) - ztztSignBits;		// 0..127
-//    vec4 xyxySignBits	= vec4(lessThan(xyxyAbs, vec4(64.0f)));							// sign bits for xs and ys (1 or 0)
-//    vec4 normTan		= (abs( xyxyAbs - 64.0f ) - xyxySignBits) / 63.0f;	// abs({nX, nY, tX, tY})
+    float4 outputTangent;
+    outputTangent.xy	= normTan.zw;										// abs({tX, tY, __, __})
 
-//    vec4 outputTangent;
-//    outputTangent.xy	= normTan.zw;										// abs({tX, tY, __, __})
+    float4 xyxySigns = 1 - 2 * xyxySignBits; // Convert sign bits to signs
+    float4 ztztSigns	= 1 - 2*ztztSignBits;								// ( [1,0] -> [-1,+1] )
 
-//    vec4 xyxySigns	= 1 - 2*xyxySignBits;								// Convert sign bits to signs
-//    vec4 ztztSigns	= 1 - 2*ztztSignBits;								// ( [1,0] -> [-1,+1] )
+    outputTangent.z		= 1.0f - outputTangent.x - outputTangent.y;			// Project onto x+y+z=1
+    outputTangent.xyz	= normalize( outputTangent.xyz );					// Normalize onto unit sphere
+    outputTangent.xy   *= xyxySigns.zw;										// Restore x and y signs
+    outputTangent.z	   *= ztztSigns.z;										// Restore z sign
+    outputTangent.w		= ztztSigns.w;
 
-//    outputTangent.z		= 1.0f - outputTangent.x - outputTangent.y;			// Project onto x+y+z=1
-//    outputTangent.xyz	= normalize( outputTangent.xyz );					// Normalize onto unit sphere
-//    outputTangent.xy   *= xyxySigns.zw;										// Restore x and y signs
-//    outputTangent.z	   *= ztztSigns.z;										// Restore z sign
-//    outputTangent.w		= ztztSigns.w;
+    return outputTangent;
+}
 
-//    return outputTangent;
-//}
+// Decompress a byte4 normal in the 0..255 range to a float3 normal
+float3 DecompressNormal(float4 inputNormal )
+{
+    float fOne = 1.0f;
+    float3 outputNormal = float3(0);
 
-//Decompress a byte4 normal in the 0..255 range to a float3 normal
-//vec3 DecompressNormal( vec4 inputNormal )
-//{
-//    float fOne   = 1.0f;
-//    vec3 outputNormal = vec3(0);
+    float2 ztSigns = float2(inputNormal.xy < float2(128.0f)); // sign bits for zs and bitangent (1 or 0)  set-less-than (slt) asm instruction
+    float2 xyAbs = abs(inputNormal.xy - 128.0f) - ztSigns;          // 0..127
+    float2 xySigns      = float2(xyAbs < float2(64.0f));             // sign bits for xs and ys (1 or 0)
+    outputNormal.xy     = ( abs( xyAbs - 64.0f ) - xySigns ) / 63.0f;   // abs({nX, nY})
 
-//    vec2 ztSigns      = vec2(lessThan(inputNormal.xy, vec2(128.0f))); // sign bits for zs and bitangent (1 or 0)  set-less-than (slt) asm instruction
-//    vec2 xyAbs        = abs( inputNormal.xy - 128.0f ) - ztSigns;     // 0..127
-//    vec2 xySigns      = vec2(lessThan(xyAbs, vec2(64.0f)));             // sign bits for xs and ys (1 or 0)
-//    outputNormal.xy     = ( abs( xyAbs - 64.0f ) - xySigns ) / 63.0f;   // abs({nX, nY})
+    outputNormal.z      = 1.0f - outputNormal.x - outputNormal.y;       // Project onto x+y+z=1
+    outputNormal.xyz    = normalize( outputNormal.xyz );                // Normalize onto unit sphere
 
-//    outputNormal.z      = 1.0f - outputNormal.x - outputNormal.y;       // Project onto x+y+z=1
-//    outputNormal.xyz    = normalize( outputNormal.xyz );                // Normalize onto unit sphere
+    outputNormal.xy *= lerp(float2(fOne, fOne), float2(-fOne, -fOne), xySigns); // Restore x and y signs
+    outputNormal.z *= lerp( fOne, -fOne, ztSigns.x );                // Restore z sign
 
-//    outputNormal.xy    *= mix( vec2(fOne,fOne), vec2(-fOne, -fOne), xySigns   );                // Restore x and y signs
-//    outputNormal.z     *= mix( fOne, -fOne, ztSigns.x );                // Restore z sign
+    return normalize(outputNormal);
+}
 
-//    return normalize(outputNormal);
-//}
-
-#define TAU 6.2831853071795864769252867665590
 void DecompressNormalTangent2(
     uint nPackedFrame,
     out float3 normal,
@@ -163,7 +186,7 @@ void DecompressNormalTangent2(
     tangent.w = signBit == 0u ? -1.0 : 1.0;
 }
 
-//void GetOptionallyCompressedNormalTangent(out vec3 normal, out vec4 tangent)
+//void GetOptionallyCompressedNormalTangent(out float3 normal, out float4 tangent)
 //{
 //    #if (D_COMPRESSED_NORMALS_AND_TANGENTS == 0)
 //        normal = vNORMAL.xyz;

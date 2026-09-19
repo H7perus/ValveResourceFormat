@@ -31,7 +31,7 @@ void vertMain(VInput VInput,
     out_.clipPos = mul(params.projection, mul(params.view, float4(VInput.pos, 1.0f)));
     // Compute linear depth in [0,1] range for Vulkan
     out_.linearDepth = out_.clipPos.z / out_.clipPos.w;
-    out_.normal = VInput.normalData.tangent;
+    out_.normal = VInput.normalData.bitangent;
     out_.uv = VInput.uv;
 }
 

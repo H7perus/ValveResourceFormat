@@ -358,32 +358,30 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                 var param = vertexStageReflection.GetParameterByIndex(i);
 
                 if (param.Category == SlangParameterCategory.VaryingInput)
-                    ReflectVertexParameter(param, ref vertexInputs);
+                    ReflectVertexParameter(param, 0, ref vertexInputs);
             }
 
             return vertexInputs;
         }
 
-        private void ReflectVertexParameter(VariableLayoutReflection vertexInputReflection, ref List<VertexInput> vertexInputs)
+        private void ReflectVertexParameter(VariableLayoutReflection vertexInputReflection, uint locationOffset, ref List<VertexInput> vertexInputs)
         {
-            if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct && vertexInputReflection.SemanticName == null)
+            if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct)
             {
                 for (uint iElement = 0; iElement < vertexInputReflection.TypeLayout.FieldCount; iElement++)
                 {
                     var element = vertexInputReflection.TypeLayout.GetFieldByIndex(iElement);
 
+                    //This also catches conditionals that are disabled, conveniently.
                     if (element.Category == SlangParameterCategory.VaryingInput)
                     {
-                        ReflectVertexParameter(element, ref vertexInputs);
+                        ReflectVertexParameter(element, vertexInputReflection.BindingIndex + locationOffset, ref vertexInputs);
                     }
                 }
             }
-            else if (vertexInputReflection.TypeLayout.Kind == SlangTypeKind.Struct && vertexInputReflection.SemanticName == "NORMAL")
-            {
-                ReflectNormalData(vertexInputReflection, ref vertexInputs);
-            }
             else
             {
+
                 VkFormat vkFormat;
                 uint elementSize = 0;
                 switch (vertexInputReflection.TypeLayout.ScalarType)
@@ -409,18 +407,15 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                 //a bit evil but this enum is static, so this trick won't just break with a new Vulkan version or anything.
                 vkFormat = (VkFormat)((uint)vkFormat + (elementCount - 1) * 3);
 
-
                 vertexInputs.Add(new VertexInput()
                 {
                     SemanticName = vertexInputReflection.SemanticName,
                     SemanticIndex = (uint)vertexInputReflection.SemanticIndex,
                     Format = vkFormat,
-                    Location = vertexInputReflection.BindingIndex,
+                    Location = vertexInputReflection.BindingIndex + locationOffset,
                     Size = elementCount * elementSize
                 });
             }
-
-
         }
 
         private void ReflectNormalData(VariableLayoutReflection normalInputReflection, ref List<VertexInput> vertexInputs)
