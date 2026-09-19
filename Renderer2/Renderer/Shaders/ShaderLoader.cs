@@ -165,6 +165,9 @@ namespace ValveResourceFormat.Renderer2.Shaders
                         return VkFormat.R16G16Snorm;
                     case DXGI_FORMAT.R32_UINT:
                         return VkFormat.R32Uint;
+                    case DXGI_FORMAT.R8G8B8A8_UNORM:
+                        return VkFormat.R8G8B8A8Unorm;
+
                     default:
                         return VkFormat.Undefined;
                 }
