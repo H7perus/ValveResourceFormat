@@ -32,7 +32,26 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
             };
 
             slangGlobalSession.CreateSession(sessionDesc, out slangSession);
+        }
 
+        public void Reset()
+        {
+            var sessionDesc = new SessionDesc
+            {
+                Targets = [new TargetDesc
+                {   Format = SlangCompileTarget.Spirv,
+                    Profile = slangGlobalSession.FindProfile("spirv_1_6"),
+
+                }],
+                DefaultMatrixLayoutMode = SlangMatrixLayoutMode.ColumnMajor,
+                CompilerOptionEntries = [
+                    new CompilerOptionEntry { Name = CompilerOptionName.BindlessSpaceIndex, Value = CompilerOptionValue.FromInt(1)},
+                    //H7per: could change this to 3 later
+                    new CompilerOptionEntry { Name = CompilerOptionName.Optimization, Value = CompilerOptionValue.FromInt(2) }
+                    ]
+            };
+
+            slangGlobalSession.CreateSession(sessionDesc, out slangSession);
         }
 
         //FOR TESTING
@@ -73,8 +92,10 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
             return span.ToArray();
         }
 
-        public SlangShaderModule LoadShaderModule(string name)
+        public (ulong DependencyHash, SlangShaderModule Module) LoadShaderModule(string name)
         {
+            ulong hash = 0;
+
             var module = slangSession.LoadModule(name, out var loadDiagnostics);
 
             if (module == null)
@@ -87,6 +108,8 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
             for (int i = 0; i < fileCount; i++)
             {
                 var depModuleReflection = slangSession.LoadModule(module.GetDependencyFilePath(i), out var diagDependency)!.GetModuleReflection();
+
+                hash = ShaderHasher.HashFile(module.GetDependencyFilePath(i), hash);
 
                 for (uint child = 0; child < depModuleReflection.ChildrenCount; child++)
                 {
@@ -112,7 +135,6 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                                 max = attributeRefl.GetArgumentValueInt(1);
                             }
                         }
-                        
 
                         compileTimeConstants.Add(new() { Name = param.Name, Min = min, Max = max, Default = def });
                     }
@@ -122,7 +144,7 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 
             compileTimeConstants.Sort((x, y) => String.Compare(x.Name, y.Name));
 
-            return new SlangShaderModule(module, compileTimeConstants);
+            return (hash, new SlangShaderModule(module, compileTimeConstants));
         }
 
         public SpecialisedShader SpecialiseAndCompile(SlangShaderModule shaderModule, IReadOnlyDictionary<string, int>? arguments = null)
@@ -203,6 +225,7 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 
             components[0] = linkedComponent;
             components[1] = specialisationModule;
+
 
             for (var i = 0; i < entryPointCount; i++)
             {
@@ -460,5 +483,125 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                 return typeReflection.Name;
             }
         }
+    }
+
+    public static class ShaderHasher
+    {
+        // FNV-1a 64-bit constants
+        private const ulong FnvOffsetBasis64 = 14695981039346656037UL;
+        private const ulong FnvPrime64 = 1099511628211UL;
+
+        public static ulong HashFile(string path, ulong prevHash = 0)
+        {
+            string normalized = Normalize(File.ReadAllText(path));
+            return prevHash ^ Fnv1a64(normalized);
+        }
+
+        public static (ulong moduleHash, Dictionary<string, ulong> fileHashes) HashModuleDetailed(IReadOnlyList<string> filePaths)
+        {
+            var fileHashes = new Dictionary<string, ulong>();
+            ulong moduleHash = 0;
+            foreach (var path in filePaths)
+            {
+                ulong h = HashFile(path);
+                fileHashes[path] = h;
+                moduleHash ^= h;
+            }
+            return (moduleHash, fileHashes);
+        }
+
+        private static ulong Fnv1a64(string s)
+        {
+            ulong hash = FnvOffsetBasis64;
+            foreach (byte b in Encoding.UTF8.GetBytes(s))
+            {
+                hash ^= b;
+                hash *= FnvPrime64;
+            }
+            return hash;
+        }
+
+        private static string Normalize(string src)
+        {
+            var sb = new StringBuilder(src.Length);
+            int i = 0, n = src.Length;
+
+            bool pendingWs = false;
+            bool pendingWsHasNewline = false;
+
+            void FlushPendingWs(char nextChar)
+            {
+                if (!pendingWs) return;
+
+                char prevChar = sb.Length > 0 ? sb[sb.Length - 1] : '\0';
+
+                if (pendingWsHasNewline)
+                {
+                    // Only keep a space if dropping the newline would merge two words together.
+                    if (IsWordChar(prevChar) && IsWordChar(nextChar))
+                        sb.Append(' ');
+                    // otherwise: newline is ignored entirely, no space emitted
+                }
+                else
+                {
+                    sb.Append(' '); // plain space/tab runs always collapse to one space
+                }
+
+                pendingWs = false;
+                pendingWsHasNewline = false;
+            }
+
+            while (i < n)
+            {
+                char c = src[i];
+
+                if (c == '"' || c == '\'')
+                {
+                    FlushPendingWs(c);
+                    char quote = c;
+                    sb.Append(c);
+                    i++;
+                    while (i < n)
+                    {
+                        sb.Append(src[i]);
+                        if (src[i] == '\\' && i + 1 < n) { sb.Append(src[i + 1]); i += 2; continue; }
+                        if (src[i] == quote) { i++; break; }
+                        i++;
+                    }
+                    continue;
+                }
+
+                if (c == '/' && i + 1 < n && src[i + 1] == '/')
+                {
+                    i += 2;
+                    while (i < n && src[i] != '\n') i++;
+                    continue; // the trailing '\n' (if any) is handled next iteration as normal whitespace
+                }
+
+                if (c == '/' && i + 1 < n && src[i + 1] == '*')
+                {
+                    i += 2;
+                    while (i < n && !(src[i] == '*' && i + 1 < n && src[i + 1] == '/')) i++;
+                    i += 2;
+                    continue;
+                }
+
+                if (char.IsWhiteSpace(c))
+                {
+                    pendingWs = true;
+                    if (c == '\n') pendingWsHasNewline = true;
+                    i++;
+                    continue;
+                }
+
+                FlushPendingWs(c);
+                sb.Append(c);
+                i++;
+            }
+
+            return sb.ToString(); // trailing pending whitespace is simply dropped
+        }
+
+        private static bool IsWordChar(char c) => char.IsLetterOrDigit(c) || c == '_';
     }
 }

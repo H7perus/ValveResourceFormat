@@ -23,8 +23,23 @@ namespace ValveResourceFormat.Renderer2.RHI
         public AttributeDescription[] attributes;
     }
 
+    public struct BlendStateDescription
+    {
+        public bool BlendEnable = false;
+        public VkBlendFactor srcBlendFactor = VkBlendFactor.SrcAlpha;
+        public VkBlendFactor dstBlendFactor = VkBlendFactor.OneMinusSrcAlpha;
+        public BlendStateDescription() { }
+    }
+
     public class PipelineGraphics : Pipeline
     {
+#if DEBUG
+        public BindingDescription[]? BindingDescriptions;
+        public VkFormat ColorTargetFormat;
+        public VkFormat DepthTargetFormat;
+        public BlendStateDescription BlendStateDescription;
+#endif
+
         /// <summary>
         /// Creates a graphics pipeline with optional alpha blending support.
         /// </summary>
@@ -32,12 +47,18 @@ namespace ValveResourceFormat.Renderer2.RHI
         /// <param name="colorTargetFormat">Color attachment format (0 = no color target).</param>
         /// <param name="depthTargetFormat">Depth attachment format (0 = no depth target).</param>
         /// <param name="bindingDescriptions">Vertex binding descriptions (nullable for compute/mesh pipelines).</param>
-        /// <param name="blendEnable">Whether to enable alpha blending.</param>
-        /// <param name="srcBlendFactor">Source blend factor (default One).</param>
-        /// <param name="dstBlendFactor">Destination blend factor (default OneMinusSourceAlpha).</param>
+        /// <param name="blendState">Blending state for, among others, alpha blending.</param>
         /// <param name="depthWriteEnable">Whether depth writes are enabled (default true).</param>
-        unsafe public PipelineGraphics(SpecialisedShader shader, VkFormat colorTargetFormat = 0, VkFormat depthTargetFormat = 0, BindingDescription[]? bindingDescriptions = null, bool blendEnable = false, VkBlendFactor srcBlendFactor = VkBlendFactor.SrcAlpha, VkBlendFactor dstBlendFactor = VkBlendFactor.OneMinusSrcAlpha, bool depthWriteEnable = true)
+        unsafe public PipelineGraphics(SpecialisedShader shader, VkFormat colorTargetFormat = 0, VkFormat depthTargetFormat = 0, BindingDescription[]? bindingDescriptions = null, BlendStateDescription blendState = default(BlendStateDescription), bool depthWriteEnable = true)
         {
+#if DEBUG
+            ColorTargetFormat = colorTargetFormat;
+            DepthTargetFormat = depthTargetFormat;
+            BindingDescriptions = bindingDescriptions;
+            BlendStateDescription = blendState;
+#endif
+
+
             VkShaderModule shaderModule;
             fixed (byte* pSpirv = shader.Spirv.Span)
             {
@@ -224,12 +245,12 @@ namespace ValveResourceFormat.Renderer2.RHI
                 // --- Color blend: one attachment, blending optionally enabled ---
                 VkPipelineColorBlendAttachmentState colorBlendAttachmentState = new()
                 {
-                    blendEnable = blendEnable,
-                    srcColorBlendFactor = srcBlendFactor,
-                    dstColorBlendFactor = dstBlendFactor,
+                    blendEnable = blendState.BlendEnable,
+                    srcColorBlendFactor = blendState.srcBlendFactor,
+                    dstColorBlendFactor = blendState.dstBlendFactor,
                     colorBlendOp = VkBlendOp.Add,
                     srcAlphaBlendFactor = VkBlendFactor.One,
-                    dstAlphaBlendFactor = dstBlendFactor,
+                    dstAlphaBlendFactor = blendState.dstBlendFactor,
                     alphaBlendOp = VkBlendOp.Add,
                     colorWriteMask = VkColorComponentFlags.R | VkColorComponentFlags.G |
                                       VkColorComponentFlags.B | VkColorComponentFlags.A
@@ -260,10 +281,12 @@ namespace ValveResourceFormat.Renderer2.RHI
 
                 var result = RenderDevice!.VkDeviceApi.vkCreateGraphicsPipeline(pipelineInfo, out var pipeline);
 
-                HandlePipeline = pipeline;
+                Handle = pipeline;
             }
 
             RenderDevice!.VkDeviceApi.vkDestroyShaderModule(shaderModule);
         }
+
+
     }
 }

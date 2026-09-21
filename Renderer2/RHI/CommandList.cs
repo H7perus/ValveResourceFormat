@@ -355,7 +355,7 @@ unsafe public class CommandList : IDisposable
 
     public void BindGraphicsPipeline(PipelineGraphics pipeline)
     {
-        RenderDevice!.VkDeviceApi.vkCmdBindPipeline(Handle, VkPipelineBindPoint.Graphics, pipeline.HandlePipeline);
+        RenderDevice!.VkDeviceApi.vkCmdBindPipeline(Handle, VkPipelineBindPoint.Graphics, pipeline.Handle);
     }
 
     public void BindVertexBuffer(Buffer vertexBuffer, uint binding = 0)

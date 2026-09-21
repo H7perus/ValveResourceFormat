@@ -8,22 +8,24 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace ValveResourceFormat.Renderer2.RHI
 {
-    public class Pipeline : IDisposable
+    public abstract class Pipeline
     {
-        public VkPipeline HandlePipeline { get; protected set; }
+        public VkPipeline Handle { get; protected set; }
 
         public Pipeline()
         {
-            
-
         }
 
-        unsafe public virtual void Dispose()
+        unsafe public virtual void Destroy()
         {
-            if (HandlePipeline.Handle != 0)
-                RenderDevice!.VkDeviceApi.vkDestroyPipeline(HandlePipeline, null);
+            if (Handle.Handle != 0)
+                RenderDevice!.VkDeviceApi.vkDestroyPipeline(Handle, null);
+        }
 
-            GC.SuppressFinalize(this);
+        public void ReplaceWith(Pipeline replacement)
+        {
+            Destroy();
+            Handle = replacement.Handle;
         }
     }
 }

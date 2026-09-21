@@ -1,16 +1,18 @@
 //using System.Globalization;
-//using System.IO.Hashing;
+using System.IO.Hashing;
 //using System.Runtime.InteropServices;
 //using System.Text;
 //using System.Text.RegularExpressions;
 //using Microsoft.Extensions.Logging;
 
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Renderer2.RHI;
 using ValveResourceFormat.Renderer2.RHI.ShaderCompile;
 using Vortice.Vulkan;
+using static ValveResourceFormat.Blocks.ResourceIntrospectionManifest.ResourceDiskEnum;
 
 namespace ValveResourceFormat.Renderer2.Shaders
 {
@@ -64,8 +66,11 @@ namespace ValveResourceFormat.Renderer2.Shaders
 
             return null;
         }
-
-
+        /// <summary>
+        /// Uses a hash of shader name + compile time arguments as key and stores a hash of the shader module dependencies next to the pipeline
+        /// VKTODO: This hash should also include pipeline parameters, so changed parameters are a new pipeline.
+        /// </summary>
+        private readonly Dictionary<ulong, (string, ulong, IReadOnlyDictionary<string, int>?, Pipeline)> CachedPipelines = [];
 
         //        //VKTODO: private readonly Dictionary<ulong, Shader> CachedShaders = [];
 
@@ -83,8 +88,6 @@ namespace ValveResourceFormat.Renderer2.Shaders
         //        private static readonly Dictionary<string, byte> EmptyArgs = [];
         //        private static readonly Lock ParserLock = new();
         //        private static readonly Dictionary<string, ParsedShaderData> ParsedCache = [];
-
-        //        //VKTODO: private static readonly ShaderParser Parser = new();
 
         //        private readonly RendererContext RendererContext;
 
@@ -123,19 +126,22 @@ namespace ValveResourceFormat.Renderer2.Shaders
             //RendererContext = rendererContext;
         }
 
-        public RHI.Pipeline GetPipeline(string name, VBIB vbib, IReadOnlyDictionary<string, byte>? arguments = null)
+        public RHI.Pipeline GetPipeline(string shaderName, VBIB vbib, IReadOnlyDictionary<string, byte>? arguments = null)
         {
-            var shaderFileName = GetBuiltinShaderFileByName(name) + ".slang";
+            var shaderFileName = GetShaderFileByName(shaderName) + ".slang";
+            var shaderCacheHash = CalculateShaderCacheHash(shaderName, arguments);
+
             var path = Path.Combine(ShaderDirectory, shaderFileName);
             if (ShaderSourceDirectory != null)
                 path = Path.Combine(ShaderSourceDirectory, shaderFileName);
 
             if (!File.Exists(path))
             {
-                throw new Exception("Uh oh, the shader does not exist!");
+                throw new Exception("Uh oh, the pipeline does not exist!");
             }
 
             var module = ShaderCompiler.LoadShaderModule(path);
+
             Dictionary<string, int>? castArguments = null;
             if(arguments != null)
 
@@ -143,9 +149,7 @@ namespace ValveResourceFormat.Renderer2.Shaders
         kvp => kvp.Key,
         kvp => (int)kvp.Value
     );
-            var specialisedShader = ShaderCompiler.SpecialiseAndCompile(module, castArguments);
-
-            
+            var specialisedShader = ShaderCompiler.SpecialiseAndCompile(module.Module, castArguments);
 
             VkFormat DXGIFormatToVkFormat(DXGI_FORMAT format)
             {
@@ -182,8 +186,9 @@ namespace ValveResourceFormat.Renderer2.Shaders
 
             }
 
-
             var pipeline = new RHI.PipelineGraphics(specialisedShader, VkFormat.R16G16B16A16Sfloat, VkFormat.D32Sfloat, bindingDescriptions);
+
+            CachedPipelines.Add(shaderCacheHash, (path, module.DependencyHash, castArguments, pipeline));
 
             return pipeline;
         }
@@ -524,13 +529,13 @@ namespace ValveResourceFormat.Renderer2.Shaders
         //            throw new ShaderCompilerException($"{errorType} {shaderFile} (original={originalShaderName}):\n\n{info}");
         //        }
 
-        //        /// <summary>Returns the bare shader name from a full shader file path by stripping the trailing stage extension (<c>.vert.slang</c>, <c>.frag.slang</c>, or <c>.comp.slang</c>).</summary>
-        //        /// <param name="shaderFilePath">The full path or file name of the shader (e.g. <c>/path/complex.vert.slang</c>).</param>
-        //        /// <returns>The shader name without directory or extension (e.g. <c>complex</c>).</returns>
-        //        public static string ShaderNameFromPath(string shaderFilePath)
-        //        {
-        //            return Path.GetFileName(shaderFilePath[..^ShaderFileExtension.Length]);
-        //        }
+        /// <summary>Returns the bare shader name from a full shader file path by stripping the trailing stage extension (<c>.vert.slang</c>, <c>.frag.slang</c>, or <c>.comp.slang</c>).</summary>
+        /// <param name="shaderFilePath">The full path or file name of the shader (e.g. <c>/path/complex.vert.slang</c>).</param>
+        /// <returns>The shader name without directory or extension (e.g. <c>complex</c>).</returns>
+        public static string ShaderNameFromPath(string shaderFilePath)
+        {
+            return Path.GetFileName(shaderFilePath);
+        }
 
         //        /// <summary>The file extension for Slang shader source files (<c>.slang</c>).</summary>
         //        public const string SlangExtension = ".slang";
@@ -538,45 +543,45 @@ namespace ValveResourceFormat.Renderer2.Shaders
         //        /// <summary>The file extension used to identify vertex shader entry points (<c>.vert.slang</c>).</summary>
         //        public const string ShaderFileExtension = ".vert.slang";
         //        // No longer used by the renderer itself, kept so that names that were required before still resolve
-        //        const string VrfInternalShaderPrefix = "vrf.";
+        const string VrfInternalShaderPrefix = "vrf.";
 
-        //        /// <summary>
-        //        /// Resolves a shader name to the renderer shader file that draws it. Mappings registered in
-        //        /// <see cref="ShaderRegistry"/> take priority over the built-in ones.
-        //        /// </summary>
-        //        /// <param name="shaderName">
-        //        /// A Source 2 shader name ending in <c>.vfx</c>, which is mapped to the renderer shader that best matches it and
-        //        /// falls back to <c>complex</c> when it is unknown. Any other name is the renderer shader file to load directly,
-        //        /// and must exist.
-        //        /// </param>
-        //        /// <returns>The renderer shader name without stage or extension (e.g. <c>complex</c>).</returns>
-        //        public static string GetShaderFileByName(string shaderName)
-        //        {
-        //            if (ShaderRegistry.Mappings.TryGetValue(shaderName, out var customShaderFile))
-        //            {
-        //                return customShaderFile;
-        //            }
+        /// <summary>
+        /// Resolves a shader name to the renderer shader file that draws it. Mappings registered in
+        /// <see cref="ShaderRegistry"/> take priority over the built-in ones.
+        /// </summary>
+        /// <param name="shaderName">
+        /// A Source 2 shader name ending in <c>.vfx</c>, which is mapped to the renderer shader that best matches it and
+        /// falls back to <c>complex</c> when it is unknown. Any other name is the renderer shader file to load directly,
+        /// and must exist.
+        /// </param>
+        /// <returns>The renderer shader name without stage or extension (e.g. <c>complex</c>).</returns>
+        public static string GetShaderFileByName(string shaderName)
+        {
+            if (ShaderRegistry.Mappings.TryGetValue(shaderName, out var customShaderFile))
+            {
+                return customShaderFile;
+            }
 
-        //            // TODO: Consider naming renderer shaders with a .slang extension, so that they read as explicitly as .vfx names do
-        //            if (!IsVfxShaderName(shaderName))
-        //            {
-        //                // Not a Valve shader name, so it names a renderer shader file directly.
-        //                // Unknown names are not silently drawn with 'complex', loading them throws instead.
-        //                return shaderName.StartsWith(VrfInternalShaderPrefix, StringComparison.Ordinal)
-        //                    ? shaderName[VrfInternalShaderPrefix.Length..]
-        //                    : shaderName;
-        //            }
+            // TODO: Consider naming renderer shaders with a .slang extension, so that they read as explicitly as .vfx names do
+            if (!IsVfxShaderName(shaderName))
+            {
+                // Not a Valve shader name, so it names a renderer shader file directly.
+                // Unknown names are not silently drawn with 'complex', loading them throws instead.
+                return shaderName.StartsWith(VrfInternalShaderPrefix, StringComparison.Ordinal)
+                    ? shaderName[VrfInternalShaderPrefix.Length..]
+                    : shaderName;
+            }
 
-        //            return GetBuiltinShaderFileByName(shaderName);
-        //        }
+            return GetBuiltinShaderFileByName(shaderName);
+        }
 
-        //        /// <summary>The file extension of Source 2 shader names (<c>.vfx</c>).</summary>
-        //        public const string VfxExtension = ".vfx";
+        /// <summary>The file extension of Source 2 shader names (<c>.vfx</c>).</summary>
+        public const string VfxExtension = ".vfx";
 
-        //        private static bool IsVfxShaderName(string shaderName)
-        //        {
-        //            return shaderName.EndsWith(VfxExtension, StringComparison.Ordinal);
-        //        }
+        private static bool IsVfxShaderName(string shaderName)
+        {
+            return shaderName.EndsWith(VfxExtension, StringComparison.Ordinal);
+        }
 
         // Map Valve's shader names to shader files VRF has
         private static string GetBuiltinShaderFileByName(string shaderName) => shaderName switch
@@ -662,69 +667,82 @@ namespace ValveResourceFormat.Renderer2.Shaders
         //            return sb.ToString();
         //        }
 
-        //        private static readonly byte[] NewLineArray = "\n"u8.ToArray();
+        private static readonly byte[] NewLineArray = "\n"u8.ToArray();
+        //VKTODO: All of this seems a little sketch to me.
+        private static ulong CalculateShaderCacheHash(string shaderName, IReadOnlyDictionary<string, byte>? arguments)
+        {
+            var hash = new XxHash3(StringToken.MURMUR2SEED);
+            hash.Append(MemoryMarshal.AsBytes(shaderName.AsSpan()));
 
-        //        private static ulong CalculateShaderCacheHash(string shaderName, Dictionary<string, byte> defines, IReadOnlyDictionary<string, byte> arguments)
-        //        {
-        //            var hash = new XxHash3(StringToken.MURMUR2SEED);
-        //            hash.Append(MemoryMarshal.AsBytes(shaderName.AsSpan()));
+            //VKTODO: var argsOrdered = SortAndFilterArguments(defines, arguments);
+            if (arguments == null)
+                return hash.GetCurrentHashAsUInt64();
 
-        //            var argsOrdered = SortAndFilterArguments(defines, arguments);
-        //            Span<byte> valueSpan = stackalloc byte[1];
+            Span<byte> valueSpan = stackalloc byte[1];
 
-        //            foreach (var (key, value) in argsOrdered)
-        //            {
-        //                hash.Append(NewLineArray);
-        //                hash.Append(MemoryMarshal.AsBytes(key.AsSpan()));
-        //                hash.Append(NewLineArray);
+            foreach (var (key, value) in arguments)
+            {
+                hash.Append(NewLineArray);
+                hash.Append(MemoryMarshal.AsBytes(key.AsSpan()));
+                hash.Append(NewLineArray);
 
-        //                valueSpan[0] = value;
-        //                hash.Append(valueSpan);
-        //            }
+                valueSpan[0] = value;
+                hash.Append(valueSpan);
+            }
 
-        //            return hash.GetCurrentHashAsUInt64();
-        //        }
+            return hash.GetCurrentHashAsUInt64();
+        }
 
-        //#if DEBUG
-        //        private static bool? _isCI;
-        //        private static bool IsCI => _isCI ??= Environment.GetEnvironmentVariable("CI") != null;
+#if DEBUG
+        private static bool? _isCI;
+        private static bool IsCI => _isCI ??= Environment.GetEnvironmentVariable("CI") != null;
 
-        //        /// <summary>Recompiles all cached shaders, or only those derived from the given file if specified (debug builds only).</summary>
-        //        /// <param name="name">Optional shader file name that changed; when <see langword="null"/> all shaders are reloaded.</param>
-        //        public void ReloadAllShaders(string? name = null)
-        //        {
-        //            Parser.ClearBuilder();
+        /// <summary>Recompiles all cached shaders, or only those derived from the given file if specified (debug builds only).</summary>
+        /// <param name="name">Optional shader file name that changed; when <see langword="null"/> all shaders are reloaded.</param>
+        public void ReloadAllShaders(string? name = null)
+        {
 
-        //            // Picks up shader files that were created after startup, including ones in mounted directories
-        //            Parser.RefreshAvailableShaders();
+            // Picks up shader files that were created after startup, including ones in mounted directories
+            //VKTODO?: Parser.RefreshAvailableShaders();
 
-        //            if (name != null && ShaderParser.ExtensionToProgramType.Keys.Any(ext => name.EndsWith($".{ext}.slang", StringComparison.Ordinal)))
-        //            {
-        //                // If a named shader changed (not an include), then we can only reload this shader
-        //                name = ShaderNameFromPath(name!);
-        //                ParsedCache.Remove(name!);
-        //            }
-        //            else
-        //            {
-        //                // Otherwise reload all shaders (common, etc)
-        //                ParsedCache.Clear();
-        //                name = null;
-        //            }
+            if (name != null && name.EndsWith($".slang", StringComparison.Ordinal))
+            {
+                // If a named shader changed (not an include), then we can only reload this shader
+                name = ShaderNameFromPath(name!);
+            }
+            else
+            {
+                name = null;
+            }
 
-        //            foreach (var shader in CachedShaders.Values)
-        //            {
-        //                if (name != null && shader.FileName != name)
-        //                {
-        //                    continue;
-        //                }
+            ShaderCompiler.Reset();
 
-        //                var fileName = GetShaderFileByName(shader.Name);
-        //                var parsed = GetOrParseShader(fileName);
-        //                var newShader = CompileAndLinkShader(shader.Name, fileName, parsed, shader.Parameters, blocking: false);
-        //                shader.ReplaceWith(newShader);
-        //            }
-        //        }
-        //#endif
+            for (int i = 0; i < CachedPipelines.Values.Count; i++)
+            {
+                var pipeline = CachedPipelines.ElementAt(i).Value;
+
+                if (name != null && ShaderNameFromPath(pipeline.Item1) != name)
+                {
+                    continue;
+                }
+
+                var module = ShaderCompiler.LoadShaderModule(pipeline.Item1);
+
+                if (module.DependencyHash == pipeline.Item2)
+                    continue;
+
+                var specialised = ShaderCompiler.SpecialiseAndCompile(module.Module, pipeline.Item3);
+
+                var oldPipeline = (PipelineGraphics)pipeline.Item4;
+
+                var newPipeline = new RHI.PipelineGraphics(specialised, oldPipeline.ColorTargetFormat, oldPipeline.DepthTargetFormat, oldPipeline.BindingDescriptions, oldPipeline.BlendStateDescription);
+                pipeline.Item2 = module.DependencyHash;
+                pipeline.Item4.ReplaceWith(newPipeline);
+
+                CachedPipelines[CachedPipelines.ElementAt(i).Key] = pipeline;
+            }
+        }
+#endif
 
         //        /// <summary>
         //        /// Exception thrown when shader compilation or linking fails.

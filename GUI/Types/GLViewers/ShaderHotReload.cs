@@ -7,12 +7,17 @@ using System.Windows.Forms;
 using GUI.Utils;
 using ValveResourceFormat.Renderer.Shaders;
 
+using Renderer2Shaders = ValveResourceFormat.Renderer2.Shaders;
+
 namespace GUI.Types.GLViewers;
 
 internal class ShaderHotReload : IDisposable
 {
     // The built-in shader folder, plus every directory mounted through ShaderRegistry
     private List<FileSystemWatcher>? ShaderWatchers = CreateWatchers();
+    //VKTEMPORARY:
+    private List<FileSystemWatcher>? SlangShaderWatchers = CreateSlangWatchers();
+
 
     private static List<FileSystemWatcher> CreateWatchers()
     {
@@ -24,6 +29,32 @@ internal class ShaderHotReload : IDisposable
         if (ShaderParser.ShaderSourceDirectory != null)
         {
             paths.Add(ShaderParser.ShaderSourceDirectory);
+        }
+
+        foreach (var path in paths)
+        {
+            watchers.Add(new FileSystemWatcher
+            {
+                Path = path,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite,
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true,
+                Filters = { "*.slang" },
+            });
+        }
+
+        return watchers;
+    }
+    private static List<FileSystemWatcher> CreateSlangWatchers()
+    {
+        var watchers = new List<FileSystemWatcher>(1 + Renderer2Shaders.ShaderRegistry.Directories.Length);
+        var paths = new List<string>(watchers.Capacity);
+        paths.AddRange(Renderer2Shaders.ShaderRegistry.Directories);
+
+        // Only present when this assembly was built from the shader source files, rather than using the embedded copies
+        if (Renderer2Shaders.ShaderLoader.ShaderSourceDirectory != null)
+        {
+            paths.Add(Renderer2Shaders.ShaderLoader.ShaderSourceDirectory);
         }
 
         foreach (var path in paths)
@@ -59,19 +90,32 @@ internal class ShaderHotReload : IDisposable
     private readonly GLBaseControl ViewerControl;
     private readonly ShaderLoader ShaderLoader;
 
+    private readonly Renderer2Shaders.ShaderLoader SlangShaderLoader;
+
     public event EventHandler<string?>? ShadersReloaded;
 
-    public ShaderHotReload(GLBaseControl viewerControl, ShaderLoader shaderLoader)
+    public ShaderHotReload(GLBaseControl viewerControl, Renderer2Shaders.ShaderLoader shaderLoader)
     {
         ViewerControl = viewerControl;
-        ShaderLoader = shaderLoader;
+        SlangShaderLoader = shaderLoader;
+        //SlangShaderLoader = slangShaderLoader;
     }
 
     public void SetSynchronizingObject(ISynchronizeInvoke synchronizingObject)
     {
         Debug.Assert(ShaderWatchers is not null);
+        Debug.Assert(SlangShaderWatchers is not null);
 
         foreach (var watcher in ShaderWatchers)
+        {
+            watcher.SynchronizingObject = synchronizingObject;
+
+            watcher.Changed += Hotload;
+            watcher.Created += Hotload;
+            watcher.Renamed += Hotload;
+        }
+
+        foreach (var watcher in SlangShaderWatchers)
         {
             watcher.SynchronizingObject = synchronizingObject;
 
@@ -103,7 +147,7 @@ internal class ShaderHotReload : IDisposable
     {
         //VKTODO:
         //using var lockedGl = ViewerControl.MakeCurrent();
-        //ShaderLoader.ReloadAllShaders(name);
+        SlangShaderLoader.ReloadAllShaders(name);
         //ShadersReloaded?.Invoke(this, name);
         //ViewerControl.GLControl?.Invalidate();
     }

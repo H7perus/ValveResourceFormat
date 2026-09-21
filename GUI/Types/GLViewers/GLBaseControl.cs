@@ -116,7 +116,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
         RendererContext = rendererContext;
 
 #if DEBUG
-        //ShaderHotReload = new ShaderHotReload(this, rendererContext.ShaderLoader);
+        ShaderHotReload = new ShaderHotReload(this, rendererContext.ShaderLoader);
 #endif
     }
 
@@ -179,6 +179,10 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
 
         UiControl.GLControlContainer.Controls.Add(GLControl);
 
+#if DEBUG
+        ShaderHotReload.SetSynchronizingObject(GLControl);
+#endif
+
         UiControl.SuspendLayout();
 
 #if DEBUG // We want reload shaders to be the top most button
@@ -194,7 +198,7 @@ internal abstract class GLBaseControl : IDisposable, IMessageFilter
             void OnButtonClick(object? s, EventArgs e)
             {
                 //VKTODO:
-                //ShaderHotReload.ReloadShaders();
+                ShaderHotReload.ReloadShaders();
             }
 
             UiControl.AddControl(button);
