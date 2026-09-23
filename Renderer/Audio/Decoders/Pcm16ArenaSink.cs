@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio.Decoders;
+namespace ValveResourceFormat.Renderer2.Audio.Decoders;
 
 /// <summary>
 /// Receives decoded audio as a stream of interleaved float chunks.

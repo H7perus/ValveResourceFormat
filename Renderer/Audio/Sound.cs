@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Audio;
+using ValveResourceFormat.Renderer2.Audio;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.Renderer2;
 
 /// <summary>
 /// Static entry point for sound event playback; safe to call when no <see cref="SoundEventPlayer"/> exists.

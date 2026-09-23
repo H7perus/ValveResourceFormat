@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Spatial partitioning structure for efficient scene node culling and queries.
@@ -341,7 +341,7 @@ namespace ValveResourceFormat.Renderer
         public bool Dirty { get; set; } = true;
 
         /// <summary>Gets or sets an optional debug renderer that visualizes this octree.</summary>
-        public OctreeDebugRenderer? DebugRenderer { get; set; }
+        //VKTODO: public OctreeDebugRenderer? DebugRenderer { get; set; }
 
         /// <summary>
         /// Initializes a new octree with the specified size.

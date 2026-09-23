@@ -1,7 +1,8 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+//using ValveResourceFormat.Renderer.SceneEnvironment;
 using ValveResourceFormat.ResourceTypes;
+using ValveResourceFormat.Utils;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Which passes of the frame beyond <see cref="Scene.UpdatePhase.Place"/> a node takes part in.
@@ -53,7 +54,8 @@ namespace ValveResourceFormat.Renderer
                 field = value;
                 if (valueChanged)
                 {
-                    Scene.MarkParentOctreeDirty(this);
+                    //VKTODO:
+                    //Scene.MarkParentOctreeDirty(this);
                 }
             }
         } = true;
@@ -106,7 +108,7 @@ namespace ValveResourceFormat.Renderer
         /// <summary>
         /// Flags for when should this node be drawn and where.
         /// </summary>
-        public CustomRenderPasses RenderPasses { get; set; } = CustomRenderPasses.Default;
+        //VKTODO: public CustomRenderPasses RenderPasses { get; set; } = CustomRenderPasses.Default;
 
         /// <summary>Uploads this node's buffers. Called on visible nodes only, before any pass draws.</summary>
         /// <param name="camera">The camera the frame is drawn with.</param>
@@ -134,12 +136,12 @@ namespace ValveResourceFormat.Renderer
         /// <summary>
         /// Gets the environment maps affecting this node.
         /// </summary>
-        public List<SceneEnvMap> EnvMaps { get; private set; } = [];
+        //VKTODO: public List<SceneEnvMap> EnvMaps { get; private set; } = [];
 
         /// <summary>
         /// Gets or sets the precomputed environment map visibility bitfield for shaders.
         /// </summary>
-        public SceneEnvMap.EnvMapVisibility128 ShaderEnvMapVisibility { get; set; }
+        //VKTODO: public SceneEnvMap.EnvMapVisibility128 ShaderEnvMapVisibility { get; set; }
 
         /// <summary>
         /// Gets or sets a custom lighting origin override for environment map and light probe sampling.
@@ -164,7 +166,7 @@ namespace ValveResourceFormat.Renderer
         /// <summary>
         /// Gets or sets the bound light probe for this node.
         /// </summary>
-        public SceneLightProbe? LightProbeBinding { get; set; }
+        //VKTODO: public SceneLightProbe? LightProbeBinding { get; set; }
 
         /// <summary>
         /// Gets or sets the associated entity data from the map.
@@ -176,7 +178,7 @@ namespace ValveResourceFormat.Renderer
         /// nothing simulates it. Where <see cref="EntityData"/> is what the map authored, this is the live
         /// entity built from it.
         /// </summary>
-        public Entities.BaseEntity? EntityInstance { get; internal set; }
+        //VKTODO: public Entities.BaseEntity? EntityInstance { get; internal set; }
 
         private AABB localBoundingBox;
         private Matrix4x4 transform = Matrix4x4.Identity;
@@ -214,9 +216,9 @@ namespace ValveResourceFormat.Renderer
         /// Called each frame to render this node.
         /// </summary>
         /// <param name="context">The current render context.</param>
-        public virtual void Render(Scene.RenderContext context)
-        {
-        }
+        //VKTODO: public virtual void Render(Scene.RenderContext context)
+        //{
+        //}
 
         /// <summary>
         /// Returns the render modes supported by this node.

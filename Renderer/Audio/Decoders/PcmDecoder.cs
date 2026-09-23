@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Audio.Decoders;
+namespace ValveResourceFormat.Renderer2.Audio.Decoders;
 
 /// <summary>
 /// Decodes the raw sample data of a WAV-type vsnd (PCM 8/16/24/32 bit or MS ADPCM, described by the

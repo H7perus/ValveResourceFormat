@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Spatial set for the scene nodes that move. Flat rather than hierarchical: relocating a node is
@@ -21,7 +21,7 @@ namespace ValveResourceFormat.Renderer
         public bool Dirty { get; set; } = true;
 
         /// <summary>Gets or sets the debug visualization renderer for this set.</summary>
-        public SpatialNodeSetDebugRenderer? DebugRenderer { get; set; }
+        //VKTODO: public SpatialNodeSetDebugRenderer? DebugRenderer { get; set; }
 
         /// <summary>Removes every node from the set.</summary>
         public void Clear()

@@ -6,11 +6,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using ValveKeyValue;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer.Utils;
+using ValveResourceFormat.Renderer2.Utils;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Plays sound events through an injected <see cref="IAudioDevice"/>.
@@ -765,17 +765,17 @@ public sealed class SoundEventPlayer : IDisposable
     /// </summary>
     private void ReportStats()
     {
-        var perfStats = PerfStats.Active;
+        //VKTODO: var perfStats = PerfStats.Active;
 
-        perfStats.Count(Counter.SoundCacheMegabytes, (int)(SoundCache.CachedBytes / (1024 * 1024)));
-        perfStats.Count(Counter.SoundDecodeQueue, SoundCache.PendingDecodes);
+        //VKTODO: perfStats.Count(Counter.SoundCacheMegabytes, (int)(SoundCache.CachedBytes / (1024 * 1024)));
+        //VKTODO: perfStats.Count(Counter.SoundDecodeQueue, SoundCache.PendingDecodes);
 
-        if (perfStats.Timings.Capture)
-        {
-            // The mixing thread runs on its own clock, so it is reported rather than timed
-            perfStats.Timings.SetAsyncRow("Sound Mixing Thread", mixMilliseconds,
-                mixDutyCycle.ToString("P0", CultureInfo.InvariantCulture));
-        }
+        //VKTODO: if (perfStats.Timings.Capture)
+        //{
+        //    // The mixing thread runs on its own clock, so it is reported rather than timed
+        //    perfStats.Timings.SetAsyncRow("Sound Mixing Thread", mixMilliseconds,
+        //        mixDutyCycle.ToString("P0", CultureInfo.InvariantCulture));
+        //}
     }
 
     /// <summary>

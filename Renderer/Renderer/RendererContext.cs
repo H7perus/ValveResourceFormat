@@ -2,8 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.IO;
-
-namespace ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer2.Materials;
+using ValveResourceFormat.Renderer2.Shaders;
+namespace ValveResourceFormat.Renderer2;
 
 /// <summary>
 /// Shared context containing loaders and caches used by the renderer.
@@ -21,25 +22,24 @@ public class RendererContext : IDisposable
     public GameFileLoader FileLoader { get; }
 
     /// <summary>
-    /// Owns the GPU objects created for this renderer. Creation goes through the static methods on
-    /// <see cref="GraphicsDevice"/> rather than through this property.
-    /// </summary>
-    public GraphicsDevice Device { get; }
-
-    /// <summary>
     /// Material and texture loader and cache.
     /// </summary>
+    //VKTODO:
     public MaterialLoader MaterialLoader { get; }
 
     /// <summary>
     /// Background loader for textures.
     /// </summary>
-    public TextureStreamingHelper TextureStreaming { get; }
+    //VKTODO:
+    //public TextureStreamingHelper TextureStreaming { get; }
 
     /// <summary>
     /// Shader compiler and cache.
     /// </summary>
     public ShaderLoader ShaderLoader { get; }
+
+    internal DestroyQueue DestroyQueue { get; }
+    internal ulong CurrentFrame { get; set; }
 
     /// <summary>
     /// GPU mesh buffer and vertex array object cache.
@@ -78,12 +78,13 @@ public class RendererContext : IDisposable
     {
         FileLoader = fileLoader;
         Logger = logger;
-        Device = GraphicsDevice.Create();
-
-        TextureStreaming = new TextureStreamingHelper(this);
+        //VKTODO:
+        //TextureStreaming = new TextureStreamingHelper(this);
         MaterialLoader = new MaterialLoader(this);
         ShaderLoader = new ShaderLoader(this);
         MeshBufferCache = new GPUMeshBufferCache(this);
+
+        DestroyQueue = new();
     }
 
     /// <inheritdoc/>
@@ -107,10 +108,9 @@ public class RendererContext : IDisposable
         CancelLoading();
 
         disposed = true;
-
-        TextureStreaming.CancelAllStreaming();
-
-        ShaderLoader?.Dispose();
+        //VKTODO:
+        //TextureStreaming.CancelAllStreaming();
+        //ShaderLoader?.Dispose();
     }
 
     // Deliberately outlive Dispose: teardown disposes the context on the UI thread and only then waits
@@ -156,8 +156,8 @@ public class RendererContext : IDisposable
         {
             Logger.LogWarning("Loading did not stop within {Timeout}, carrying on without it", LoadStopTimeout);
         }
-
-        TextureStreaming.DrainPendingLoads();
+        //VKTODO:
+        //TextureStreaming.DrainPendingLoads();
 
         return stopped;
     }

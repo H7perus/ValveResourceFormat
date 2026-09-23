@@ -1,92 +1,85 @@
-#version 460
+module utils;
 
-#ifndef VRF_UTILS_INCLUDE
-#define VRF_UTILS_INCLUDE
-
-#define PI 3.1415926535897932384626433832795
+public static const float PI = 3.1415926535897932384626433832795;
 // tau = PI*2
-#define TAU 6.2831853071795864769252867665590
+public static const float TAU = 6.2831853071795864769252867665590;
 
-#define INCH_TO_M 0.0254
+public static const float INCH_TO_M = 0.0254;
 
 // clamp(value, 0.0, 1.0)
-float saturate(float val) {
+public float saturate(float val) {
     return clamp(val, 0, 1);
 }
-vec2 saturate(vec2 val) {
+public float2 saturate(float2 val) {
     return clamp(val, 0.0, 1.0);
 }
-vec3 saturate(vec3 val) {
+public float3 saturate(float3 val) {
     return clamp(val, 0.0, 1.0);
 }
-vec4 saturate(vec4 val) {
+public float4 saturate(float4 val) {
     return clamp(val, 0.0, 1.0);
 }
 
 // value^2
-float pow2(float val)
+public float pow2(float val)
 {
     return(val * val);
 }
-vec2 pow2(vec2 val)
+public float2 pow2(float2 val)
 {
     return(val * val);
 }
-vec3 pow2(vec3 val)
+public float3 pow2(float3 val)
 {
     return(val * val);
 }
-vec4 pow2(vec4 val)
+public float4 pow2(float4 val)
 {
     return(val * val);
 }
 
-float pow5(float val)
+public float pow5(float val)
 {
     return pow(val, 5.0); // Should get optimized
 }
 
 // Guards against pow(0, 0) = NaN by clamping the base off zero.
-float SafePow(float base, float exponent)
+public float SafePow(float base, float exponent)
 {
     return pow(max(base, 1e-9), exponent);
 }
-vec2 SafePow(vec2 base, vec2 exponent)
+public float2 SafePow(float2 base, float2 exponent)
 {
-    return pow(max(base, vec2(1e-9)), exponent);
+    return pow(max(base, float2(1e-9)), exponent);
 }
-vec3 SafePow(vec3 base, vec3 exponent)
+public float3 SafePow(float3 base, float3 exponent)
 {
-    return pow(max(base, vec3(1e-9)), exponent);
-}
-
-float Random2D(vec2 Seed)
-{
-    return fract(sin( dot(Seed, vec2(12.9898, 78.233)) ) * 43758.5469);
+    return pow(max(base, float3(1e-9)), exponent);
 }
 
+public float Random2D(float2 Seed)
+{
+    return fract(sin( dot(Seed, float2(12.9898, 78.233)) ) * 43758.5469);
+}
 
-
-float min3( vec3 Vector )
+public float min3( float3 Vector )
 {
 	return min( min( Vector.x, Vector.y ), Vector.z );
 }
-float max3( vec3 Vector )
+public float max3( float3 Vector )
 {
 	return max( max( Vector.x, Vector.y ), Vector.z );
 }
 
-
-
-float length_squared(vec2 vector)
+public float length_squared(float2 vector)
 {
 	return dot(vector, vector);
 }
-float length_squared(vec3 vector)
+public float length_squared(float3 vector)
 {
 	return dot(vector, vector);
 }
-float length_squared(vec4 vector)
+public float length_squared(float4 vector)
 {
 	return dot(vector, vector);
 }
@@ -94,25 +87,25 @@ float length_squared(vec4 vector)
 
 // Color
 
-const vec3 gamma = vec3(2.4);
-const vec3 invGamma = vec3(1.0 / gamma);
+public const static float3 gamma = float3(2.4);
+public const static float3 invGamma = float3(1.0 / gamma);
 
-float GetLuma(vec3 Color) {
-	return dot( Color, vec3(0.2125, 0.7154, 0.0721) ); // BT.709-1, same as Valve
+public float GetLuma(float3 Color) {
+	return dot( Color, float3(0.2125, 0.7154, 0.0721) ); // BT.709-1, same as Valve
 }
 
-float LevelsAdjust(float component, vec3 L_BlackWhiteGamma)
+public float LevelsAdjust(float component, float3 L_BlackWhiteGamma)
 {
-    vec3 levels = vec3(
+    float3 levels = float3(
         -L_BlackWhiteGamma.x,
         -1.4427 * log2(max(0.0001, 1.0 - L_BlackWhiteGamma.y)),
         2.0 - L_BlackWhiteGamma.z
     );
 
-    return mix(levels.x, levels.y, SafePow(component, levels.z));
+    return lerp(levels.x, levels.y, SafePow(component, levels.z));
 }
 
-float SrgbGammaToLinear(float color)
+public float SrgbGammaToLinear(float color)
 {
     float vLinearSegment = color / 12.92;
     float vExpSegment = pow((color / 1.055) + 0.0521327, 2.4);
@@ -122,33 +115,33 @@ float SrgbGammaToLinear(float color)
 
     return select;
 }
-vec2 SrgbGammaToLinear(vec2 color)
+public float2 SrgbGammaToLinear(float2 color)
 {
-    vec2 vLinearSegment = color / vec2(12.92);
-    vec2 vExpSegment = pow((color / vec2(1.055)) + vec2(0.0521327), vec2(2.4));
+    float2 vLinearSegment = color / float2(12.92);
+    float2 vExpSegment = pow((color / float2(1.055)) + float2(0.0521327), float2(2.4));
 
     const float cap = 0.04045;
     float select = color.r > cap ? vExpSegment.r : vLinearSegment.r;
     float select1 = color.g > cap ? vExpSegment.g : vLinearSegment.g;
 
-    return vec2(select, select1);
+    return float2(select, select1);
 }
-vec3 SrgbGammaToLinear(vec3 color)
+public float3 SrgbGammaToLinear(float3 color)
 {
-    vec3 vLinearSegment = color / vec3(12.92);
-    vec3 vExpSegment = pow((color / vec3(1.055)) + vec3(0.0521327), vec3(2.4));
+    float3 vLinearSegment = color / float3(12.92);
+    float3 vExpSegment = pow((color / float3(1.055)) + float3(0.0521327), float3(2.4));
 
     const float cap = 0.04045;
     float select = color.r > cap ? vExpSegment.r : vLinearSegment.r;
     float select1 = color.g > cap ? vExpSegment.g : vLinearSegment.g;
     float select2 = color.b > cap ? vExpSegment.b : vLinearSegment.b;
 
-    return vec3(select, select1, select2);
+    return float3(select, select1, select2);
 }
-vec4 SrgbGammaToLinear(vec4 color)
+public float4 SrgbGammaToLinear(float4 color)
 {
-    vec4 vLinearSegment = color / vec4(12.92);
-    vec4 vExpSegment = pow((color / vec4(1.055)) + vec4(0.0521327), vec4(2.4));
+    float4 vLinearSegment = color / float4(12.92);
+    float4 vExpSegment = pow((color / float4(1.055)) + float4(0.0521327), float4(2.4));
 
     const float cap = 0.04045;
     float select = color.r > cap ? vExpSegment.r : vLinearSegment.r;
@@ -156,23 +149,23 @@ vec4 SrgbGammaToLinear(vec4 color)
     float select2 = color.b > cap ? vExpSegment.b : vLinearSegment.b;
     float select3 = color.a > cap ? vExpSegment.a : vLinearSegment.a;
 
-    return vec4(select, select1, select2, select3);
+    return float4(select, select1, select2, select3);
 }
 
-vec3 SrgbLinearToGamma( vec3 vLinearColor )
+public float3 SrgbLinearToGamma( float3 vLinearColor )
 {
 	// 15 asm instructions
-	vec3 vLinearSegment = vLinearColor.rgb * 12.92;
-	vec3 vExpSegment = ( 1.055 * pow( vLinearColor.rgb, vec3 ( 1.0 / 2.4) )) - 0.055;
+	float3 vLinearSegment = vLinearColor.rgb * 12.92;
+	float3 vExpSegment = ( 1.055 * pow( vLinearColor.rgb, float3 ( 1.0 / 2.4) )) - 0.055;
 
-	vec3 vGammaColor = vec3(( vLinearColor.r <= 0.0031308 ) ? vLinearSegment.r : vExpSegment.r,
+	float3 vGammaColor = float3(( vLinearColor.r <= 0.0031308 ) ? vLinearSegment.r : vExpSegment.r,
                             ( vLinearColor.g <= 0.0031308 ) ? vLinearSegment.g : vExpSegment.g,
                             ( vLinearColor.b <= 0.0031308 ) ? vLinearSegment.b : vExpSegment.b );
 
 	return vGammaColor.rgb;
 }
 
-vec3 DecodeYCoCg(vec4 color)
+public float3 DecodeYCoCg(float4 color)
 {
     float scale = (color.z * (255.0 / 8.0)) + 1.0;
     float Co = (color.x + (-128.0 / 255.0)) / scale;
@@ -183,98 +176,97 @@ vec3 DecodeYCoCg(vec4 color)
     float G = Y + Cg;
     float B = Y - Co - Cg;
 
-    return vec3(R, G, B);
+    return float3(R, G, B);
 }
 
-vec3 DecodeRGBM(vec4 color)
+public float3 DecodeRGBM(float4 color)
 {
     const float MaxRange = 6.0;
     return color.rgb * (color.a * MaxRange);
 }
 
-vec2 Resize2D(float Base, vec4 StartPos_Size)
+public float2 Resize2D(float Base, float4 StartPos_Size)
 {
 	return StartPos_Size.xy + Base * StartPos_Size.zw;
 }
 
-vec2 Resize2D(vec2 Base, vec4 StartPos_Size)
+public float2 Resize2D(float2 Base, float4 StartPos_Size)
 {
 	return StartPos_Size.xy + Base * StartPos_Size.zw;
 }
 
-
-vec2 RotateVector2D(vec2 vectorInput, float rotation, vec2 scale, vec2 offset)
+public float2 RotateVector2D(float2 vectorInput, float rotation, float2 scale, float2 offset)
 {
     rotation = radians(rotation);
     float sinRot = sin(rotation);
     float cosRot = cos(rotation);
 
-    vec2 finalOffset = (scale.xy * -0.5) * vec2(cosRot - sinRot, sinRot + cosRot) + offset + vec2(0.5);
-    vec4 xform = scale.xxyy * vec4(cosRot, -sinRot, sinRot, cosRot);
+    float2 finalOffset = (scale.xy * -0.5) * float2(cosRot - sinRot, sinRot + cosRot) + offset + float2(0.5);
+    float4 xform = scale.xxyy * float4(cosRot, -sinRot, sinRot, cosRot);
 
-    return vec2(dot(xform.xy, vectorInput.xy), dot(xform.zw, vectorInput.xy)) + finalOffset;
+    return float2(dot(xform.xy, vectorInput.xy), dot(xform.zw, vectorInput.xy)) + finalOffset;
 }
 
-vec2 RotateVector2D(vec2 vectorInput, float rotation, vec2 scale, vec2 offset, vec2 center)
+public float2 RotateVector2D(float2 vectorInput, float rotation, float2 scale, float2 offset, float2 center)
 {
 
     rotation = radians(rotation);
     float sinRot = sin(rotation);
     float cosRot = cos(rotation);
 
-    vec4 xform = vec4(cosRot * scale.x, -sinRot * scale.y, sinRot * scale.x, cosRot* scale.y);
+    float4 xform = float4(cosRot * scale.x, -sinRot * scale.y, sinRot * scale.x, cosRot* scale.y);
 
-    vec2 finalOffset = center + offset - vec2(dot(xform.xy, center), dot(xform.zw, center));
+    float2 finalOffset = center + offset - float2(dot(xform.xy, center), dot(xform.zw, center));
 
-    return vec2(dot(xform.xy, vectorInput.xy), dot(xform.zw, vectorInput.xy)) + finalOffset;
+    return float2(dot(xform.xy, vectorInput.xy), dot(xform.zw, vectorInput.xy)) + finalOffset;
 }
 
 // From vr_common in sbox
-vec4 QuaternionMultiplication( vec4 q1, vec4 q2 )
+public float4 QuaternionMultiplication( float4 q1, float4 q2 )
 {
-	return vec4(
+	return float4(
 		q2.xyz * q1.w + q1.xyz * q2.w + cross( q1.xyz, q2.xyz ),
 		q1.w * q2.w - dot( q1.xyz, q2.xyz )
 	);
 }
 
-vec3 QuaternionRotation( vec3 v, vec4 q )
+public float3 QuaternionRotation( float3 v, float4 q )
 {
-	vec4 q_c = q.xyzw * vec4( -1, -1, -1, 1 );
-	return QuaternionMultiplication( q, QuaternionMultiplication( vec4( v.xyz, 0 ), q_c.xyzw ) ).xyz;
+	float4 q_c = q.xyzw * float4( -1, -1, -1, 1 );
+	return QuaternionMultiplication( q, QuaternionMultiplication( float4( v.xyz, 0 ), q_c.xyzw ) ).xyz;
 }
 
 // All of this is directly ported from The Lab Renderer from the unity store.
 // These are their utility functions, at least as of the lab.
 
-float ClampToPositive( float flValue )
+public float ClampToPositive( float flValue )
 {
 	return max( 0.0, flValue );
 }
 
-vec2 ClampToPositive( vec2 vValue )
+public float2 ClampToPositive( float2 vValue )
 {
-	return max( vec2(0.0), vValue.xy );
+	return max( float2(0.0), vValue.xy );
 }
 
-vec3 ClampToPositive( vec3 vValue )
+public float3 ClampToPositive( float3 vValue )
 {
-	return max( vec3(0.0), vValue.xyz );
+	return max( float3(0.0), vValue.xyz );
 }
 
-vec4 ClampToPositive( vec4 vValue )
+public float4 ClampToPositive( float4 vValue )
 {
-	return max( vec4(0.0), vValue.xyzw );
+	return max( float4(0.0), vValue.xyzw );
 }
 
 // basically map to 0-1
-float LinearRamp( float flMin, float flMax, float flInput )
+public float LinearRamp( float flMin, float flMax, float flInput )
 {
 	return saturate( ( flInput - flMin ) / ( flMax - flMin ) );
 }
 
 // Remap a value in the range [A,B] to [C,D].
-float RemapVal( float flOldVal, float flOldMin, float flOldMax, float flNewMin, float flNewMax )
+public float RemapVal( float flOldVal, float flOldMin, float flOldMax, float flNewMin, float flNewMax )
 {
 	// Put the old val into 0-1 range based on the old min/max
 	float flValNormalized = ( flOldVal - flOldMin ) / ( flOldMax - flOldMin );
@@ -284,7 +276,7 @@ float RemapVal( float flOldVal, float flOldMin, float flOldMax, float flNewMin, 
 }
 
 // Remap a value in the range [A,B] to [C,D]. Values <A map to C, and >B maps to D.
-float RemapValClamped( float flOldVal, float flOldMin, float flOldMax, float flNewMin, float flNewMax )
+public float RemapValClamped( float flOldVal, float flOldMin, float flOldMax, float flNewMin, float flNewMax )
 {
 	// Put the old val into 0-1 range based on the old min/max
 	float flValNormalized = saturate( ( flOldVal - flOldMin ) / ( flOldMax - flOldMin ) );
@@ -293,67 +285,67 @@ float RemapValClamped( float flOldVal, float flOldMin, float flOldMax, float flN
 	return ( flValNormalized * ( flNewMax - flNewMin ) ) + flNewMin;
 }
 
-vec4 PackToColor( vec4 vValue )
+public float4 PackToColor( float4 vValue )
 {
 	return ( ( vValue.xyzw * 0.5 ) + 0.5 );
 }
 
-vec3 PackToColor( vec3 vValue )
+public float3 PackToColor( float3 vValue )
 {
 	return ( ( vValue.xyz * 0.5 ) + 0.5 );
 }
 
-vec2 PackToColor( vec2 vValue )
+public float2 PackToColor( float2 vValue )
 {
 	return ( ( vValue.xy * 0.5 ) + 0.5 );
 }
 
-float PackToColor( float flValue )
+public float PackToColor( float flValue )
 {
 	return ( ( flValue * 0.5 ) + 0.5 );
 }
 
-vec4 UnpackFromColor( vec4 cColor )
+public float4 UnpackFromColor( float4 cColor )
 {
 	return ( ( cColor.xyzw * 2.0 ) - 1.0 );
 }
 
-vec3 UnpackFromColor( vec3 cColor )
+public float3 UnpackFromColor( float3 cColor )
 {
 	return ( ( cColor.xyz * 2.0 ) - 1.0 );
 }
 
-vec2 UnpackFromColor( vec2 cColor )
+public float2 UnpackFromColor( float2 cColor )
 {
 	return ( ( cColor.xy * 2.0 ) - 1.0 );
 }
 
-float UnpackFromColor( float flColor )
+public float UnpackFromColor( float flColor )
 {
 	return ( ( flColor * 2.0 ) - 1.0 );
 }
 
-vec3 DecodeDxt5Normal(vec4 bumpTexel)
+public float3 DecodeDxt5Normal(float4 bumpTexel)
 {
-    vec2 temp = UnpackFromColor(bumpTexel.ag);
+    float2 temp = UnpackFromColor(bumpTexel.ag);
     temp.y = -temp.y;
-    return vec3(temp, sqrt(saturate(1 - dot(temp, temp))));
+    return float3(temp, sqrt(saturate(1 - dot(temp, temp))));
 }
 
-vec2 sign_not_zero(vec2 v)
+public float2 sign_not_zero(float2 v)
 {
     return step(0.0, v) * 2.0 - 1.0;
 }
 
-vec3 hemi_oct_to_float32x3(vec2 e)
+public float3 hemi_oct_to_float32x3(float2 e)
 {
-    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
     return normalize(v);
 }
 
-vec3 oct_to_float32x3(vec2 e)
+public float3 oct_to_float32x3(float2 e)
 {
-    vec3 v = vec3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+    float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
     if (v.z < 0.0)
     {
         v.xy = (1.0 - abs(v.yx)) * sign_not_zero(v.xy);
@@ -362,26 +354,24 @@ vec3 oct_to_float32x3(vec2 e)
 }
 
 // Safe normalize that handles degenerate normals from zero-scaled bones
-vec3 safeNormalize(vec3 v)
+public float3 safeNormalize(float3 v)
 {
     float len2 = dot(v, v);
     if (len2 < 1e-8)
     {
-        return vec3(0.0, 0.0, 1.0);
+        return float3(0.0, 0.0, 1.0);
     }
-    return v * inversesqrt(len2);
+    return v * rsqrt(len2);
 }
 
 // Unpack HemiOct normal map
-vec3 DecodeHemiOctahedronNormal(vec2 vHemiOct)
+public float3 DecodeHemiOctahedronNormal(float2 vHemiOct)
 {
     //Reconstruct the tangent vector from the map
-    vec2 temp = vec2(vHemiOct.x + vHemiOct.y - 1.003922, vHemiOct.x - vHemiOct.y);
-    vec3 tangentNormal = hemi_oct_to_float32x3(temp);
+    float2 temp = float2(vHemiOct.x + vHemiOct.y - 1.003922, vHemiOct.x - vHemiOct.y);
+    float3 tangentNormal = hemi_oct_to_float32x3(temp);
 
     // This is free, it gets compiled into the TS->WS matrix mul
     tangentNormal.y = -tangentNormal.y;
     return tangentNormal;
 }
-
-#endif

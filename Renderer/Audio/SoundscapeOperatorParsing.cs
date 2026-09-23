@@ -2,7 +2,7 @@ using System.Globalization;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Shared parsing helpers for Source 1 soundscape script operators ("playrandom", "playlooping"): the

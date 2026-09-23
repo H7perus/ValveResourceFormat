@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
+    <PackageReference Include="NLayer" Version="3.0.0" />
+    <PackageReference Include="ppy.SDL3-CS" Version="2026.722.0" />
+    <PackageReference Include="SlangShaderSharp" Version="2026.16.0" />
+    <PackageReference Include="Vortice.Vulkan" Version="3.2.3" />
+    <PackageReference Include="Vortice.VulkanMemoryAllocator" Version="1.7.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ValveResourceFormat\ValveResourceFormat.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="ValveResourceFormat.Utils" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Shaders\**" />
+    <EmbeddedResource Include="Resources\**" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <AssemblyMetadata Include="ShaderSourceDirectory" Value="$(MSBuildProjectDirectory)\Shaders" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Shaders\common\Core.slang" />
+    <EmbeddedResource Remove="Shaders\complex.slang" />
+    <EmbeddedResource Remove="Shaders\csgo_environment.slang" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Renderer\Shaders\ShaderLoader.cs" />
+  </ItemGroup>
+
+</Project>

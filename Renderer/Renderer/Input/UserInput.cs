@@ -1,9 +1,9 @@
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer.Entities;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.Renderer2.Entities;
+using ValveResourceFormat.Renderer2.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Input;
+namespace ValveResourceFormat.Renderer2.Input;
 
 /// <summary>
 /// Handles keyboard and mouse input for camera movement and orbit controls.
@@ -34,7 +34,7 @@ public class UserInput
     /// </summary>
     public record struct CameraLite(Vector3 Location, float Pitch, float Yaw);
 
-    private readonly Renderer Renderer;
+    private readonly Renderer2 Renderer;
     private float TransitionDuration = 1.5f;
     private float TransitionEndTime = -1f;
     private CameraLite StartingCamera;
@@ -47,7 +47,7 @@ public class UserInput
     /// Gets or sets the entity world whose solid entities the player collides with, on top of
     /// <see cref="PhysicsWorld"/>. Brush entities move, so they are traced separately from the static world.
     /// </summary>
-    public EntitySystem? EntitySystem { get; set; }
+    //VKTODO: public EntitySystem? EntitySystem { get; set; }
 
     private Vector3? _orbitTarget;
     private bool _forceUpdate = true;
@@ -101,7 +101,7 @@ public class UserInput
     /// hides itself outside walk mode and while the camera is detached, so it decides; without one
     /// there is nothing to aim, so no crosshair.
     /// </summary>
-    public bool ShowCrosshair => Viewmodel is { ShowCrosshair: true };
+    //VKTODO: public bool ShowCrosshair => Viewmodel is { ShowCrosshair: true };
 
     /// <summary>The buttons down as of this frame's sample, which movement folds into its own tick state.</summary>
     internal TrackedKeys Keys { get; private set; }
@@ -129,7 +129,7 @@ public class UserInput
     /// Initializes a new <see cref="UserInput"/> attached to the given renderer.
     /// </summary>
     /// <param name="renderer">The renderer providing uptime and context for camera and physics setup.</param>
-    public UserInput(Renderer renderer)
+    public UserInput(Renderer2 renderer)
     {
         Renderer = renderer;
         Camera = new Camera(renderer.RendererContext.FieldOfView);
@@ -308,10 +308,10 @@ public class UserInput
         }
         else
         {
-            if (Viewmodel != null)
-            {
-                PlayerMovement.RunSpeed = Viewmodel.WeaponMaxSpeed;
-            }
+            //VKTODO: if (Viewmodel != null)
+            //{
+            //    PlayerMovement.RunSpeed = Viewmodel.WeaponMaxSpeed;
+            //}
 
             PlayerMovement.ProcessMovement(Camera, deltaTime);
 
@@ -321,7 +321,7 @@ public class UserInput
             Camera.ClampRotation();
         }
 
-        Viewmodel?.ProcessInput(this, Renderer.Uptime);
+        //VKTODO: Viewmodel?.ProcessInput(this, Renderer.Uptime);
 
         ApplyToRenderCamera(renderCamera);
 
@@ -374,7 +374,7 @@ public class UserInput
     private CameraLite CameraPositionAngles
         => new(Camera.Location, Camera.Pitch, Camera.Yaw);
 
-    private ViewmodelSceneNode? Viewmodel { get; set; }
+    //VKTODO: private ViewmodelSceneNode? Viewmodel { get; set; }
 
     /// <summary>
     /// Switches to noclip mode and begins a smooth camera transition from the current position.
@@ -711,8 +711,8 @@ public class UserInput
     /// </summary>
     public bool TryLoadViewmodel(Scene scene)
     {
-        Viewmodel = ViewmodelSceneNode.TryLoadCs2Viewmodel(scene);
-        OrbitFollowProvider = Viewmodel is null ? null : Viewmodel.GetOrbitFollow;
-        return Viewmodel != null;
+        //VKTODO: Viewmodel = ViewmodelSceneNode.TryLoadCs2Viewmodel(scene);
+        //VKTODO: OrbitFollowProvider = Viewmodel is null ? null : Viewmodel.GetOrbitFollow;
+        return false; //VKTODO: Viewmodel != null;
     }
 }

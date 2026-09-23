@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using ValveKeyValue;
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.Renderer2.Audio.SampleProviders;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>A playing (or pending) instance of a sound event definition.</summary>
 public abstract class SoundEvent

@@ -2,7 +2,7 @@ using System.Globalization;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Implements the "hlvr_ambient_fixed_rotation_multi_vsnd" sound event type: up to 8 looping tracks

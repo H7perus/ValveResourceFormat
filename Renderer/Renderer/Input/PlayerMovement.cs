@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Entities;
+using ValveResourceFormat.Renderer2.Entities;
 
-namespace ValveResourceFormat.Renderer.Input;
+namespace ValveResourceFormat.Renderer2.Input;
 
 /// <summary>
 /// Source engine-style FPS player movement controller.
@@ -778,7 +778,7 @@ public partial class PlayerMovement : IPlayerController
 
         // Only a walkable main-probe hit assigns the ground entity: a quadrant-rescued grounding
         // stands on a steep sliver, and riding that would drag the player along an entity they left
-        GroundEntity = OnGround && snapToHit ? result.HitEntity : null;
+        //VKTODO: GroundEntity = OnGround && snapToHit ? result.HitEntity : null;
 
         // CGameMovement::CategorizePosition resets m_surfaceFriction to 1 each call and quarters
         // it while airborne and rising - but only below NON_JUMP_VELOCITY: faster ascents take
@@ -799,13 +799,14 @@ public partial class PlayerMovement : IPlayerController
     /// </summary>
     private bool HasEntityFooting(in Rubikon.TraceResult result, Vector3 position, Vector3 halfExtents)
     {
-        if (result.HitEntity is not { } entity || entity == Input.EntitySystem?.World)
-        {
-            return true;
-        }
+        //if (result.HitEntity is not { } entity) //VKTODO: || entity == Input.EntitySystem?.World)
+        //{
+        //    return true;
+        //}
 
-        return entity.Collider?.TraceRay(
-            position, position - new Vector3(0, 0, halfExtents.Z + GroundProbeDistance)) is { Hit: true };
+        //return entity.Collider?.TraceRay(
+        //    position, position - new Vector3(0, 0, halfExtents.Z + GroundProbeDistance)) is { Hit: true };
+        return false;
     }
 
     /// <summary>
@@ -1614,20 +1615,20 @@ public partial class PlayerMovement : IPlayerController
         SlopeClipNormalZ = 1f; // jump impulse is genuine vertical velocity
 
         // Jumping off a mover keeps its motion, the ground base velocity inheritance
-        Velocity += RideVelocity;
+        //VKTODO: Velocity += RideVelocity;
     }
 
     /// <summary>
     /// Gets the entity the player stands on - a brush entity, or the worldspawn on the map itself -
     /// and null in the air. The engine's <c>m_hGroundEntity</c>, taken from the ground probe every frame.
     /// </summary>
-    public Entities.BaseEntity? GroundEntity { get; private set; }
+    //VKTODO: public Entities.BaseEntity? GroundEntity { get; private set; }
 
     /// <summary>
     /// Gets the velocity of the mover currently carrying the player, zero on still ground. Riding is
     /// positional, so <see cref="Velocity"/> never contains it.
     /// </summary>
-    public Vector3 RideVelocity => GroundEntity?.GetSurfaceVelocity(TracePosition) ?? Vector3.Zero;
+    //VKTODO: public Vector3 RideVelocity => GroundEntity?.GetSurfaceVelocity(TracePosition) ?? Vector3.Zero;
 
     /// <summary>
     /// Shoves the player by a pusher's tick displacement, stopped early by the static world. Runs on
@@ -1665,7 +1666,7 @@ public partial class PlayerMovement : IPlayerController
         else
         {
             pendingPush += applied;
-            pendingPushTimeLeft = Entities.EntitySystem.TickInterval;
+            //VKTODO: pendingPushTimeLeft = Entities.EntitySystem.TickInterval;
         }
 
         return applied;
@@ -2195,11 +2196,11 @@ public partial class PlayerMovement : IPlayerController
         // ground entity like standing on anything else
         if (result.Hit)
         {
-            result.HitEntity = Input.EntitySystem?.World;
+            //VKTODO: result.HitEntity = Input.EntitySystem?.World;
         }
 
         // Brush entities are not part of the world's physics, so they get swept separately
-        Input.EntitySystem?.TraceAABB(from, to, halfExtents, detectStartSolid, ref result);
+        //VKTODO: Input.EntitySystem?.TraceAABB(from, to, halfExtents, detectStartSolid, ref result);
 
         return result;
     }

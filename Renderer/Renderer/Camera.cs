@@ -1,6 +1,6 @@
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Perspective camera with view and projection matrix management.
@@ -135,7 +135,7 @@ namespace ValveResourceFormat.Renderer
         /// Writes camera matrices and direction vectors into the provided view constants object.
         /// </summary>
         /// <param name="viewConstants">View constants object to populate.</param>
-        public void SetViewConstants(Buffers.ViewConstants viewConstants)
+        public void SetViewConstants(ViewConstants viewConstants)
         {
             viewConstants.WorldToProjection = ViewProjectionMatrix;
             viewConstants.WorldToView = CameraViewMatrix;
@@ -158,8 +158,9 @@ namespace ValveResourceFormat.Renderer
             viewConstants.CameraUpDirWs = Up;
 
             // todo: these change per scene, move to the other buffer
-            viewConstants.ViewportMinZ = Renderer.DepthRange.Scene.Near;
-            viewConstants.ViewportMaxZ = Renderer.DepthRange.Scene.Far;
+            //VKTODO
+            //viewConstants.ViewportMinZ = Renderer.DepthRange.Scene.Near;
+            //viewConstants.ViewportMaxZ = Renderer.DepthRange.Scene.Far;
         }
 
         /// <summary>

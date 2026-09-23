@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace ValveResourceFormat.Renderer.Shaders
+namespace ValveResourceFormat.Renderer2.Shaders
 {
     /// <summary>
     /// Registry of user provided shader directories and shader name mappings.
@@ -64,8 +64,8 @@ namespace ValveResourceFormat.Renderer.Shaders
 
                 directories = directories.Insert(0, fullPath);
             }
-
-            ShaderLoader.InvalidateParsedShaders();
+            //VKTODO?:
+            //ShaderLoader.InvalidateParsedShaders();
             return true;
         }
 
@@ -85,7 +85,7 @@ namespace ValveResourceFormat.Renderer.Shaders
                 mappings = mappings.SetItem(shaderName, shaderFileName);
             }
 
-            ShaderLoader.InvalidateParsedShaders();
+            //VKTODO?: ShaderLoader.InvalidateParsedShaders();
         }
 
         /// <summary>Removes all mounted directories and registered mappings.</summary>
@@ -97,7 +97,7 @@ namespace ValveResourceFormat.Renderer.Shaders
                 mappings = mappings.Clear();
             }
 
-            ShaderLoader.InvalidateParsedShaders();
+            //VKTODO?: ShaderLoader.InvalidateParsedShaders();
         }
 
         /// <summary>

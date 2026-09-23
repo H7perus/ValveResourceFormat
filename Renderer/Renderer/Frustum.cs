@@ -1,5 +1,7 @@
+//I'd love to know why Renderer1 didn't need it.
+using ValveResourceFormat.Utils;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// View frustum for culling objects outside the camera's visible area.

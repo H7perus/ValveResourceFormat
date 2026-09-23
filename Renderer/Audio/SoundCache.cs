@@ -2,10 +2,10 @@ using System.Diagnostics;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer.Audio.Decoders;
+using ValveResourceFormat.Renderer2.Audio.Decoders;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Loads compiled sound resources (vsnd) and caches them decoded in the mixer's output format.

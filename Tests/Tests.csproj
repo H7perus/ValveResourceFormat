@@ -10,7 +10,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ValveResourceFormat\ValveResourceFormat.csproj" />
-    <ProjectReference Include="..\Renderer\Renderer.csproj" />
+    <ProjectReference Include="..\RendererOld\Renderer.csproj" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Files\**">

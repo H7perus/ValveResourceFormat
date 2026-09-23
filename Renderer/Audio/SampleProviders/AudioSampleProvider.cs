@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Utils;
+using ValveResourceFormat.Renderer2.Utils;
 
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
 
 /// <summary>
 /// A source of interleaved 32-bit float audio samples in the mixer's output format.

@@ -1,7 +1,7 @@
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Stores "scripted" soundscape definitions loaded from classic KeyValues1 soundscape script files

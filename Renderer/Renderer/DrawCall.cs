@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
+using ValveResourceFormat.Renderer2.Materials;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Single GPU draw operation with geometry, material, and render state.
@@ -10,10 +10,12 @@ namespace ValveResourceFormat.Renderer
     public class DrawCall
     {
         /// <summary>Gets or sets the OpenGL primitive type for this draw call.</summary>
-        public PrimitiveType PrimitiveType { get; set; }
+        //VKTODO: could be encoded in the pipeline alone if we want. We set raster state there.
+        //public PrimitiveType PrimitiveType { get; set; }
 
         /// <summary>Gets or sets the base vertex offset applied to all indices.</summary>
-        public int BaseVertex { get; set; }
+        //VKTODO: I think we don't need this?
+        public int VertexOffset { get; set; }
 
         /// <summary>Gets or sets the number of vertices in the draw call.</summary>
         public uint VertexCount { get; set; }
@@ -51,58 +53,57 @@ namespace ValveResourceFormat.Renderer
         /// <summary>Gets or sets the name of the mesh this draw call belongs to.</summary>
         public string MeshName { get; set; } = string.Empty;
 
-        /// <summary>The vertex array object of the geometry. <see cref="MeshBuffers"/> makes it at the first
-        /// draw and holds it.</summary>
-        private int vao;
+        /// <summary>Defines what buffer (index in the vertex buffer array) goes to what binding slot)</summary>
+        private (int, int)[] BindingPairs;
 
         /// <summary>Gets the vertex buffer bindings used by this draw call.</summary>
-        public required VertexDrawBuffer[] VertexBuffers { get; init; }
+        public required RHI.Buffer[] VertexBuffers { get; init; }
 
         /// <summary>Gets or sets the data type of each element in the index buffer.</summary>
-        public DrawElementsType IndexType { get; set; }
+        //VKTODO: I think we don't need this either// public DrawElementsType IndexType { get; set; }
 
         /// <summary>Gets or sets the index buffer binding for this draw call.</summary>
-        public IndexDrawBuffer IndexBuffer { get; set; }
+        public RHI.Buffer IndexBuffer { get; set; }
 
         /// <summary>Gets or sets the vertex ID offset used for morph target lookup.</summary>
         public int VertexIdOffset { get; set; }
 
         /// <summary>Gets the size in bytes of a single index element.</summary>
-        public int IndexSizeInBytes => IndexType switch
-        {
-            DrawElementsType.UnsignedByte => 1,
-            DrawElementsType.UnsignedShort => 2,
-            DrawElementsType.UnsignedInt => 4,
-            _ => throw new UnreachableException(nameof(IndexType))
-        };
+        //VKTODO: public int IndexSizeInBytes => IndexType switch
+        //{
+        //    DrawElementsType.UnsignedByte => 1,
+        //    DrawElementsType.UnsignedShort => 2,
+        //    DrawElementsType.UnsignedInt => 4,
+        //    _ => throw new UnreachableException(nameof(IndexType))
+        //};
 
         /// <summary>Replaces the material and rebuilds the vertex array state.</summary>
         /// <param name="newMaterial">The new material to assign.</param>
-        public void SetNewMaterial(RenderMaterial newMaterial)
-        {
-            Material = newMaterial;
-            UpdateVertexArrayObject();
-        }
+        //VKTODO: public void SetNewMaterial(RenderMaterial newMaterial)
+        //{
+        //    Material = newMaterial;
+        //    UpdateVertexArrayObject();
+        //}
 
         /// <summary>Returns the VAO for this draw call, creating it if necessary. Locations are canonical,
         /// so it serves the material shader and every replacement shader (depth only, outline, picking).</summary>
         /// <returns>The OpenGL VAO handle.</returns>
-        public int GetVertexArrayObject()
-        {
-            if (vao == 0)
-            {
-                vao = MeshBuffers.GetVertexArrayObject(VertexBuffers, Material.Material.InputSignature, IndexBuffer.Handle, MeshName);
-            }
+        //VKTODO: probably remove // public int GetVertexArrayObject()
+        //{
+        //    if (vao == 0)
+        //    {
+        //        vao = MeshBuffers.GetVertexArrayObject(VertexBuffers, Material.Material.InputSignature, IndexBuffer.Handle, MeshName);
+        //    }
 
-            return vao;
-        }
+        //    return vao;
+        //}
 
         /// <summary>Recreates the VAO, picking up the new material's input signature.</summary>
-        public void UpdateVertexArrayObject()
-        {
-            vao = 0;
-            GetVertexArrayObject();
-        }
+        //VKTODO: This one too // public void UpdateVertexArrayObject()
+        //{
+        //    vao = 0;
+        //    GetVertexArrayObject();
+        //}
     }
 
     /// <summary>

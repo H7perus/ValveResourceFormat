@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using System.Linq;
-using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 
@@ -8,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 using Microsoft.Extensions.Logging;
 #endif
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.Renderer2
 {
     /// <summary>
     /// Caches GPU mesh buffers and vertex array objects for efficient mesh rendering.
@@ -80,21 +78,21 @@ namespace ValveResourceFormat.Renderer
         /// <param name="vbib">Vertex and index buffer data; the first vertex buffer's layout describes the attributes.</param>
         /// <param name="inputSignature">Optional material input signature mapping buffer semantics to shader attribute names.</param>
         /// <returns>The OpenGL VAO handle.</returns>
-        public int UploadBuffersAndCreateVertexArray(string meshName, VBIB vbib, Material.VsInputSignature inputSignature = default)
-        {
-            var gpuVbib = CreateVertexIndexBuffers(meshName, vbib);
-            var vertexBuffer = vbib.VertexBuffers[0];
+        //public int UploadBuffersAndCreateVertexArray(string meshName, VBIB vbib, Material.VsInputSignature inputSignature = default)
+        //{
+        //    var gpuVbib = CreateVertexIndexBuffers(meshName, vbib);
+        //    var vertexBuffer = vbib.VertexBuffers[0];
 
-            return GetVertexArrayObject(
-            [
-                new VertexDrawBuffer
-                {
-                    Handle = gpuVbib.VertexBuffers[0],
-                    ElementSizeInBytes = vertexBuffer.ElementSizeInBytes,
-                    InputLayoutFields = vertexBuffer.InputLayoutFields,
-                },
-            ], inputSignature, vbib.IndexBuffers.Count > 0 ? gpuVbib.IndexBuffers[0] : 0, meshName);
-        }
+        //    return GetVertexArrayObject(
+        //    [
+        //        new VertexDrawBuffer
+        //        {
+        //            Handle = gpuVbib.VertexBuffers[0],
+        //            ElementSizeInBytes = vertexBuffer.ElementSizeInBytes,
+        //            InputLayoutFields = vertexBuffer.InputLayoutFields,
+        //        },
+        //    ], inputSignature, vbib.IndexBuffers.Count > 0 ? gpuVbib.IndexBuffers[0] : 0, meshName);
+        //}
 
         /// <summary>
         /// Disposes any cached gpu buffers and frees gpu vertex arrays.
@@ -108,10 +106,10 @@ namespace ValveResourceFormat.Renderer
 
             gpuBuffers.Clear();
 
-            foreach (var item in vertexArrayObjects)
-            {
-                VertexArray.Delete(item.Value);
-            }
+            //VKTODO: foreach (var item in vertexArrayObjects)
+            //{
+            //    VertexArray.Delete(item.Value);
+            //}
 
             vertexArrayObjects.Clear();
         }
@@ -124,7 +122,7 @@ namespace ValveResourceFormat.Renderer
             {
                 gpuVbib.Delete();
                 gpuBuffers.Remove(meshName);
-                InvalidateVertexArrayObjectsForFreedBuffers([.. gpuVbib.VertexBuffers, .. gpuVbib.IndexBuffers]);
+                //VKTODO: InvalidateVertexArrayObjectsForFreedBuffers([.. gpuVbib.VertexBuffers, .. gpuVbib.IndexBuffers]);
             }
         }
 
@@ -147,7 +145,7 @@ namespace ValveResourceFormat.Renderer
             {
                 if (predicate(key))
                 {
-                    VertexArray.Delete(vao);
+                    //VKTODO: VertexArray.Delete(vao);
                     (keysToRemove ??= []).Add(key);
                 }
             }
@@ -164,24 +162,24 @@ namespace ValveResourceFormat.Renderer
         /// <param name="idxIndex">OpenGL handle of the index buffer, or 0 for non-indexed geometry.</param>
         /// <param name="debugLabel">Optional label applied to the VAO in debug builds when newly created.</param>
         /// <returns>The OpenGL VAO handle.</returns>
-        public int GetVertexArrayObject(VertexDrawBuffer[] vertexBuffers, Material.VsInputSignature inputSignature, int idxIndex, string? debugLabel = null)
-        {
-            var vaoKey = new VAOKey
-            {
-                InputSignature = inputSignature.Hash,
-                IndexBuffer = idxIndex,
-                VertexBuffers = Array.ConvertAll(vertexBuffers, vb => vb.Handle),
-            };
+        //VKTODO: public int GetVertexArrayObject(VertexDrawBuffer[] vertexBuffers, Material.VsInputSignature inputSignature, int idxIndex, string? debugLabel = null)
+        //{
+        //    var vaoKey = new VAOKey
+        //    {
+        //        InputSignature = inputSignature.Hash,
+        //        IndexBuffer = idxIndex,
+        //        VertexBuffers = Array.ConvertAll(vertexBuffers, vb => vb.Handle),
+        //    };
 
-            if (vertexArrayObjects.TryGetValue(vaoKey, out var vaoHandle))
-            {
-                return vaoHandle;
-            }
+        //    if (vertexArrayObjects.TryGetValue(vaoKey, out var vaoHandle))
+        //    {
+        //        return vaoHandle;
+        //    }
 
-            var newVaoHandle = CreateVertexArrayObject(vertexBuffers, inputSignature, idxIndex, debugLabel);
-            vertexArrayObjects.Add(vaoKey, newVaoHandle);
-            return newVaoHandle;
-        }
+        //    var newVaoHandle = CreateVertexArrayObject(vertexBuffers, inputSignature, idxIndex, debugLabel);
+        //    vertexArrayObjects.Add(vaoKey, newVaoHandle);
+        //    return newVaoHandle;
+        //}
 
         /// <summary>Builds a new VAO for the given buffers without caching it. Each attribute takes the
         /// canonical location of its material input signature name, or of its own buffer semantic when the
@@ -191,60 +189,60 @@ namespace ValveResourceFormat.Renderer
         /// <param name="idxIndex">OpenGL handle of the index buffer.</param>
         /// <param name="debugLabel">Optional label applied to the VAO in debug builds.</param>
         /// <returns>The OpenGL VAO handle.</returns>
-        private int CreateVertexArrayObject(VertexDrawBuffer[] vertexBuffers, Material.VsInputSignature inputSignature, int idxIndex, string? debugLabel = null)
-        {
-            Debug.Assert(vertexBuffers != null && vertexBuffers.Length > 0);
+        //VKTODO:        private int CreateVertexArrayObject(VertexDrawBuffer[] vertexBuffers, Material.VsInputSignature inputSignature, int idxIndex, string? debugLabel = null)
+        //        {
+        //            Debug.Assert(vertexBuffers != null && vertexBuffers.Length > 0);
 
-            var newVaoHandle = GraphicsDevice.CreateVertexArray(debugLabel ?? string.Empty);
-            VertexArray.StartRecording(newVaoHandle);
+        //            var newVaoHandle = GraphicsDevice.CreateVertexArray(debugLabel ?? string.Empty);
+        //            VertexArray.StartRecording(newVaoHandle);
 
-            // Check for non-indexed geometry
-            if (idxIndex != 0)
-            {
-                GL.VertexArrayElementBuffer(newVaoHandle, idxIndex);
-            }
+        //            // Check for non-indexed geometry
+        //            if (idxIndex != 0)
+        //            {
+        //                GL.VertexArrayElementBuffer(newVaoHandle, idxIndex);
+        //            }
 
-            // Workaround a bug in Intel drivers when mixing float and integer attributes
-            // See https://gist.github.com/stefalie/e17a20a88a0fdbd97110611569a6605f for reference
-            // We are using DSA apis, so we don't actually need to bind the VAO
-            GL.BindVertexArray(newVaoHandle);
+        //            // Workaround a bug in Intel drivers when mixing float and integer attributes
+        //            // See https://gist.github.com/stefalie/e17a20a88a0fdbd97110611569a6605f for reference
+        //            // We are using DSA apis, so we don't actually need to bind the VAO
+        //            GL.BindVertexArray(newVaoHandle);
 
-            var bindingIndex = 0;
-            var boundLocations = 0;
-            vertexBuffers = AddMissingAttributes(vertexBuffers);
+        //            var bindingIndex = 0;
+        //            var boundLocations = 0;
+        //            vertexBuffers = AddMissingAttributes(vertexBuffers);
 
-            foreach (var curVertexBuffer in vertexBuffers)
-            {
-                GL.VertexArrayVertexBuffer(newVaoHandle, bindingIndex, curVertexBuffer.Handle, 0, (int)curVertexBuffer.ElementSizeInBytes);
+        //            foreach (var curVertexBuffer in vertexBuffers)
+        //            {
+        //                GL.VertexArrayVertexBuffer(newVaoHandle, bindingIndex, curVertexBuffer.Handle, 0, (int)curVertexBuffer.ElementSizeInBytes);
 
-                foreach (var attribute in curVertexBuffer.InputLayoutFields)
-                {
-                    var attributeLocation = VertexAttributeLocations.Resolve(inputSignature, attribute, out var insgElemName);
+        //                foreach (var attribute in curVertexBuffer.InputLayoutFields)
+        //                {
+        //                    var attributeLocation = VertexAttributeLocations.Resolve(inputSignature, attribute, out var insgElemName);
 
-                    // Unknown, or a location an earlier buffer already took, which the table's aliases allow
-                    if (attributeLocation == -1 || (boundLocations & (1 << attributeLocation)) != 0)
-                    {
-#if DEBUG
-                        if (attributeLocation == -1 && !string.IsNullOrEmpty(insgElemName))
-                        {
-                            RendererContext.Logger.LogDebug("Attribute {SemanticName} ({SemanticIndex}) has no canonical location (insg: {InsgElemName})", attribute.SemanticName, attribute.SemanticIndex, insgElemName);
-                        }
-#endif
-                        continue;
-                    }
+        //                    // Unknown, or a location an earlier buffer already took, which the table's aliases allow
+        //                    if (attributeLocation == -1 || (boundLocations & (1 << attributeLocation)) != 0)
+        //                    {
+        //#if DEBUG
+        //                        if (attributeLocation == -1 && !string.IsNullOrEmpty(insgElemName))
+        //                        {
+        //                            RendererContext.Logger.LogDebug("Attribute {SemanticName} ({SemanticIndex}) has no canonical location (insg: {InsgElemName})", attribute.SemanticName, attribute.SemanticIndex, insgElemName);
+        //                        }
+        //#endif
+        //                        continue;
+        //                    }
 
-                    boundLocations |= 1 << attributeLocation;
+        //                    boundLocations |= 1 << attributeLocation;
 
-                    GL.EnableVertexArrayAttrib(newVaoHandle, attributeLocation);
-                    GL.VertexArrayAttribBinding(newVaoHandle, attributeLocation, bindingIndex);
-                    VertexArray.SetAttribFormat(newVaoHandle, attributeLocation, attribute.Format, (int)attribute.Offset);
-                }
+        //                    GL.EnableVertexArrayAttrib(newVaoHandle, attributeLocation);
+        //                    GL.VertexArrayAttribBinding(newVaoHandle, attributeLocation, bindingIndex);
+        //                    VertexArray.SetAttribFormat(newVaoHandle, attributeLocation, attribute.Format, (int)attribute.Offset);
+        //                }
 
-                bindingIndex++;
-            }
+        //                bindingIndex++;
+        //            }
 
-            return newVaoHandle;
-        }
+        //            return newVaoHandle;
+        //        }
 
         private VertexDrawBuffer[] AddMissingAttributes(VertexDrawBuffer[] vertexBuffers)
         {
@@ -253,7 +251,7 @@ namespace ValveResourceFormat.Renderer
             {
                 var defaultColor = new VertexDrawBuffer
                 {
-                    Handle = VectorOneVertexBuffer,
+                    //VKTODO: Handle = VectorOneVertexBuffer,
                     ElementSizeInBytes = 0, // required for the singular attribute to apply to all vertices
                     InputLayoutFields =
                     [

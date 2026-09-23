@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.Renderer2.Audio.SampleProviders;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Tracks active sound events and mixes their sample providers into a single continuous stereo stream.

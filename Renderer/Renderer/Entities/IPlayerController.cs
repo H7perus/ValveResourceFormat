@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.Renderer2.Input;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.Renderer2.Entities;
 
 /// <summary>
 /// The physical state of a player, as much of it as the entity world needs: where they stand, how fast,
@@ -32,7 +32,7 @@ public interface IPlayerController
     Vector3 ViewForward { get; }
 
     /// <summary>Gets the entity the player stands on, or null in the air.</summary>
-    BaseEntity? GroundEntity { get; }
+    //BaseEntity? GroundEntity { get; }
 
     /// <summary>
     /// Shoves the player by a world-space delta, stopped early by the static world. The pusher physics

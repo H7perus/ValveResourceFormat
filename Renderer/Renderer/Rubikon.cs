@@ -7,7 +7,7 @@ using ValveResourceFormat.ResourceTypes.RubikonPhysics.Shapes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static ValveResourceFormat.ResourceTypes.RubikonPhysics.Shapes.Mesh;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.Renderer2;
 
 /// <summary>
 /// Ray tracing against Rubikon physics collision shapes including meshes and hulls.
@@ -179,7 +179,7 @@ public class Rubikon
         /// entity whose collider was struck, or the worldspawn for static world geometry, as the engine
         /// reports it. Null when the sweep did not carry entity identity at all.
         /// </summary>
-        public Entities.BaseEntity? HitEntity { get; set; }
+        //VKTODO: public Entities.BaseEntity? HitEntity { get; set; }
 
         /// <summary>
         /// Updates this <see cref="TraceResult"/> if the <paramref name="other"/> is closer. Returns true if updated.

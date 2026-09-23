@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
 
 /// <summary>
 /// Plays an inner sample provider without spatialization, applying only <see cref="AudioSampleProvider.Volume"/>.

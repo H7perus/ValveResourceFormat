@@ -1,7 +1,7 @@
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Implements the layered weapon sound types "hlvr_gun_layers_3d" (mid/mech/lfe/distant) and

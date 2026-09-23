@@ -1,8 +1,8 @@
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.Renderer2.Audio.SampleProviders;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Implements the "hlvr_ambient_fixed_rotation" sound event type: one looping track placed at a fixed

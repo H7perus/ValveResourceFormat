@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// An audio output device that accepts interleaved 32-bit float samples.

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
 
 /// <summary>
 /// A second order IIR section, in transposed direct form II so its state stays well behaved when the

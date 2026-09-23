@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// A decoded sound: interleaved 16-bit PCM at the mixer's sample rate and channel count, stored as a

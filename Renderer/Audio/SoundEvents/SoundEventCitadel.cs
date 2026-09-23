@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using ValveKeyValue;
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.Renderer2.Audio.SampleProviders;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.Renderer2.Audio;
 
 /// <summary>
 /// Implements the "citadel_default_2d", "citadel_default_3d", "citadel_ambient_3d" and
