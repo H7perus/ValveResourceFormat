@@ -8,7 +8,7 @@ using static Vortice.Vulkan.Vulkan;
 
 namespace ValveResourceFormat.Renderer2.RHI
 {
-    public abstract class Pipeline
+    public abstract class Pipeline : IResource
     {
         public VkPipeline Handle { get; protected set; }
 

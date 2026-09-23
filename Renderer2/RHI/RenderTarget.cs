@@ -29,4 +29,10 @@ internal class RenderTarget : IResource
         DepthTarget.Destroy();
         DepthTarget = new Image(width, height, DepthTarget.Format, sampleCount: SampleCount, imageUsage: VkImageUsageFlags.DepthStencilAttachment | VkImageUsageFlags.TransferDst);
     }
+
+    public void Destroy()
+    {
+        ColorTarget.Destroy();
+        DepthTarget.Destroy();
+    }
 }

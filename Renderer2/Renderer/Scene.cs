@@ -110,7 +110,7 @@ public class Scene
                 {
                     foreach (var drawCall in renderableMesh.DrawCallsOpaque)
                     {
-                        cmd.BindGraphicsPipeline(drawCall.Material.Pipeline);
+                        cmd.BindGraphicsPipeline(drawCall.Material.Pipeline.Current);
 
                         cmd.BindVertexBuffer(drawCall.VertexBuffers[0]);
 

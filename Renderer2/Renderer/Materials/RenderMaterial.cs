@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.Blocks;
+using ValveResourceFormat.Renderer2.RHI;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.VfxEval;
 
@@ -38,7 +39,7 @@ namespace ValveResourceFormat.Renderer2.Materials
         public int SortId { get; }
 
         /// <summary>Gets the <see cref="RHI.PipelineGraphics"/> used to render this material.</summary>
-        public required RHI.PipelineGraphics Pipeline { get; init; }
+        public required ResourceHandle<PipelineGraphics> Pipeline { get; init; }
 
         /// <summary>Gets the underlying parsed <see cref="ValveResourceFormat.ResourceTypes.Material"/> data, as read from the file.</summary>
         public Material Material { get; }
@@ -171,7 +172,7 @@ namespace ValveResourceFormat.Renderer2.Materials
                 //}
             }
             //combinedShaderParameters;
-            Pipeline = (RHI.PipelineGraphics)rendererContext.ShaderLoader.GetPipeline(ShaderName, vbib, combinedShaderParameters);
+            Pipeline = rendererContext.ShaderLoader.GetPipelineGraphics(ShaderName, vbib, combinedShaderParameters);
 
             //SortId = GetSortId();
         }

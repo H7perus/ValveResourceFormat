@@ -38,7 +38,8 @@ public class RendererContext : IDisposable
     /// </summary>
     public ShaderLoader ShaderLoader { get; }
 
-    //VKTODO: public RHI.ShaderCompile.SlangShaderCompiler ShaderCompiler { get; } = new();
+    internal DestroyQueue DestroyQueue { get; }
+    internal ulong CurrentFrame { get; set; }
 
     /// <summary>
     /// GPU mesh buffer and vertex array object cache.
@@ -82,6 +83,8 @@ public class RendererContext : IDisposable
         MaterialLoader = new MaterialLoader(this);
         ShaderLoader = new ShaderLoader(this);
         MeshBufferCache = new GPUMeshBufferCache(this);
+
+        DestroyQueue = new();
     }
 
     /// <inheritdoc/>

@@ -70,7 +70,7 @@ namespace ValveResourceFormat.Renderer2.Shaders
         /// Uses a hash of shader name + compile time arguments as key and stores a hash of the shader module dependencies next to the pipeline
         /// VKTODO: This hash should also include pipeline parameters, so changed parameters are a new pipeline.
         /// </summary>
-        private readonly Dictionary<ulong, (string, ulong, IReadOnlyDictionary<string, int>?, Pipeline)> CachedPipelines = [];
+        private readonly Dictionary<ulong, (string, ulong, IReadOnlyDictionary<string, int>?, ResourceHandle<PipelineGraphics>)> CachedGraphicsPipelines = [];
 
         //        //VKTODO: private readonly Dictionary<ulong, Shader> CachedShaders = [];
 
@@ -89,7 +89,8 @@ namespace ValveResourceFormat.Renderer2.Shaders
         //        private static readonly Lock ParserLock = new();
         //        private static readonly Dictionary<string, ParsedShaderData> ParsedCache = [];
 
-        //        private readonly RendererContext RendererContext;
+        private readonly RendererContext RendererContext;
+
 
         //        /// <summary>
         //        /// Preprocessed shader source with defines, uniforms, and compiled stage code.
@@ -123,10 +124,10 @@ namespace ValveResourceFormat.Renderer2.Shaders
         /// <param name="rendererContext">The renderer context that owns this loader.</param>
         public ShaderLoader(RendererContext rendererContext)
         {
-            //RendererContext = rendererContext;
+            RendererContext = rendererContext;
         }
 
-        public RHI.Pipeline GetPipeline(string shaderName, VBIB vbib, IReadOnlyDictionary<string, byte>? arguments = null)
+        public ResourceHandle<PipelineGraphics> GetPipelineGraphics(string shaderName, VBIB vbib, IReadOnlyDictionary<string, byte>? arguments = null)
         {
             var shaderFileName = GetShaderFileByName(shaderName) + ".slang";
             var shaderCacheHash = CalculateShaderCacheHash(shaderName, arguments);
@@ -186,9 +187,11 @@ namespace ValveResourceFormat.Renderer2.Shaders
 
             }
 
-            var pipeline = new RHI.PipelineGraphics(specialisedShader, VkFormat.R16G16B16A16Sfloat, VkFormat.D32Sfloat, bindingDescriptions);
+            var pipeline = new ResourceHandle<PipelineGraphics>(new RHI.PipelineGraphics(specialisedShader, VkFormat.R16G16B16A16Sfloat, VkFormat.D32Sfloat, bindingDescriptions));
 
-            CachedPipelines.Add(shaderCacheHash, (path, module.DependencyHash, castArguments, pipeline));
+
+
+            CachedGraphicsPipelines.Add(shaderCacheHash, (path, module.DependencyHash, castArguments, pipeline));
 
             return pipeline;
         }
@@ -717,9 +720,9 @@ namespace ValveResourceFormat.Renderer2.Shaders
 
             ShaderCompiler.Reset();
 
-            for (int i = 0; i < CachedPipelines.Values.Count; i++)
+            for (int i = 0; i < CachedGraphicsPipelines.Values.Count; i++)
             {
-                var pipeline = CachedPipelines.ElementAt(i).Value;
+                var pipeline = CachedGraphicsPipelines.ElementAt(i).Value;
 
                 if (name != null && ShaderNameFromPath(pipeline.Item1) != name)
                 {
@@ -733,13 +736,16 @@ namespace ValveResourceFormat.Renderer2.Shaders
 
                 var specialised = ShaderCompiler.SpecialiseAndCompile(module.Module, pipeline.Item3);
 
-                var oldPipeline = (PipelineGraphics)pipeline.Item4;
+                var oldPipeline = (PipelineGraphics)pipeline.Item4.Current;
 
-                var newPipeline = new RHI.PipelineGraphics(specialised, oldPipeline.ColorTargetFormat, oldPipeline.DepthTargetFormat, oldPipeline.BindingDescriptions, oldPipeline.BlendStateDescription);
+                var tempPipeline = new RHI.PipelineGraphics(specialised, oldPipeline.ColorTargetFormat, oldPipeline.DepthTargetFormat, oldPipeline.BindingDescriptions, oldPipeline.BlendStateDescription);
                 pipeline.Item2 = module.DependencyHash;
-                pipeline.Item4.ReplaceWith(newPipeline);
 
-                CachedPipelines[CachedPipelines.ElementAt(i).Key] = pipeline;
+                tempPipeline = pipeline.Item4.Swap(tempPipeline);
+
+                RendererContext.DestroyQueue.Enqueue(tempPipeline, RendererContext.CurrentFrame);
+
+                CachedGraphicsPipelines[CachedGraphicsPipelines.ElementAt(i).Key] = pipeline;
             }
         }
 #endif

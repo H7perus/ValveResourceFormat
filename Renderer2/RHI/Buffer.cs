@@ -64,5 +64,11 @@ namespace ValveResourceFormat.Renderer2.RHI
         {
             vmaUnmapMemory(RenderDevice!.VmaAllocator, VmaAllocation);
         }
+
+
+        public void Destroy()
+        {
+            vmaDestroyBuffer(RenderDevice!.VmaAllocator, Handle, VmaAllocation);
+        }
     }
 }

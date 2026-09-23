@@ -1,8 +1,9 @@
 import common.Core;
 import common.compression;
+import common.ViewConstants;
 
-
-struct Parameters {
+struct Parameters : IParameters
+{
     float4x4 view;
     float4x4 projection;
 };
@@ -14,7 +15,8 @@ struct VS_OUT {
     float linearDepth : TEXCOORD2;
 };
 
-[vk::push_constant] DescriptorHandle<ConstantBuffer<Parameters>> uBuffer;
+
+[vk::push_constant] PushData<Parameters> pc;
 
 public struct VInput
 {
@@ -23,15 +25,18 @@ public struct VInput
     float2 uv : TEXCOORD0;
 }
 
+
+//Adding a test comment too for good measure
+  
 [shader("vertex")]
 void vertMain(VInput VInput,
     out VS_OUT out_
 ) {
-    var params = *uBuffer;
-    out_.clipPos = mul(params.projection, mul(params.view, float4(VInput.pos, 1.0f)));
-    // Compute linear depth in [0,1] range for Vulkan
+    var ViewConstants = pc.ViewConstants;
+    out_.clipPos = mul(ViewConstants.g_matViewToProjection, mul(ViewConstants.g_matWorldToView, float4(VInput.pos, 1.0f)));
+
     out_.linearDepth = out_.clipPos.z / out_.clipPos.w;
-    out_.normal = VInput.normalData.tangent;
+    out_.normal = VInput.normalData.bitangen;
     out_.uv = VInput.uv;
 }
 

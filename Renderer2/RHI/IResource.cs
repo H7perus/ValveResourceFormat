@@ -19,7 +19,29 @@ namespace ValveResourceFormat.Renderer2.RHI
         }
     }
 
+    /// <summary>
+    /// Used when swap-in-place is required. Example: Shader hot reloading requires to defer destruction of the old pipeline,
+    /// because it is still in use.
+    /// </summary>
+    /// <typeparam name="T">The resource type</typeparam>
+    public sealed class ResourceHandle<T> where T : class, IResource
+    {
+        private T _current;
+        public T Current => Volatile.Read<T>(ref _current);
+
+        internal T Swap(T next)
+            => Interlocked.Exchange(ref _current, next);
+
+        public ResourceHandle(T resource)
+        {
+            _current = resource;
+        }
+    }
+
     public interface IResource
     {
+        public abstract void Destroy();
     }
+
+    
 }

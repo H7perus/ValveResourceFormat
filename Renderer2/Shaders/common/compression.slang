@@ -23,7 +23,8 @@ public struct NormalData
             {
                 return DecompressNormal(optionallyCompressedNormal.get().value * 255.f);
             }
-            else {
+            else
+            {
                 float3 normal;
                 float4 tangent;
                 DecompressNormalTangent2(m_packed.get().value, normal, tangent);

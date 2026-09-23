@@ -460,10 +460,32 @@ namespace ValveResourceFormat.Renderer2.RHI
         }
 
 
-        public VkSemaphore CreateSemaphore()
+        public unsafe VkSemaphore CreateSemaphore(bool isTimeline = false)
         {
-            VkDeviceApi.vkCreateSemaphore(out var semaphore);
+            VkSemaphoreTypeCreateInfo typeCreateInfo = new()
+            {
+                semaphoreType = isTimeline ? VkSemaphoreType.Timeline : VkSemaphoreType.Binary
+            };
+
+            VkSemaphoreCreateInfo createInfo = new()
+            {
+                pNext = &typeCreateInfo
+            };
+
+            VkDeviceApi.vkCreateSemaphore(createInfo, out var semaphore);
             return semaphore;
+        }
+
+        public unsafe void WaitOnTimelineSemaphore(VkSemaphore semaphore, ulong timelineValue)
+        {
+            VkSemaphoreWaitInfo waitInfo = new()
+            {
+                semaphoreCount = 1,
+                pSemaphores = &semaphore,
+                pValues = &timelineValue
+            };
+
+            VkDeviceApi.vkWaitSemaphores(&waitInfo, ulong.MaxValue);
         }
 
         public VkFence CreateFence(bool isSignaled = false)
@@ -528,6 +550,49 @@ namespace ValveResourceFormat.Renderer2.RHI
             };
 
             VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, fifFreed);
+        }
+        unsafe public void SubmitGraphics(CommandList list, VkSemaphore imageAvailableSemaphore, VkSemaphore renderFinishedSemaphore, VkSemaphore timelineSemaphore, ulong timelineSignalValue)
+        {
+            VkCommandBufferSubmitInfo cmdBufferSubmitInfo = new VkCommandBufferSubmitInfo
+            {
+                commandBuffer = list.Handle
+            };
+
+            VkSemaphoreSubmitInfo imgAvailableSemaphoreInfo = new VkSemaphoreSubmitInfo
+            {
+                semaphore = imageAvailableSemaphore,
+                stageMask = VkPipelineStageFlags2.ColorAttachmentOutput
+            };
+
+            VkSemaphoreSubmitInfo renderFinishedSemaphoreInfo = new VkSemaphoreSubmitInfo
+            {
+                semaphore = renderFinishedSemaphore,
+                stageMask = VkPipelineStageFlags2.ColorAttachmentOutput
+            };
+
+            VkSemaphoreSubmitInfo timelineSemaphoreInfo = new VkSemaphoreSubmitInfo
+            {
+                semaphore = timelineSemaphore,
+                stageMask = VkPipelineStageFlags2.ColorAttachmentOutput,
+                value = timelineSignalValue
+            };
+
+            VkSemaphoreSubmitInfo[] submitInfos = [renderFinishedSemaphoreInfo, timelineSemaphoreInfo];
+
+            fixed (VkSemaphoreSubmitInfo* pInfos = submitInfos)
+            {
+                VkSubmitInfo2 submitInfo = new VkSubmitInfo2
+                {
+                    waitSemaphoreInfoCount = (uint)Convert.ToInt32(!imageAvailableSemaphore.IsNull),
+                    pWaitSemaphoreInfos = &imgAvailableSemaphoreInfo,
+                    commandBufferInfoCount = 1,
+                    pCommandBufferInfos = &cmdBufferSubmitInfo,
+                    signalSemaphoreInfoCount = (uint)submitInfos.Length,
+                    pSignalSemaphoreInfos = pInfos
+                };
+
+                VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, 0);
+            }
         }
 
         unsafe public void SubmitTransfer(CommandList list, VkFence transferFinished)
@@ -686,7 +751,7 @@ namespace ValveResourceFormat.Renderer2.RHI
             VkPushConstantRange pushRange = new()
             {
                 stageFlags = VkShaderStageFlags.All,
-                size = 8
+                size = 16
             };
 
             fixed (VkDescriptorSetLayout* pSets = sets)

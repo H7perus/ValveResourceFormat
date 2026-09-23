@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 using SlangShaderSharp;
 using Vortice.Vulkan;
 
@@ -27,7 +28,8 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                 CompilerOptionEntries = [
                     new CompilerOptionEntry { Name = CompilerOptionName.BindlessSpaceIndex, Value = CompilerOptionValue.FromInt(1)},
                     //H7per: could change this to 3 later
-                    new CompilerOptionEntry { Name = CompilerOptionName.Optimization, Value = CompilerOptionValue.FromInt(2) }
+                    new CompilerOptionEntry { Name = CompilerOptionName.Optimization, Value = CompilerOptionValue.FromInt(2) },
+                    new CompilerOptionEntry { Name = CompilerOptionName.DebugInformation, Value = CompilerOptionValue.FromInt(3) }
                     ]
             };
 
@@ -47,7 +49,8 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
                 CompilerOptionEntries = [
                     new CompilerOptionEntry { Name = CompilerOptionName.BindlessSpaceIndex, Value = CompilerOptionValue.FromInt(1)},
                     //H7per: could change this to 3 later
-                    new CompilerOptionEntry { Name = CompilerOptionName.Optimization, Value = CompilerOptionValue.FromInt(2) }
+                    new CompilerOptionEntry { Name = CompilerOptionName.Optimization, Value = CompilerOptionValue.FromInt(2) },
+                    new CompilerOptionEntry { Name = CompilerOptionName.DebugInformation, Value = CompilerOptionValue.FromInt(3) }
                     ]
             };
 
@@ -99,7 +102,13 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
             var module = slangSession.LoadModule(name, out var loadDiagnostics);
 
             if (module == null)
-                Console.WriteLine(loadDiagnostics.AsString);
+            {
+                if (loadDiagnostics != null)
+                    throw new Exception(loadDiagnostics.AsString);
+                else
+                    throw new Exception("Unspecified error during shader compilation!");
+            }
+                
 
             List<CompileTimeConstant> compileTimeConstants = new();
 
@@ -214,8 +223,8 @@ namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
 
             var specialisationModule = 
                 slangSession.LoadModuleFromSourceString(
-                specialisationModuleString, 
-                specialisationModuleString, 
+                Regex.Replace(specialisationModuleString, @"[^A-Za-z0-9_\-]+", "_"),
+                Regex.Replace(specialisationModuleString, @"[^A-Za-z0-9_\-]+", "_"), 
                 specialisationModuleString, 
                 out var specialisationModulediagnostics);
 
