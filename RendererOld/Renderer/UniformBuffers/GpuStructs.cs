@@ -1,8 +1,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 [InlineArray(6)]
 internal struct FrustumPlanesGpu

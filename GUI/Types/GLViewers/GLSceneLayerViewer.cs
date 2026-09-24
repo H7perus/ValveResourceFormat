@@ -2,8 +2,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Windows.Forms;
 using GUI.Utils;
-using ValveResourceFormat.Renderer2;
-using static ValveResourceFormat.Renderer.PickingTexture;
+using ValveResourceFormat.Renderer;
+using static ValveResourceFormat.RendererOld.PickingTexture;
 
 namespace GUI.Types.GLViewers
 {

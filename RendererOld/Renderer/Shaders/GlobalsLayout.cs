@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ValveResourceFormat.Renderer.Shaders;
+namespace ValveResourceFormat.RendererOld.Shaders;
 
 /// <summary>
 /// GLSL types of loose uniforms that can be packed into the globals constant buffer.

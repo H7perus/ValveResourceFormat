@@ -1,10 +1,10 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.Shaders;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.Shaders;
+using ValveResourceFormat.RendererOld.World;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Per scene owner of the tile and depth bin cull passes: the item layout, the GPU buffers they read and

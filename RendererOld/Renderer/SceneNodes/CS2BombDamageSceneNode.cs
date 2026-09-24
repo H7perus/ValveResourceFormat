@@ -8,7 +8,7 @@ using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.GenericData.CS2;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.SceneNodes;
+namespace ValveResourceFormat.RendererOld.SceneNodes;
 
 /// <summary>
 /// Scene node visualizing CS2 baked bomb damage data.

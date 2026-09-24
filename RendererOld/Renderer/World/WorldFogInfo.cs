@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
-namespace ValveResourceFormat.Renderer.World
+namespace ValveResourceFormat.RendererOld.World
 {
     /// <summary>
     /// Represents the fog data for the current scene.

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>
     /// One corner of a spritecard quad, for the renderers that hand their vertices over rather than

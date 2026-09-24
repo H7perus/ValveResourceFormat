@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>
     /// Available render mode options for debug visualization.

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.RendererOld.Audio;
 
 /// <summary>
 /// The listener's state for one <see cref="AudioMixer.Update"/>, threaded down the sound event tree to

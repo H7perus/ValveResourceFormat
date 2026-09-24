@@ -1,6 +1,6 @@
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Enumerates the events whose start is crossed while playback advances over a time range, handling

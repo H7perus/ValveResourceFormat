@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 /// <summary>
 /// Everything one barn light face is culled by, in world space. The shader lights a fragment only where

@@ -1,6 +1,6 @@
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.SceneNodes;
+namespace ValveResourceFormat.RendererOld.SceneNodes;
 
 class CameraSceneNode : ModelSceneNode
 {

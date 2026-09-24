@@ -3,7 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 
-namespace ValveResourceFormat.Renderer2.Shaders
+namespace ValveResourceFormat.Renderer.Shaders
 {
     /// <summary>
     /// Registry of user provided shader directories and shader name mappings.

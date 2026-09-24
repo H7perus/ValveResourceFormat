@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Simple vertex with position and color for debug rendering.

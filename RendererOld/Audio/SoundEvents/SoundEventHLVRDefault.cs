@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.RendererOld.Audio.SampleProviders;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.RendererOld.Audio;
 
 /// <summary>
 /// Implements the "hlvr_default_3d" and "hlvr_2d_w_occlusion" sound event types,

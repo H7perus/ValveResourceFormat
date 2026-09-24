@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// RAII wrapper timing a region that submits no GPU work.

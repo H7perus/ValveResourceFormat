@@ -1,11 +1,11 @@
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.Particles.Utils;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.World;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>
     /// Renders the ordered particle chain as a lit round tube. The tube tessellation is shared with the

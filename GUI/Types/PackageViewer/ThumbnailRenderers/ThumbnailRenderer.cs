@@ -9,9 +9,9 @@ using OpenTK.Windowing.Desktop;
 using ValvePak;
 using ValveResourceFormat;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Materials;
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld;
+using ValveResourceFormat.RendererOld.Materials;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
 namespace GUI.Types.PackageViewer.ThumbnailRenderers;
 

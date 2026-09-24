@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// OpenGL texture object with metadata for dimensions and filtering configuration.

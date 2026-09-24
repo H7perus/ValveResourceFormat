@@ -2,7 +2,7 @@ using System;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vma;
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     public class Buffer : IResource
     {

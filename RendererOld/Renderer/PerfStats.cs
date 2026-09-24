@@ -2,11 +2,11 @@ using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using QueryId = System.Int32;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 internal enum Counter
 {

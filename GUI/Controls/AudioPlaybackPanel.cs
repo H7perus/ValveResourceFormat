@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using GUI.Utils;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using ValveResourceFormat.Renderer.Utils;
+using ValveResourceFormat.RendererOld.Utils;
 
 // Based on https://github.com/naudio/NAudio.WaveFormRenderer (MIT License - Copyright (c) 2021 NAudio)
 

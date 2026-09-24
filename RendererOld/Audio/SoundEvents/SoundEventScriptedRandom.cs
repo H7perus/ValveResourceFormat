@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.Audio.SampleProviders;
+using ValveResourceFormat.RendererOld.Audio.SampleProviders;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Audio;
+namespace ValveResourceFormat.RendererOld.Audio;
 
 /// <summary>
 /// Implements a classic soundscape script's "playrandom" operator (see <see cref="SoundscapeBank"/>):

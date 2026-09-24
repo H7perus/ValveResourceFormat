@@ -1,7 +1,7 @@
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.NavMesh;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Scene node that visualizes navigation mesh areas and ladders.

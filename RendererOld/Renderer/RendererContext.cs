@@ -3,7 +3,7 @@ using System.Threading;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.IO;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Shared context containing loaders and caches used by the renderer.

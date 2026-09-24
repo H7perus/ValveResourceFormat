@@ -4,9 +4,9 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using ValveResourceFormat.Utils;
-using ValveResourceFormat.Renderer2.Materials;
+using ValveResourceFormat.Renderer.Materials;
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// GPU-ready mesh with draw calls, materials, and optional skeletal animation support.

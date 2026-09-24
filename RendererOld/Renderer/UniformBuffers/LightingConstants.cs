@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Buffers
+namespace ValveResourceFormat.RendererOld.Buffers
 {
     /// <summary>
     /// Uniform buffer containing all scene lights and lightmap configuration.

@@ -10,16 +10,16 @@ using ValvePak;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.NavMesh;
-using ValveResourceFormat.Renderer.Entities;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.Entities;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.GenericData.CS2;
 using ValveResourceFormat.Serialization.KeyValues;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
 using WorldResource = ValveResourceFormat.ResourceTypes.World;
 
-namespace ValveResourceFormat.Renderer.World
+namespace ValveResourceFormat.RendererOld.World
 {
     /// <summary>
     /// Loads and manages Source 2 world data including entities, lighting, and geometry.

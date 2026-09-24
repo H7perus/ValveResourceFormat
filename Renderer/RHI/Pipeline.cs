@@ -6,7 +6,7 @@ using System.Text;
 using Vortice.Vulkan;
 using static Vortice.Vulkan.Vulkan;
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     public abstract class Pipeline : IResource
     {

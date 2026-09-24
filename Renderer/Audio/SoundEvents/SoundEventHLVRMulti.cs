@@ -2,7 +2,7 @@ using System.Globalization;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// Implements the "hlvr_start_multi" sound event type: starts every child listed in

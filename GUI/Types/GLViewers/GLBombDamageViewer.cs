@@ -1,5 +1,5 @@
 using GUI.Utils;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 //using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes.GenericData.CS2;
 

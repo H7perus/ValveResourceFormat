@@ -1,7 +1,7 @@
 using System.Globalization;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>logic_case</c>. Picks one of up to sixteen outputs, either by matching a value against the authored

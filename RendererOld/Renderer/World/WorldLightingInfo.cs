@@ -3,10 +3,10 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.World
+namespace ValveResourceFormat.RendererOld.World
 {
     /// <summary>
     /// Storage format for environment map cubemap textures.

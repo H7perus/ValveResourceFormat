@@ -1,6 +1,6 @@
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// Perspective camera with view and projection matrix management.

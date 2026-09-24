@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// The base of the trigger volumes, Source's <c>CBaseTrigger</c>. A trigger is a brush you pass through

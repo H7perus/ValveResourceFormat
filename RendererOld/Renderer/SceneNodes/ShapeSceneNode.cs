@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Base class for scene nodes that render primitive shapes like boxes, spheres, and capsules.

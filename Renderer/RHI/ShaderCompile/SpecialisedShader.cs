@@ -5,7 +5,7 @@ using Vortice.Vulkan;
 
 using SlangShaderSharp;
 
-namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
+namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
 {
     public readonly record struct VertexInput(
         string SemanticName,

@@ -1,6 +1,6 @@
 using NLayer;
 
-namespace ValveResourceFormat.Renderer2.Audio.Decoders;
+namespace ValveResourceFormat.Renderer.Audio.Decoders;
 
 /// <summary>
 /// MP3 decoder built on NLayer's frame decoder (fully managed, no platform audio dependencies), fed

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// A reference to one play of a sound event. <see cref="SoundEvent"/> instances are pooled across plays,

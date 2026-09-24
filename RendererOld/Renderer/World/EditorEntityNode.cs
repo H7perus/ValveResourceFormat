@@ -1,10 +1,10 @@
 using System.IO;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
 
-namespace ValveResourceFormat.Renderer.World;
+namespace ValveResourceFormat.RendererOld.World;
 
 /// <summary>
 /// Builds the node an entity is drawn as in the editor: the model, sprite or icon its Hammer class names,

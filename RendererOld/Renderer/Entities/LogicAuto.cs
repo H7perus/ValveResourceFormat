@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>logic_auto</c>. Fires its outputs when the map starts - how a map kicks off its own wiring.

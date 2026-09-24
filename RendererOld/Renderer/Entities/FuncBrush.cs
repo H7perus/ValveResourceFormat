@@ -1,6 +1,6 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>func_brush</c>. A piece of world geometry a map can show, hide, and make solid or not.

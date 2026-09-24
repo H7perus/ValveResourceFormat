@@ -1,10 +1,10 @@
-global using static ValveResourceFormat.Renderer2.RHI.Utils.FormatChecks;
+global using static ValveResourceFormat.Renderer.RHI.Utils.FormatChecks;
 using System;
 using System.Collections.Generic;
 using System.Text;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2.RHI.Utils;
+namespace ValveResourceFormat.Renderer.RHI.Utils;
 
 
 

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using ValveResourceFormat.Renderer.Audio;
+using ValveResourceFormat.RendererOld.Audio;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>ambient_generic</c>. Plays one sound, either looping from the moment the map starts or fired by

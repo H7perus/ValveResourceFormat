@@ -9,8 +9,8 @@ using OpenTK.Graphics.OpenGL;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
 using ValveResourceFormat;
-using ValveResourceFormat.Renderer2;
-using ValveResourceFormat.Renderer2.Input;
+using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer.Input;
 
 //using ValveResourceFormat.Renderer.Input;
 using Windows.Win32;

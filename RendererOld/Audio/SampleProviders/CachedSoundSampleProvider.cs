@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.RendererOld.Audio.SampleProviders;
 
 /// <summary>
 /// Streams samples out of a <see cref="CachedSound"/>, honoring its loop points.

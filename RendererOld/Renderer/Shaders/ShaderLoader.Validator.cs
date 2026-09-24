@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Shaders
+namespace ValveResourceFormat.RendererOld.Shaders
 {
     public partial class ShaderLoader
     {

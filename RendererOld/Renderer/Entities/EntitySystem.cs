@@ -3,7 +3,7 @@ using ValveResourceFormat.IO;
 using ValveResourceFormat.ResourceTypes;
 using Entity = ValveResourceFormat.ResourceTypes.EntityLump.Entity;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// What an authored entity I/O connection addresses: a name, and how the map means it to be read.

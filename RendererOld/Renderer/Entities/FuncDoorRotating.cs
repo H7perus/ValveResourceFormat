@@ -1,6 +1,6 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>func_door_rotating</c>. A door that swings about one axis instead of sliding, Source's

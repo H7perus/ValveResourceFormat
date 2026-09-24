@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Debug visualization renderer for occluded object bounds in occlusion culling.

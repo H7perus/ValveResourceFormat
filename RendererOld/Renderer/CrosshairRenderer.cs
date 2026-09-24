@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Draws the classic static crosshair at the center of the viewport, for walk mode.

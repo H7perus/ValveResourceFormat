@@ -6,7 +6,7 @@ using GUI.Types.GLViewers;
 using GUI.Utils;
 using ValveKeyValue;
 using ValveResourceFormat.NavMesh;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Types.Viewers

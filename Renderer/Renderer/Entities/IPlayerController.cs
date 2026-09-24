@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer2.Input;
+using ValveResourceFormat.Renderer.Input;
 
-namespace ValveResourceFormat.Renderer2.Entities;
+namespace ValveResourceFormat.Renderer.Entities;
 
 /// <summary>
 /// The physical state of a player, as much of it as the entity world needs: where they stand, how fast,

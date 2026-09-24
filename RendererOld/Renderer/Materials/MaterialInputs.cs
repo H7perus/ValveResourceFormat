@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>
     /// A <see cref="RenderMaterial"/>'s inputs of one type, keyed by uniform name.

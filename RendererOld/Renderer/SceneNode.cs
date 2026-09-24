@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Which passes of the frame beyond <see cref="Scene.UpdatePhase.Place"/> a node takes part in.

@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// A thrown CS2 grenade. Created at runtime by the viewmodel rather than from a map, simulated on the

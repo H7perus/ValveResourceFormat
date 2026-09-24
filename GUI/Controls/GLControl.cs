@@ -3,8 +3,8 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using NativeWindow = OpenTK.Windowing.Desktop.NativeWindow;
-using ValveResourceFormat.Renderer2.RHI;
-using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
+using ValveResourceFormat.Renderer.RHI;
+using static ValveResourceFormat.Renderer.RHI.S2vDevice;
 
 namespace GUI.Controls;
 

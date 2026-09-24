@@ -1,8 +1,8 @@
 using ValveResourceFormat.Particles;
-using ValveResourceFormat.Renderer.Particles.Renderers;
+using ValveResourceFormat.RendererOld.Particles.Renderers;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles;
+namespace ValveResourceFormat.RendererOld.Particles;
 
 /// <summary>
 /// Builds the renderers a particle system draws through. These are the only particle functions that

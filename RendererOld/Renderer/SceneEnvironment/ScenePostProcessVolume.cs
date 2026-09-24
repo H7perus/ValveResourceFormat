@@ -3,12 +3,12 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL;
 using ValveKeyValue;
-using ValveResourceFormat.Renderer.Entities;
+using ValveResourceFormat.RendererOld.Entities;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment
+namespace ValveResourceFormat.RendererOld.SceneEnvironment
 {
     /// <summary>
     /// Filmic tonemapping curve parameters for HDR-to-LDR conversion.

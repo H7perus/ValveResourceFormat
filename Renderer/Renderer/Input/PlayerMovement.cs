@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer2.Entities;
+using ValveResourceFormat.Renderer.Entities;
 
-namespace ValveResourceFormat.Renderer2.Input;
+namespace ValveResourceFormat.Renderer.Input;
 
 /// <summary>
 /// Source engine-style FPS player movement controller.

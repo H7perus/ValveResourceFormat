@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Buffers
+namespace ValveResourceFormat.RendererOld.Buffers
 {
     /// <summary>
     /// Per-probe reflection data for shader uniform buffer.

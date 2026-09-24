@@ -1,6 +1,6 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>logic_relay</c>. A named place to send an output so that one trigger can drive many things, and so

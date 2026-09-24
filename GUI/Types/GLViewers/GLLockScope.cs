@@ -1,5 +1,5 @@
 using System.Threading;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.RendererOld;
 
 namespace GUI.Types.GLViewers;
 

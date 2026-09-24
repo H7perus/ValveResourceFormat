@@ -2,7 +2,7 @@
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// GPU vertex and index buffers created from <see cref="VBIB"/> mesh data.

@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>A visible light produced by a <see cref="ShadowMapper"/> pass.</summary>
 public struct BinnedLight

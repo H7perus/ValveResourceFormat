@@ -1,8 +1,8 @@
 using ValveResourceFormat.Particles;
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>
     /// Render an Omni2 light from particle data.

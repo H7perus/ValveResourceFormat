@@ -5,9 +5,9 @@ using System.IO;
 using System.Threading;
 using System.Windows.Forms;
 using GUI.Utils;
-using ValveResourceFormat.Renderer.Shaders;
+using ValveResourceFormat.RendererOld.Shaders;
 
-using Renderer2Shaders = ValveResourceFormat.Renderer2.Shaders;
+using Renderer2Shaders = ValveResourceFormat.Renderer.Shaders;
 
 namespace GUI.Types.GLViewers;
 

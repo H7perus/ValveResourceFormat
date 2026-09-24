@@ -1,11 +1,11 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
-using ValveResourceFormat.Renderer.Entities;
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.RendererOld.Entities;
+using ValveResourceFormat.RendererOld.Input;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 
-namespace ValveResourceFormat.Renderer.SceneNodes;
+namespace ValveResourceFormat.RendererOld.SceneNodes;
 
 /// <summary>
 /// First-person viewmodel scene node (player arms, weapon items and legs) driven by animgraph 2 clips.

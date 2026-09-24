@@ -1,7 +1,7 @@
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>Stores sound event definitions loaded from soundevent (vsndevts) files.</summary>
 public sealed class SoundEventBank

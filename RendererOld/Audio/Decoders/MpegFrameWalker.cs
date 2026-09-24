@@ -1,6 +1,6 @@
 using NLayer;
 
-namespace ValveResourceFormat.Renderer.Audio.Decoders;
+namespace ValveResourceFormat.RendererOld.Audio.Decoders;
 
 /// <summary>
 /// A reusable <see cref="IMpegFrame"/> that walks MP3 frames directly over a byte buffer, replacing

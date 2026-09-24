@@ -1,9 +1,9 @@
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer2.Entities;
-using ValveResourceFormat.Renderer2.SceneNodes;
+using ValveResourceFormat.Renderer.Entities;
+using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer2.Input;
+namespace ValveResourceFormat.Renderer.Input;
 
 /// <summary>
 /// Handles keyboard and mouse input for camera movement and orbit controls.

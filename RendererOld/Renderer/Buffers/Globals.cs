@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 /// <summary>
 /// Holds the packed values of a shader's loose global uniforms, as laid out by

@@ -2,7 +2,7 @@ using System.Globalization;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// A sound event definition with its properties parsed out of the key-values once.

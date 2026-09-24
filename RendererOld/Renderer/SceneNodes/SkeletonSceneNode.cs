@@ -2,7 +2,7 @@ using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using ValveResourceFormat.ResourceTypes.ModelData.Attachments;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Scene node that visualizes skeletal bone hierarchy, animation poses and model attachments.

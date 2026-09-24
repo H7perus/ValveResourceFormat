@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Buffers
+namespace ValveResourceFormat.RendererOld.Buffers
 {
     /// <summary>GPU struct holding parameters for a single barn light.</summary>
     [StructLayout(LayoutKind.Sequential)]

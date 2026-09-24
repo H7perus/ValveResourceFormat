@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
 
 /// <summary>
 /// Renders the direction cues that per-ear gains physically cannot: how far above or below the listener a

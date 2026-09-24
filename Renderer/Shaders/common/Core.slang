@@ -14,4 +14,7 @@ struct ConstantRange
     int max;
 };
 
+[__AttributeUsage(_AttributeTargets.Var)]
+struct IsSrgb;
+
 

@@ -1,5 +1,5 @@
 
-namespace ValveResourceFormat.Renderer2.Utils
+namespace ValveResourceFormat.Renderer.Utils
 {
     /// <summary>
     /// Facts about an <see cref="ImageFormat"/> that hold whatever graphics API is in use.

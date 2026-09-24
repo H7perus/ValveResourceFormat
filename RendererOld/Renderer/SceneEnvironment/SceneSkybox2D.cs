@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment
+namespace ValveResourceFormat.RendererOld.SceneEnvironment
 {
     /// <summary>
     /// Renders a 2D skybox using a fullscreen cube.

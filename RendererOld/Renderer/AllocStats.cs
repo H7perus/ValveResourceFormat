@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.Tracing;
 using System.Threading;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Collects per frame managed allocation and garbage collector statistics.

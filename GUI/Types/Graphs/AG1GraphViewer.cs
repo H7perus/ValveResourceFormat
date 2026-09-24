@@ -3,7 +3,7 @@ using GUI.Types.Graphs.Core;
 using GUI.Utils;
 using ValveKeyValue;
 using ValveResourceFormat.Graphs;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 
 namespace GUI.Types.Graphs;
 

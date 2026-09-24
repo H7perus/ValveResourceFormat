@@ -6,7 +6,7 @@ using ValveResourceFormat.ResourceTypes;
 using Microsoft.Extensions.Logging;
 #endif
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// Caches GPU mesh buffers and vertex array objects for efficient mesh rendering.

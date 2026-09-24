@@ -1,7 +1,7 @@
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Debug visualization renderer for octree spatial partitioning structure.

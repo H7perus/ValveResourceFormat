@@ -2,7 +2,7 @@ using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment;
+namespace ValveResourceFormat.RendererOld.SceneEnvironment;
 
 /// <summary>
 ///     Scene node representing a light source with type, color, and attenuation.

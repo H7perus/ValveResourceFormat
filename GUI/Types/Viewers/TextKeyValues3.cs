@@ -9,7 +9,7 @@ using GUI.Types.Graphs;
 using GUI.Utils;
 using ValveKeyValue;
 using ValveResourceFormat.Graphs;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 using ValveResourceFormat.Serialization.KeyValues;
 
 namespace GUI.Types.Viewers;

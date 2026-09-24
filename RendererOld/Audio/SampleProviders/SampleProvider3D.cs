@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Utils;
+using ValveResourceFormat.RendererOld.Utils;
 
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.RendererOld.Audio.SampleProviders;
 
 /// <summary>
 /// A positional sound with stereo panning and distance based attenuation.

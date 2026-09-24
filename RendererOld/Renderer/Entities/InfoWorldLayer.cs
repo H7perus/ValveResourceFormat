@@ -1,6 +1,6 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary><c>info_world_layer</c>. Shows and hides one world layer by entity I/O.</summary>
 public sealed class InfoWorldLayer : BaseEntity

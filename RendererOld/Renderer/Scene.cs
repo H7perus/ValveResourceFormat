@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer.Entities;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.Entities;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneNodes;
+using ValveResourceFormat.RendererOld.World;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Container for scene nodes with spatial partitioning, lighting, and render state management.

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment;
+namespace ValveResourceFormat.RendererOld.SceneEnvironment;
 
 /// <summary>
 /// Scene node representing cubemap-based volumetric fog.

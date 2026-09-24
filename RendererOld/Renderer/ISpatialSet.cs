@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Spatial set of scene nodes, queryable by frustum or box. Implemented hierarchically by

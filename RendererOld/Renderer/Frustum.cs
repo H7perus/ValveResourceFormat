@@ -1,5 +1,5 @@
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// View frustum for culling objects outside the camera's visible area.

@@ -10,7 +10,7 @@ using GUI.Controls;
 using GUI.Types.GLViewers;
 using GUI.Utils;
 using Svg.Skia;
-using ValveResourceFormat.Renderer;
+using ValveResourceFormat.RendererOld;
 using ValveResourceFormat.TextureDecoders;
 
 namespace GUI.Forms

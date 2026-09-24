@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Small group of triangles on a mesh used for low level culling

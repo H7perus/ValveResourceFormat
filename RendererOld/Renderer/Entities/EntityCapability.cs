@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// What an entity can do, Source's <c>FCAP_</c> flags as returned by <c>ObjectCaps</c>. Only the

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Scene node that renders a single mesh.

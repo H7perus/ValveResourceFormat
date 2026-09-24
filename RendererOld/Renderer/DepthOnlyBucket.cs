@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// How a draw enters the shadow maps and the depth pre-pass. Declaration order is render order.

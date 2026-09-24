@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 /// <summary>
 /// A ring of fenced GPU to CPU copies that never stalls the CPU. A frame copies words into a free slot

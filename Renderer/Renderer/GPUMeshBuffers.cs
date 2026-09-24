@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using ValveResourceFormat.Blocks;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// GPU vertex and index buffers created from <see cref="VBIB"/> mesh data.

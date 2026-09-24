@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// Uniform buffer containing camera transforms, fog, and per-frame view state.

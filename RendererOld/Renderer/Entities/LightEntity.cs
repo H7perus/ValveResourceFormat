@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// The light entities. Owns the <see cref="SceneLight"/> and steers it live: the real-time set (barn,

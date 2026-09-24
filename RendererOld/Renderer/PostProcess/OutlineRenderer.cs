@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.PostProcess;
+namespace ValveResourceFormat.RendererOld.PostProcess;
 
 /// <summary>
 /// Fullscreen pass that draws an outline by running edge detection over the outline coverage mask.

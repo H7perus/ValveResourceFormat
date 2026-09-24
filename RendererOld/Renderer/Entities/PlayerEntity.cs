@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.RendererOld.Input;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// The player, as an entity the rest of the world can see. Source's <c>CBasePlayer</c> is an entity like

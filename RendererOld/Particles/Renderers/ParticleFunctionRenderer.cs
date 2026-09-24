@@ -1,7 +1,7 @@
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>
     /// Base class for all particle renderers. Renderers are responsible for drawing the visual

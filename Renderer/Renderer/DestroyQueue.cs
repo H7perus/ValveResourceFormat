@@ -2,9 +2,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
-using ValveResourceFormat.Renderer2.RHI;
+using ValveResourceFormat.Renderer.RHI;
 
-namespace ValveResourceFormat.Renderer2;
+namespace ValveResourceFormat.Renderer;
 
 record ResourceDestroyRequest
 {

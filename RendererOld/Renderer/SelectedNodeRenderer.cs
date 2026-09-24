@@ -1,12 +1,12 @@
 using System.Globalization;
 using System.Linq;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.SceneNodes;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneNodes;
+using ValveResourceFormat.RendererOld.World;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Renders selection outlines and debug information for selected scene nodes.

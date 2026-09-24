@@ -6,7 +6,7 @@ using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.VfxEval;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>Names the sampler uniforms bound to a <see cref="ReservedTextureSlots"/> member. Names may share a slot when their texture targets differ, since a unit holds one binding per target, or when no shader variant declares both.</summary>
     /// <param name="names">The sampler uniform names bound to this slot.</param>

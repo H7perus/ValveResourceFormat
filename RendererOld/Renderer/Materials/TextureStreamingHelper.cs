@@ -5,7 +5,7 @@ using System.Threading;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>How texture mip data reaches the GPU.</summary>
     public enum TextureStreamingMode

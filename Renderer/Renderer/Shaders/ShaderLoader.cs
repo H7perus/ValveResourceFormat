@@ -9,12 +9,12 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer2.RHI;
-using ValveResourceFormat.Renderer2.RHI.ShaderCompile;
+using ValveResourceFormat.Renderer.RHI;
+using ValveResourceFormat.Renderer.RHI.ShaderCompile;
 using Vortice.Vulkan;
 using static ValveResourceFormat.Blocks.ResourceIntrospectionManifest.ResourceDiskEnum;
 
-namespace ValveResourceFormat.Renderer2.Shaders
+namespace ValveResourceFormat.Renderer.Shaders
 {
     //    /// <summary>
     //    /// Shader stage types in the rendering pipeline.

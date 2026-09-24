@@ -1096,7 +1096,7 @@ namespace GUI
             {
                 var window = NativeWindowFactory.Create(new()
                 {
-                    APIVersion = ValveResourceFormat.Renderer.GLEnvironment.RequiredVersion,
+                    APIVersion = ValveResourceFormat.RendererOld.GLEnvironment.RequiredVersion,
                     Flags = GLBaseControl.Flags | OpenTK.Windowing.Common.ContextFlags.Offscreen,
                     StartVisible = false,
                     Title = "Source 2 Viewer Shader Validator"
@@ -1106,7 +1106,7 @@ namespace GUI
                 {
                     window.MakeCurrent();
 
-                    ValveResourceFormat.Renderer.Shaders.ShaderLoader.ValidateShaders(new Progress<string>(progressDialog.SetProgress), VrfGuiContext.Logger);
+                    ValveResourceFormat.RendererOld.Shaders.ShaderLoader.ValidateShaders(new Progress<string>(progressDialog.SetProgress), VrfGuiContext.Logger);
                 }
                 finally
                 {

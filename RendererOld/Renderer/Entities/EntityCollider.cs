@@ -1,7 +1,7 @@
 using System.Linq;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// A brush entity's collision shape: the <see cref="Rubikon"/> built from its own model, plus the

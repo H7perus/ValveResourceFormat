@@ -2,7 +2,7 @@ using System.Linq;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.ModelFlex;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Manages flex controller state and morph target composition for facial animation.

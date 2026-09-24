@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Buffers
+namespace ValveResourceFormat.RendererOld.Buffers
 {
     /// <summary>
     /// Base class for OpenGL buffer objects with automatic binding management.

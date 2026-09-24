@@ -2,7 +2,7 @@ using System.Linq;
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>One entry of m_vecTexturesInput: a texture plus how it folds into the layers below it.</summary>
     internal sealed class ParticleTextureLayer(RenderTexture texture)

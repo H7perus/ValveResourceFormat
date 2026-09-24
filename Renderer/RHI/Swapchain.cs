@@ -5,7 +5,7 @@ using Vortice.Vulkan;
 //using static S2vDevice;
 using static Vortice.Vulkan.Vulkan;
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     public unsafe class Swapchain : IDisposable
     {

@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer2.Audio.SampleProviders;
+using ValveResourceFormat.Renderer.Audio.SampleProviders;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// Implements the "csgo_mega" sound event type, and Half-Life: Alyx's "choreo_3d", whose keys are a

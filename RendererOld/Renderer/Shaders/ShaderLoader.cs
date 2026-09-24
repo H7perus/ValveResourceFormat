@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.Shaders
+namespace ValveResourceFormat.RendererOld.Shaders
 {
     /// <summary>
     /// Shader stage types in the rendering pipeline.

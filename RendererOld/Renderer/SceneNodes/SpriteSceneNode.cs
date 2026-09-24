@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 using PrimitiveType = OpenTK.Graphics.OpenGL.PrimitiveType;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     class SpriteSceneNode : SceneNode
     {

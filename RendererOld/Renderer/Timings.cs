@@ -3,7 +3,7 @@ using System.Globalization;
 using OpenTK.Graphics.OpenGL;
 using QueryId = System.Int32;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 /// <summary>
 /// Utility class for measuring CPU and GPU timings of code regions.
 /// </summary>

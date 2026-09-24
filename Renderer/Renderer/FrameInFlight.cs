@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
-using ValveResourceFormat.Renderer2.RHI;
-using Buffer = ValveResourceFormat.Renderer2.RHI.Buffer;
+using ValveResourceFormat.Renderer.RHI;
+using Buffer = ValveResourceFormat.Renderer.RHI.Buffer;
 using Vortice.Vulkan;
-namespace ValveResourceFormat.Renderer2;
+namespace ValveResourceFormat.Renderer;
 
 internal class FrameInFlight
 {

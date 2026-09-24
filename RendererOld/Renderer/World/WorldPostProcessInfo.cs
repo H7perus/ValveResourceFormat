@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.SceneEnvironment;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
 
-namespace ValveResourceFormat.Renderer.World
+namespace ValveResourceFormat.RendererOld.World
 {
     /// <summary>One color correction LUT contributing to the current frame, with its blend weight.</summary>
     public readonly record struct WeightedLut(RenderTexture Lut, float Weight, int Dimensions);

@@ -3,14 +3,14 @@ using System.IO;
 using System.Reflection;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.CompiledShader;
-using ValveResourceFormat.Renderer.Materials;
-using ValveResourceFormat.Renderer.PostProcess;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.Materials;
+using ValveResourceFormat.RendererOld.PostProcess;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.World;
 using ValveResourceFormat.ResourceTypes;
 using Color4 = OpenTK.Mathematics.Color4;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Main renderer for Source 2 scenes with support for shadows, post-processing, and multiple render passes.
@@ -805,12 +805,12 @@ public class Renderer
                 RenderOutlineLayer(renderContext);
             }
 
-            var overlayBatch = ValveResourceFormat.Renderer.LightTilesOverlay.BatchFor(ViewBuffer!.Data.RenderMode);
+            var overlayBatch = ValveResourceFormat.RendererOld.LightTilesOverlay.BatchFor(ViewBuffer!.Data.RenderMode);
 
-            if (overlayBatch != ValveResourceFormat.Renderer.LightTilesOverlay.Batch.None)
+            if (overlayBatch != ValveResourceFormat.RendererOld.LightTilesOverlay.Batch.None)
             {
                 var (tileBase, words) = Scene.LightBinner.GetOverlayRegion(
-                    overlayBatch == ValveResourceFormat.Renderer.LightTilesOverlay.Batch.EnvMaps);
+                    overlayBatch == ValveResourceFormat.RendererOld.LightTilesOverlay.Batch.EnvMaps);
 
                 LightTilesOverlay.Render(Scene.LightBinner.CullBits, tileBase, words);
             }

@@ -1,11 +1,11 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using Entity = ValveResourceFormat.ResourceTypes.EntityLump.Entity;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// Everything <see cref="EntityFactory"/> needs to bring an entity into the world: its keyvalues, the

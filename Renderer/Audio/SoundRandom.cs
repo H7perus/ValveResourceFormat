@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// Small allocation-free random source (xorshift64), reseeded in place on every play.

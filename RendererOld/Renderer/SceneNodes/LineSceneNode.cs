@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Scene node that renders a list of line segments.

@@ -7,7 +7,7 @@ using System.Text.RegularExpressions;
 using SlangShaderSharp;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2.RHI.ShaderCompile
+namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
 {
     public class SlangShaderCompiler
     {

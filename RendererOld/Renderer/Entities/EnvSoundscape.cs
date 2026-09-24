@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.Audio;
+using ValveResourceFormat.RendererOld.Audio;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>env_soundscape</c> / <c>snd_soundscape</c>. Registers the region the map's ambient bed plays from:

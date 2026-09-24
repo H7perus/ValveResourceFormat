@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ThirdParty;
 
-namespace ValveResourceFormat.Renderer.Shaders
+namespace ValveResourceFormat.RendererOld.Shaders
 {
     /// <summary>OpenGL shader program with uniform management and material defaults.</summary>
     public class Shader

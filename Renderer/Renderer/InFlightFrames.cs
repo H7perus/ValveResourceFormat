@@ -4,7 +4,7 @@ using System.Text;
 
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2;
+namespace ValveResourceFormat.Renderer;
 
 internal class InFlightFrames
 {

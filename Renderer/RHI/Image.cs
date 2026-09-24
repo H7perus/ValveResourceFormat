@@ -5,9 +5,9 @@ using Vortice.Vulkan;
 
 using static Vortice.Vulkan.Vma;
 using static Vortice.Vulkan.Vulkan;
-using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
+using static ValveResourceFormat.Renderer.RHI.S2vDevice;
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     public class Image : IResource
     {

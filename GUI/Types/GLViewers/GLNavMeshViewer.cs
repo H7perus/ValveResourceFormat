@@ -1,6 +1,6 @@
 using GUI.Utils;
 using ValveResourceFormat.NavMesh;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 //using ValveResourceFormat.Renderer.SceneNodes;
 
 namespace GUI.Types.GLViewers

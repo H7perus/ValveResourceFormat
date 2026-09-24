@@ -2,7 +2,7 @@ using System.Globalization;
 using ValveKeyValue;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// A piecewise mapping curve from sound event data (e.g. "distance_volume_mapping_curve").

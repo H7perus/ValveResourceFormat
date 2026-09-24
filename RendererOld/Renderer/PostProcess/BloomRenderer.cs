@@ -2,7 +2,7 @@ using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using Vector2i = OpenTK.Mathematics.Vector2i;
 
-namespace ValveResourceFormat.Renderer.PostProcess;
+namespace ValveResourceFormat.RendererOld.PostProcess;
 
 /// <summary>
 /// Post-processing renderer that creates bloom effects using multi-pass Gaussian blur.

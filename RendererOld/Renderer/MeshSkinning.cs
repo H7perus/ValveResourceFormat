@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// How many bones a vertex blends. Doubles as the <c>D_SKINNING</c> combo value.

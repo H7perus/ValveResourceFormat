@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Marks a vertex struct field as a shader input. The buffer format follows from the field type, see

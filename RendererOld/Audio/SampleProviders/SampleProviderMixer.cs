@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
+namespace ValveResourceFormat.RendererOld.Audio.SampleProviders;
 
 /// <summary>
 /// The root mixer. Unlike <see cref="SampleProviderMulti"/> it always produces a full buffer,

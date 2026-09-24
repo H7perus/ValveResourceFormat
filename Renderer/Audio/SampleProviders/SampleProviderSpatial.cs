@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
 
 /// <summary>
 /// Applies per-ear volumes to a stereo stream based on the listener's orientation.

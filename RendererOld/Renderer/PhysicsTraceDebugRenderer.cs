@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.Input;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.Input;
+using ValveResourceFormat.RendererOld.SceneNodes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Debug visualization for physics traces: draws the player collision hull while player

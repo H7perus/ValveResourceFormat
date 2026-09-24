@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer2.Materials;
+using ValveResourceFormat.Renderer.Materials;
 
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// Single GPU draw operation with geometry, material, and render state.

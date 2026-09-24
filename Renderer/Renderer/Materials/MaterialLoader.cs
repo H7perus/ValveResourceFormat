@@ -9,7 +9,7 @@ using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 using VrfMaterial = ValveResourceFormat.ResourceTypes.Material;
 
-namespace ValveResourceFormat.Renderer2.Materials
+namespace ValveResourceFormat.Renderer.Materials
 {
     /// <summary>
     /// Loads and caches materials and textures from Source 2 resources.

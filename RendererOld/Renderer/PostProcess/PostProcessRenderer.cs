@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.SceneEnvironment;
+using ValveResourceFormat.RendererOld.World;
 
-namespace ValveResourceFormat.Renderer.PostProcess
+namespace ValveResourceFormat.RendererOld.PostProcess
 {
     /// <summary>
     /// Post-processing renderer for tonemapping, color grading, and adaptive exposure.

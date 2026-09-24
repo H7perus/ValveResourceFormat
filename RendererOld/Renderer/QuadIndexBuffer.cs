@@ -2,7 +2,7 @@ using System.Buffers;
 using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Pre-computed index buffer for rendering quads as triangle pairs.

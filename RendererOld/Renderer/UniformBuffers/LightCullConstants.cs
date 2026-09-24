@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ValveResourceFormat.Renderer.Buffers
+namespace ValveResourceFormat.RendererOld.Buffers
 {
     /// <summary>Layout of one scene's cull masks, plus the view they were built against.</summary>
     /// <remarks>

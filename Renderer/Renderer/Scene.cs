@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using ValveResourceFormat.CompiledShader;
-using ValveResourceFormat.Renderer2.RHI;
-using ValveResourceFormat.Renderer2.SceneNodes;
+using ValveResourceFormat.Renderer.RHI;
+using ValveResourceFormat.Renderer.SceneNodes;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2;
+namespace ValveResourceFormat.Renderer;
 
 public class Scene
 {

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio.SampleProviders;
+namespace ValveResourceFormat.Renderer.Audio.SampleProviders;
 
 internal static class MixScratch
 {

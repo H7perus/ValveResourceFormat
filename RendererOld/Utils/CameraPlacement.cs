@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Utils
+namespace ValveResourceFormat.RendererOld.Utils
 {
     /// <summary>
     /// Picks where to put the camera when the viewer focuses something.

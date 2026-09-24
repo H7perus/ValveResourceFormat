@@ -1,7 +1,7 @@
-using ValveResourceFormat.Renderer.Audio;
+using ValveResourceFormat.RendererOld.Audio;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>func_rotating</c>. A brush that spins about one axis at up to <c>maxspeed</c> degrees per second,

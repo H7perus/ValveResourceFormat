@@ -6,6 +6,8 @@ struct Parameters : IParameters
 {
     float4x4 view;
     float4x4 projection;
+
+    [IsSrgb] float3 test;
 };
 
 struct VS_OUT {
@@ -36,7 +38,7 @@ void vertMain(VInput VInput,
     out_.clipPos = mul(ViewConstants.g_matViewToProjection, mul(ViewConstants.g_matWorldToView, float4(VInput.pos, 1.0f)));
 
     out_.linearDepth = out_.clipPos.z / out_.clipPos.w;
-    out_.normal = VInput.normalData.tang;
+    out_.normal = VInput.normalData.normal;
     out_.uv = VInput.uv;
 }
 

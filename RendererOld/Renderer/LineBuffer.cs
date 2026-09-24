@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Vertex array/buffer pair for drawing a colored line list with the default shader.

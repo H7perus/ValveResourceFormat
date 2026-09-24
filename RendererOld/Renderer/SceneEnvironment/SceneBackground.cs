@@ -1,5 +1,5 @@
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment
+namespace ValveResourceFormat.RendererOld.SceneEnvironment
 {
     /// <summary>
     /// Default scene background with configurable solid or gradient rendering.

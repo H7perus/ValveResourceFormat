@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Renders an infinite reference grid on the XY plane.

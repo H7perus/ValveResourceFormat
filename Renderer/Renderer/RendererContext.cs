@@ -2,9 +2,9 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer2.Materials;
-using ValveResourceFormat.Renderer2.Shaders;
-namespace ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer.Materials;
+using ValveResourceFormat.Renderer.Shaders;
+namespace ValveResourceFormat.Renderer;
 
 /// <summary>
 /// Shared context containing loaders and caches used by the renderer.

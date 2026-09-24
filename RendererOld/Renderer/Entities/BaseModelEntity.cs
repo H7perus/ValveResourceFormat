@@ -1,10 +1,10 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// An entity with something to draw, Source's <c>CBaseModelEntity</c>.

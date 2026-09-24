@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Input;
+namespace ValveResourceFormat.RendererOld.Input;
 
 /// <summary>
 /// Closed-form, framerate-independent solvers for ground movement under combined friction

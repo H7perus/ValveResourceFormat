@@ -1,4 +1,4 @@
-global using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
+global using static ValveResourceFormat.Renderer.RHI.S2vDevice;
 using System.Runtime.InteropServices;
 //using SDL;
 using Vortice.Vulkan;
@@ -9,7 +9,7 @@ using static Vortice.Vulkan.Vulkan;
 
 
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     public static class S2vDevice
     {
@@ -19,7 +19,7 @@ namespace ValveResourceFormat.Renderer2.RHI
         {
             if (RenderDevice == null)
             {
-                RenderDevice = new ValveResourceFormat.Renderer2.RHI.Device();
+                RenderDevice = new ValveResourceFormat.Renderer.RHI.Device();
             }
         }
     }

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 #pragma warning disable CA1069 // Enum values should not be duplicated
 

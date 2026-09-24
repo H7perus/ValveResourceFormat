@@ -4,7 +4,7 @@ using System.Text;
 using Microsoft.VisualBasic.FileIO;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2.RHI;
+namespace ValveResourceFormat.Renderer.RHI;
 
 
 public struct RenderingAttachmentInfo

@@ -1,6 +1,6 @@
 using ValveResourceFormat.ResourceTypes.ModelData;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     internal class HitboxSceneNode : ShapeSceneNode
     {

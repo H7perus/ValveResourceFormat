@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio.Decoders;
+namespace ValveResourceFormat.Renderer.Audio.Decoders;
 
 /// <summary>
 /// Reusable per-thread scratch buffers for the decode pipeline. Decoding is a byte/float relay race

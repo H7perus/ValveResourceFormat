@@ -1,8 +1,8 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging.Abstractions;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer;
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.RendererOld;
+using ValveResourceFormat.RendererOld.Input;
 
 namespace Tests.Renderer
 {
@@ -47,7 +47,7 @@ namespace Tests.Renderer
             var context = new RendererContext(fileLoader, NullLogger.Instance);
             HarnessContexts.Add(context);
 
-            var renderer = new ValveResourceFormat.Renderer.Renderer(context);
+            var renderer = new ValveResourceFormat.RendererOld.Renderer(context);
             var input = new UserInput(renderer);
             var renderCamera = new Camera();
 

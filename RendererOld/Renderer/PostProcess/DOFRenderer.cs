@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer.PostProcess;
+namespace ValveResourceFormat.RendererOld.PostProcess;
 
 /// <summary>Depth-of-field post-processing renderer using a bokeh scatter approach.</summary>
 public class DOFRenderer

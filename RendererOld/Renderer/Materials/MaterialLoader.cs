@@ -11,7 +11,7 @@ using SkiaSharp;
 using ValveResourceFormat.ResourceTypes;
 using VrfMaterial = ValveResourceFormat.ResourceTypes.Material;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>
     /// Loads and caches materials and textures from Source 2 resources.

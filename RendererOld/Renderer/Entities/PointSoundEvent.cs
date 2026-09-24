@@ -1,8 +1,8 @@
-using ValveResourceFormat.Renderer.Audio;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.Audio;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>point_soundevent</c>. Plays a sound event, either the moment the map starts or whenever entity I/O

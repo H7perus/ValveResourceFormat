@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment;
+namespace ValveResourceFormat.RendererOld.SceneEnvironment;
 
 /// <summary>
 /// Scene node for indirect lighting via light probe volumes.

@@ -3,7 +3,7 @@ using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 using static ValveResourceFormat.ResourceTypes.EntityLump;
 
-namespace ValveResourceFormat.Renderer.SceneNodes;
+namespace ValveResourceFormat.RendererOld.SceneNodes;
 
 /// <summary>
 /// A single stop along a <c>xen_flora_animatedmover</c>'s path, resolved from a <c>path_corner</c> entity.

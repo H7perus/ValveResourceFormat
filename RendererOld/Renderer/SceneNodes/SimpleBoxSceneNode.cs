@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     class SimpleBoxSceneNode : ShapeSceneNode
     {

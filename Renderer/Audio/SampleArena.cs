@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace ValveResourceFormat.Renderer2.Audio;
+namespace ValveResourceFormat.Renderer.Audio;
 
 /// <summary>
 /// Slab allocator for decoded PCM16 samples. All cached sounds live as (offset, length) regions inside

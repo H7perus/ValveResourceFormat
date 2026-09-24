@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles.Renderers
+namespace ValveResourceFormat.RendererOld.Particles.Renderers
 {
     /// <summary>
     /// Starts a sound event per spawned particle, then steers its position and volume by handle while

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 public partial class GPUMeshBufferCache
 {

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Single GPU draw operation with geometry, material, and render state.

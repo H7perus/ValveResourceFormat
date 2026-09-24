@@ -1,6 +1,6 @@
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Maps <see cref="ImageFormat"/>, the engine format vocabulary, to the OpenGL equivalents.

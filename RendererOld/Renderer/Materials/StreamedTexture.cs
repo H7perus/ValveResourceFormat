@@ -2,7 +2,7 @@ using System.Threading;
 using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Materials
+namespace ValveResourceFormat.RendererOld.Materials
 {
     /// <summary>
     /// Bookkeeping for one asynchronously loading texture, doubling as the thread pool work item for

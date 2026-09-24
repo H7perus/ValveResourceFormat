@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
-namespace ValveResourceFormat.Renderer.SceneEnvironment;
+namespace ValveResourceFormat.RendererOld.SceneEnvironment;
 
 /// <summary>
 /// Environment map reflection probe with box or sphere projection.

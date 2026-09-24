@@ -1,7 +1,7 @@
 using System.Globalization;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// Marks a method as an entity I/O input handler, the equivalent of Source's <c>DEFINE_INPUTFUNC</c>.

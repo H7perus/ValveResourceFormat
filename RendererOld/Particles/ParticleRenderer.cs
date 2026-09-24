@@ -4,11 +4,11 @@ using ValveKeyValue;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.Particles.Utils;
-using ValveResourceFormat.Renderer.Particles.Renderers;
+using ValveResourceFormat.RendererOld.Particles.Renderers;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Particles
+namespace ValveResourceFormat.RendererOld.Particles
 {
     /// <summary>
     /// Draws a <see cref="ParticleSystemSimulation"/>. One of these mirrors each system in the

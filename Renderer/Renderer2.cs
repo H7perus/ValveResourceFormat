@@ -1,8 +1,8 @@
 using System.Runtime.InteropServices;
-using ValveResourceFormat.Renderer2.RHI;
+using ValveResourceFormat.Renderer.RHI;
 using Vortice.Vulkan;
 
-namespace ValveResourceFormat.Renderer2;
+namespace ValveResourceFormat.Renderer;
 
 public class Renderer2
 {

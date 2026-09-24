@@ -1,6 +1,6 @@
-using ValveResourceFormat.Renderer.Input;
+using ValveResourceFormat.RendererOld.Input;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// One tick's worth of buttons, what is down now, and what changed since the tick before.

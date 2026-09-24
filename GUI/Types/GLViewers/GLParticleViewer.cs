@@ -8,7 +8,7 @@ using ValveKeyValue;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Particles;
 using ValveResourceFormat.Particles.Upgrade;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 //using ValveResourceFormat.Renderer.Particles;
 //using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes;

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>trigger_teleport</c>. Moves whatever enters its volume to the entity named by <c>target</c>, keeping

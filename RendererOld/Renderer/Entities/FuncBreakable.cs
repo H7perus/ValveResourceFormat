@@ -1,6 +1,6 @@
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary><c>func_breakable</c>. A solid brush that can be broken</summary>
 public sealed class FuncBreakable : BaseModelEntity

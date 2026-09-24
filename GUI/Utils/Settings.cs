@@ -1,7 +1,7 @@
 using System.IO;
 using ValveKeyValue;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer.Utils;
+using ValveResourceFormat.RendererOld.Utils;
 
 namespace GUI.Utils
 {

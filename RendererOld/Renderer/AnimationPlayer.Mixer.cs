@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Blends the weighted animation clips playing on one skeleton into a single frame.

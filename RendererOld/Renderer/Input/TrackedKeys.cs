@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Input;
+namespace ValveResourceFormat.RendererOld.Input;
 
 /// <summary>
 /// Flags for keyboard and mouse input state tracking.

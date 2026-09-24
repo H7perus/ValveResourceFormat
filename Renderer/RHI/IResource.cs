@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace ValveResourceFormat.Renderer2.RHI
+namespace ValveResourceFormat.Renderer.RHI
 {
     //With VK_EXT_descriptor_heap, these would become resource index and sampler index respectively.
     [StructLayout(LayoutKind.Sequential)]

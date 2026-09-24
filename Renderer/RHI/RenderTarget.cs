@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using Vortice.Vulkan;
-using ValveResourceFormat.Renderer2.RHI.Utils;
-namespace ValveResourceFormat.Renderer2.RHI;
+using ValveResourceFormat.Renderer.RHI.Utils;
+namespace ValveResourceFormat.Renderer.RHI;
 
 internal class RenderTarget : IResource
 {

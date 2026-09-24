@@ -8,7 +8,7 @@ using GUI.Forms;
 using GUI.Types.Viewers;
 using GUI.Utils;
 using ValveResourceFormat.IO;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 //using ValveResourceFormat.Renderer.Materials;
 //using ValveResourceFormat.Renderer.SceneNodes;
 using ValveResourceFormat.ResourceTypes;

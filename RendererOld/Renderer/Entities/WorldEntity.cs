@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>worldspawn</c>, Source's <c>CWorld</c>: the root of the entity hierarchy. Every world has exactly

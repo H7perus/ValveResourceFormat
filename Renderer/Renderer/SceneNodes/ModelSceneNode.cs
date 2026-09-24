@@ -10,7 +10,7 @@ using ValveResourceFormat.ResourceTypes.ModelData.Attachments;
 using ValveResourceFormat.Serialization.KeyValues;
 using ValveResourceFormat.Utils;
 
-namespace ValveResourceFormat.Renderer2.SceneNodes
+namespace ValveResourceFormat.Renderer.SceneNodes
 {
     /// <summary>
     /// Scene node for rendering animated models with skeletal animation and morph targets.

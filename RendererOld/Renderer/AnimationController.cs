@@ -2,7 +2,7 @@ using System.Diagnostics;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using ValveResourceFormat.ResourceTypes.ModelFlex;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Drives a model's skeleton from whichever <see cref="AnimationPlayer"/> owns the animation being

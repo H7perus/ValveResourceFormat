@@ -1,7 +1,7 @@
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// <c>prop_door_rotating</c>, Source's <c>CPropDoorRotating</c>: the swinging model door on maps like

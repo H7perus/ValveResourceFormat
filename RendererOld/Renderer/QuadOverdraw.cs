@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Quad overdraw debug visualization.

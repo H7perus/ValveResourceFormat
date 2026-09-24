@@ -5,9 +5,9 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using static ValveResourceFormat.Renderer.Shaders.ShaderLoader;
+using static ValveResourceFormat.RendererOld.Shaders.ShaderLoader;
 
-namespace ValveResourceFormat.Renderer.Shaders
+namespace ValveResourceFormat.RendererOld.Shaders
 {
     /// <summary>
     /// Preprocesses shader source files and extracts defines and render modes.

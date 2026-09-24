@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Rendering pass types that define draw call ordering.

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// The window side of a graphics context: the surface whose commands the context drives.

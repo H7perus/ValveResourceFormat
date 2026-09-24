@@ -9,17 +9,17 @@ using GUI.Utils;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.IO;
 using ValveResourceFormat.IO.ContentFormats.HalfEdgeMesh;
-using ValveResourceFormat.Renderer2;
+using ValveResourceFormat.Renderer;
 //using ValveResourceFormat.Renderer.SceneEnvironment;
-using ValveResourceFormat.Renderer2.SceneNodes;
+using ValveResourceFormat.Renderer.SceneNodes;
 //using ValveResourceFormat.Renderer.Utils;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.ResourceTypes.ModelAnimation;
 using Vortice.Vulkan;
-using static ValveResourceFormat.Renderer2.RHI.S2vDevice;
-using ValveResourceFormat.Renderer2.RHI;
-using RhiBuffer = ValveResourceFormat.Renderer2.RHI.Buffer;
-using SlangShaderCompiler = ValveResourceFormat.Renderer2.RHI.ShaderCompile.SlangShaderCompiler;
+using static ValveResourceFormat.Renderer.RHI.S2vDevice;
+using ValveResourceFormat.Renderer.RHI;
+using RhiBuffer = ValveResourceFormat.Renderer.RHI.Buffer;
+using SlangShaderCompiler = ValveResourceFormat.Renderer.RHI.ShaderCompile.SlangShaderCompiler;
 
 namespace GUI.Types.GLViewers
 {

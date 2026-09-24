@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2.Audio.Decoders;
+namespace ValveResourceFormat.Renderer.Audio.Decoders;
 
 /// <summary>
 /// Microsoft ADPCM (WAVE format tag 2) decoder. Blocks are self-contained (each carries its own

@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer2
+namespace ValveResourceFormat.Renderer
 {
     /// <summary>
     /// Spatial partitioning structure for efficient scene node culling and queries.

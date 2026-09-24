@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.World;
+using ValveResourceFormat.RendererOld.World;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>
     /// Sorts and dispatches batched mesh draw calls for a render pass.

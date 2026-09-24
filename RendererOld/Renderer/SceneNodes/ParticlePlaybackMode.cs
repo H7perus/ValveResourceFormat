@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Which parts of an effect a <see cref="ParticleSceneNode"/> playback cycle covers.

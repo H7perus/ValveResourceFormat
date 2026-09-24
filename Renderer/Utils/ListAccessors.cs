@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace ValveResourceFormat.Renderer2.Utils;
+namespace ValveResourceFormat.Renderer.Utils;
 
 class ListAccessors<T>
 {

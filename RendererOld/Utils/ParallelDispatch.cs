@@ -1,7 +1,7 @@
 using System.Runtime.ExceptionServices;
 using System.Threading;
 
-namespace ValveResourceFormat.Renderer.Utils;
+namespace ValveResourceFormat.RendererOld.Utils;
 
 /// <summary>
 /// A body of work split by index across <see cref="ParallelDispatch"/>. Implemented by a long lived

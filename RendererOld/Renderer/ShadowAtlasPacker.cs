@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>Describes the position and size of a shadow map region within the atlas texture.</summary>
 public record struct ShadowAtlasRegion(int X, int Y, int Width, int Height)

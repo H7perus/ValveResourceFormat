@@ -1,11 +1,11 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.World
+namespace ValveResourceFormat.RendererOld.World
 {
     /// <summary>
     /// Loads scene objects and aggregates from a world node resource.

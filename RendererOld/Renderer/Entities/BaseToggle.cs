@@ -1,7 +1,7 @@
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.KeyValues;
 
-namespace ValveResourceFormat.Renderer.Entities;
+namespace ValveResourceFormat.RendererOld.Entities;
 
 /// <summary>
 /// The base of the brush entities that travel between two places, Source's <c>CBaseToggle</c>: buttons,

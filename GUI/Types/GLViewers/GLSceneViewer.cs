@@ -7,10 +7,10 @@ using GUI.Controls;
 using GUI.Types.Audio;
 using GUI.Utils;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer2;
-using ValveResourceFormat.Renderer2.RHI;
+using ValveResourceFormat.Renderer;
+using ValveResourceFormat.Renderer.RHI;
 //using ValveResourceFormat.Renderer.Audio;
-using ValveResourceFormat.Renderer2.Input;
+using ValveResourceFormat.Renderer.Input;
 //using ValveResourceFormat.Renderer.Materials;
 //using ValveResourceFormat.Renderer.SceneNodes;
 //using ValveResourceFormat.Renderer.Utils;
@@ -20,7 +20,7 @@ namespace GUI.Types.GLViewers
 {
     internal abstract class GLSceneViewer : GLBaseControl
     {
-        public ValveResourceFormat.Renderer2.Renderer2 Renderer { get; internal set; }
+        public ValveResourceFormat.Renderer.Renderer2 Renderer { get; internal set; }
         //VKTODO:
         public UserInput Input { get; protected set; }
         //public ValveResourceFormat.Renderer.TextRenderer TextRenderer { get; protected set; }
@@ -89,8 +89,8 @@ namespace GUI.Types.GLViewers
         private int frameTimeNextId;
         private int frameTimeCount;
 
-        private readonly ValveResourceFormat.Renderer.TextRenderer.TextBuffer fpsText = new("FPS: 10000  CPU: 10000.0ms  GPU: 10000.0ms");
-        private readonly ValveResourceFormat.Renderer.TextRenderer.TextBuffer speedText = new("Speed: 100000.0 u/s");
+        private readonly ValveResourceFormat.RendererOld.TextRenderer.TextBuffer fpsText = new("FPS: 10000  CPU: 10000.0ms  GPU: 10000.0ms");
+        private readonly ValveResourceFormat.RendererOld.TextRenderer.TextBuffer speedText = new("Speed: 100000.0 u/s");
         private int frametimeQuery1;
         private int frametimeQuery2;
 
@@ -635,7 +635,7 @@ namespace GUI.Types.GLViewers
             //}
         }
 
-        protected void DrawLowerCornerText(ValveResourceFormat.Renderer.TextRenderer.TextMemory text, Color32 color, int lineFromBottom = 0)
+        protected void DrawLowerCornerText(ValveResourceFormat.RendererOld.TextRenderer.TextMemory text, Color32 color, int lineFromBottom = 0)
         {
             //Debug.Assert(MainFramebuffer != null);
 

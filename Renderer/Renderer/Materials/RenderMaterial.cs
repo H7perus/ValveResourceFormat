@@ -3,11 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.Blocks;
-using ValveResourceFormat.Renderer2.RHI;
+using ValveResourceFormat.Renderer.RHI;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.VfxEval;
 
-namespace ValveResourceFormat.Renderer2.Materials
+namespace ValveResourceFormat.Renderer.Materials
 {
     /// <summary>Names the sampler uniforms bound to a <see cref="ReservedTextureSlots"/> member. Names may share a slot when their texture targets differ, since a unit holds one binding per target, or when no shader variant declares both.</summary>
     /// <param name="names">The sampler uniform names bound to this slot.</param>

@@ -5,7 +5,7 @@ using System.Reflection;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ResourceTypes;
 
-namespace ValveResourceFormat.Renderer
+namespace ValveResourceFormat.RendererOld
 {
     /// <summary>Gives the shader input names of a <see cref="VertexSlot"/>, and the buffer semantic
     /// that gets that slot.</summary>

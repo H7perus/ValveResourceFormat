@@ -1,9 +1,9 @@
 using System.Threading;
 using Microsoft.Extensions.Logging;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.Materials;
+using ValveResourceFormat.RendererOld.Materials;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// OpenGL environment initialization and default render state configuration.

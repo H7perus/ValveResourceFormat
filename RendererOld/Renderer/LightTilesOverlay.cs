@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using OpenTK.Graphics.OpenGL;
-using ValveResourceFormat.Renderer.Materials;
+using ValveResourceFormat.RendererOld.Materials;
 
-namespace ValveResourceFormat.Renderer;
+namespace ValveResourceFormat.RendererOld;
 
 /// <summary>
 /// Fullscreen overlay for the LightTiles and EnvmapTiles render modes, reading the tile masks directly

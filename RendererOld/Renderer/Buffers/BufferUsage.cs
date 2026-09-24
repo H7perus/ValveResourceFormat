@@ -1,4 +1,4 @@
-namespace ValveResourceFormat.Renderer.Buffers;
+namespace ValveResourceFormat.RendererOld.Buffers;
 
 /// <summary>
 /// Who writes a buffer and who reads it, which decides the memory it is allocated from.

@@ -3,7 +3,7 @@ using OpenTK.Graphics.OpenGL;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.ThirdParty;
 
-namespace ValveResourceFormat.Renderer.SceneNodes
+namespace ValveResourceFormat.RendererOld.SceneNodes
 {
     /// <summary>
     /// Debug scene node that draws voxel visibility cluster bounds as colored wireframe boxes.

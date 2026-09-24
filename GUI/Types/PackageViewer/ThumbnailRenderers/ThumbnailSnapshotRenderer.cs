@@ -1,7 +1,7 @@
 using ValveResourceFormat;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Particles;
-using ValveResourceFormat.Renderer.SceneNodes;
+using ValveResourceFormat.RendererOld.SceneNodes;
 
 namespace GUI.Types.PackageViewer.ThumbnailRenderers;
 
@@ -25,7 +25,7 @@ internal class ThumbnailSnapshotRenderer : ThumbnailRenderer
         SceneRenderer.Scene.Add(particleSceneNode, true);
 
         // Update once with 100ms to give the burst emitter a chance to place the particles
-        var updateContext = new ValveResourceFormat.Renderer.Scene.UpdateContext
+        var updateContext = new ValveResourceFormat.RendererOld.Scene.UpdateContext
         {
             Camera = SceneRenderer.Camera,
             TextRenderer = null!,
