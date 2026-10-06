@@ -23,10 +23,10 @@
   <ItemGroup>
     <Using Include="ValveResourceFormat.Utils" />
     <Using Include="ValveResourceFormat.CompiledShader" />
-    <Using Include="ValveResourceFormat.Renderer.Utils" />
-    <Using Include="ValveResourceFormat.Renderer.Shaders" />
-    <Using Include="ValveResourceFormat.Renderer.Materials" />
-    <Using Include="ValveResourceFormat.Renderer.Buffers" />
+    <Using Include="ValveResourceFormat.RendererOld.Utils" />
+    <Using Include="ValveResourceFormat.RendererOld.Shaders" />
+    <Using Include="ValveResourceFormat.RendererOld.Materials" />
+    <Using Include="ValveResourceFormat.RendererOld.Buffers" />
   </ItemGroup>
 
   <ItemGroup>

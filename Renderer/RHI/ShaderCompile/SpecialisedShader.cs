@@ -43,7 +43,7 @@ namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
         IReadOnlyDictionary<VkShaderStageFlags, string> Stages,
         IReadOnlyList<VertexInput> VertexInputs,
         IReadOnlyList<StructMember> PushConstants,
-        IReadOnlyList<StructMember> MaterialParameters,
+        ParameterLayout? MaterialParameters,
 
         //we might not want to move this around. This is a leftover from my own RHI. Rest is def needed for pipeline creation though.
         IReadOnlyList<CompileTimeConstantValue> CompileTimeConstantValues

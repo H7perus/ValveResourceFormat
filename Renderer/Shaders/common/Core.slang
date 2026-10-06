@@ -15,6 +15,6 @@ struct ConstantRange
 };
 
 [__AttributeUsage(_AttributeTargets.Var)]
-struct IsSrgb;
+struct SrgbRead;
 
 

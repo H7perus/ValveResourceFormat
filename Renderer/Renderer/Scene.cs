@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using ValveResourceFormat.CompiledShader;
+using ValveResourceFormat.Renderer.Materials;
 using ValveResourceFormat.Renderer.RHI;
 using ValveResourceFormat.Renderer.SceneNodes;
 using Vortice.Vulkan;
@@ -110,7 +111,11 @@ public class Scene
                 {
                     foreach (var drawCall in renderableMesh.DrawCallsOpaque)
                     {
-                        cmd.BindGraphicsPipeline(drawCall.Material.Pipeline.Current);
+                        // Read once, so the bound pipeline and the layout the parameters are filled for cannot differ
+                        var pipeline = drawCall.Material.Pipeline.Current;
+
+                        cmd.BindGraphicsPipeline(pipeline);
+                        cmd.PushConstants(drawCall.Material.PrepareParameterBuffer(pipeline), RenderMaterial.ParameterBufferPushConstantOffset);
 
                         cmd.BindVertexBuffer(drawCall.VertexBuffers[0]);
 

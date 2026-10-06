@@ -381,7 +381,8 @@ unsafe public class CommandList : IDisposable
 
     public void PushConstants<T>(T data, uint offset = 0) where T : struct
     {
-        if (offset + sizeof(T) > 8)
+        // Must match the push constant range size of the shared pipeline layout in Device
+        if (offset + sizeof(T) > 16)
         {
             throw new ArgumentException($"The size of {nameof(T)} exceeds the available push constant range");
         }

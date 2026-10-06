@@ -4,21 +4,12 @@ import common.ViewConstants;
 
 struct Parameters : IParameters
 {
-    float4x4 view;
-    float4x4 projection;
-
-    [IsSrgb] float3 test;
+    [SrgbRead] DescriptorHandle<Sampler2D> g_tColor;
+    float g_flDetailBlendFactor;
 };
-
-struct VS_OUT {
-    float4 clipPos : SV_Position;
-    float3 normal : TEXCOORD0;
-    float2 uv : TEXCOORD1;
-    float linearDepth : TEXCOORD2;
-};
-
 
 [vk::push_constant] PushData<Parameters> pc;
+
 
 public struct VInput
 {
@@ -27,9 +18,13 @@ public struct VInput
     float2 uv : TEXCOORD0;
 }
 
+struct VS_OUT {
+    float4 clipPos : SV_Position;
+    float3 normal : TEXCOORD0;
+    float2 uv : TEXCOORD1;
+    float linearDepth : TEXCOORD2;
+};
 
-//Adding a test comment too for good measure
-  
 [shader("vertex")]
 void vertMain(VInput VInput,
     out VS_OUT out_
@@ -48,13 +43,12 @@ void fragMain(
     out float4 color: SV_Target,
     out float outDepth: SV_Depth
 ) {
-    DescriptorHandle<Sampler2D> texture = DescriptorHandle<Sampler2D>(uint2(0, 0));
 
     // Visualize normals: convert from [-1,1] to [0,1] range
     float3 normColor = in_.normal * 0.5f + 0.5f;
-    color = float4(normColor, 1.0f);
-
-    //color = texture.Sample(in_.uv);
+    color = float4(pc.Parameters.g_flDetailBlendFactor); //float4(normColor, 1.0f);
+    
+    //color = pc.Parameters.g_tColor.Sample(in_.uv);
 
     outDepth = in_.linearDepth;
 }

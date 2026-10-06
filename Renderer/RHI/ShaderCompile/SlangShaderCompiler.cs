@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using SlangShaderSharp;
+using ValveResourceFormat.Utils;
 using Vortice.Vulkan;
 
 namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
@@ -108,7 +110,6 @@ namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
                 else
                     throw new Exception("Unspecified error during shader compilation!");
             }
-                
 
             List<CompileTimeConstant> compileTimeConstants = new();
 
@@ -257,7 +258,7 @@ namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
             Dictionary<VkShaderStageFlags, string> stages = new();
             List<VertexInput> vertexInputs = new();
             List<StructMember> pushConstants = new();
-            List<StructMember> parameters = new();
+            ParameterLayout? parameterLayout = null;
 
             List<StructMember> compileTimeConstants = new();
 
@@ -334,24 +335,7 @@ namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
 
                             var parameterStruct = innerGenericContainer.GetConcreteType(innerGenericContainer.GetTypeParameter(0));
 
-
-                            // this better work
-                            var parameterStructTypeLayout = slangSession.GetTypeLayout(parameterStruct, 0, LayoutRules.DefaultConstantBuffer, out var typeLayoutDiag);
-
-                            var parameterCount = parameterStructTypeLayout.FieldCount;
-
-                            for (uint parameterIndex = 0; parameterIndex < (uint)parameterCount; parameterIndex++)
-                            {
-                                var parameter = parameterStructTypeLayout.GetFieldByIndex(parameterIndex);
-
-
-                                parameters.Add(new()
-                                {
-                                    Name = parameter.Name,
-                                    Type = GetTypeString(parameter.Type),
-                                    Offset = (uint)parameter.GetOffset()
-                                });
-                            }
+                            parameterLayout = ReflectParameterLayout(parameterStruct);
 
                             parametersFound = true;
                         }
@@ -376,10 +360,144 @@ namespace ValveResourceFormat.Renderer.RHI.ShaderCompile
     Stages: stages,
     VertexInputs: vertexInputs,
     PushConstants: pushConstants,
-    MaterialParameters: parameters,
+    MaterialParameters: parameterLayout,
     CompileTimeConstantValues: defaultCompileTimeConstantValues);
         }
 
+
+        private ParameterLayout ReflectParameterLayout(TypeReflection parameterStruct)
+        {
+            var typeLayout = slangSession.GetTypeLayout(parameterStruct, 0, LayoutRules.DefaultConstantBuffer, out _);
+            var size = (uint)typeLayout.GetSize(SlangParameterCategory.Uniform);
+
+            var members = new List<ParameterMember>((int)typeLayout.FieldCount);
+            var defaultBytes = new byte[size];
+
+            for (uint i = 0; i < typeLayout.FieldCount; i++)
+            {
+                var field = typeLayout.GetFieldByIndex(i);
+                var member = ReflectParameterMember(field);
+
+                members.Add(member);
+                WriteParameterDefault(field.Variable, member, defaultBytes);
+            }
+
+            return new ParameterLayout(members, size, defaultBytes);
+        }
+
+        private static ParameterMember ReflectParameterMember(VariableLayoutReflection field)
+        {
+            var name = field.Name;
+            var offset = (uint)field.GetOffset();
+            var size = (uint)field.TypeLayout.GetSize(SlangParameterCategory.Uniform);
+            var flags = HasAttribute(field.Variable, "SrgbRead") ? ParameterFlags.SrgbRead : ParameterFlags.None;
+
+            // The type layout of a handle is its lowered uint2, only the declared type knows what it points at
+            if (field.Type.Kind == SlangTypeKind.Struct && field.Type.Name == "DescriptorHandle")
+            {
+                var handleGeneric = field.Type.GenericContainer;
+                var resourceType = handleGeneric.GetConcreteType(handleGeneric.GetTypeParameter(0));
+
+                var dimension = resourceType.Kind == SlangTypeKind.Resource
+                    ? GetTextureDimension(resourceType.ResourceShape)
+                    : TextureDimension.None;
+
+                if (dimension == TextureDimension.None)
+                {
+                    throw new NotSupportedException($"Material parameter '{name}' is a handle to '{resourceType.Name}' ({resourceType.ResourceShape}), only non-multisampled textures are supported");
+                }
+
+                return new ParameterMember(name, ElementType.None, 1, 1, offset, size, dimension, flags);
+            }
+
+            var typeLayout = field.TypeLayout;
+
+            if (typeLayout.Kind is not (SlangTypeKind.Scalar or SlangTypeKind.Vector or SlangTypeKind.Matrix))
+            {
+                throw new NotSupportedException($"Material parameter '{name}' is a {typeLayout.Kind}, only scalars, vectors, matrices and texture handles are supported");
+            }
+
+            var elementType = typeLayout.ScalarType switch
+            {
+                SlangScalarType.Float32 => ElementType.Float,
+                SlangScalarType.Int32 => ElementType.Int,
+                SlangScalarType.UInt32 => ElementType.Uint,
+                SlangScalarType.Bool => ElementType.Bool,
+                _ => throw new NotSupportedException($"Material parameter '{name}' has {typeLayout.ScalarType} components, only 32 bit float, int, uint and bool are supported"),
+            };
+
+            var rows = typeLayout.Kind == SlangTypeKind.Matrix ? typeLayout.RowCount : 1;
+            var columns = typeLayout.Kind == SlangTypeKind.Scalar ? 1 : typeLayout.ColumnCount;
+
+            return new ParameterMember(name, elementType, (byte)rows, (byte)columns, offset, size, TextureDimension.None, flags);
+        }
+
+        private static void WriteParameterDefault(VariableReflection variable, in ParameterMember member, byte[] defaultBytes)
+        {
+            // A null blob means there is no initializer, a failure means there is one reflection cannot evaluate
+            var result = variable.GetDefaultValueBlob(out var blob);
+
+            if (result.Failed)
+            {
+                throw new NotSupportedException($"The default value of material parameter '{member.Name}' cannot be reflected ({result.GetSymbolicName()}), remove the initializer or simplify it to a constant");
+            }
+
+            if (blob == null)
+            {
+                return;
+            }
+
+            var value = blob.Buffer;
+
+            if ((uint)value.Length != member.Size)
+            {
+                throw new NotSupportedException($"The default value of material parameter '{member.Name}' is {value.Length} bytes, expected {member.Size}");
+            }
+
+            var target = defaultBytes.AsSpan((int)member.Offset, (int)member.Size);
+            value.CopyTo(target);
+
+            if (member.IsSrgbRead && member.ElementType == ElementType.Float)
+            {
+                var color = MemoryMarshal.Cast<byte, float>(target);
+                var linear = ColorSpace.SrgbGammaToLinear(new Vector3(color[0], color[1], color[2]));
+
+                color[0] = linear.X;
+                color[1] = linear.Y;
+                color[2] = linear.Z;
+            }
+        }
+
+        private static bool HasAttribute(VariableReflection variable, string name)
+        {
+            for (uint i = 0; i < variable.AttributeCount; i++)
+            {
+                if (variable.GetAttribute(i).Name == name)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static TextureDimension GetTextureDimension(SlangResourceShape shape)
+        {
+            // Combined sampling and shadow comparison do not change the shape, multisampling does
+            const SlangResourceShape ShapeMask = SlangResourceShape.BaseShapeMask | SlangResourceShape.TextureArrayFlag | SlangResourceShape.TextureMultisampleFlag;
+
+            return (shape & ShapeMask) switch
+            {
+                SlangResourceShape.Texture1D => TextureDimension.Texture1D,
+                SlangResourceShape.Texture2D => TextureDimension.Texture2D,
+                SlangResourceShape.Texture3D => TextureDimension.Texture3D,
+                SlangResourceShape.TextureCube => TextureDimension.TextureCube,
+                SlangResourceShape.Texture1DArray => TextureDimension.Texture1DArray,
+                SlangResourceShape.Texture2DArray => TextureDimension.Texture2DArray,
+                SlangResourceShape.TextureCubeArray => TextureDimension.TextureCubeArray,
+                _ => TextureDimension.None,
+            };
+        }
 
         private List<VertexInput> ReflectVertexInputs(EntryPointReflection vertexStageReflection)
         {

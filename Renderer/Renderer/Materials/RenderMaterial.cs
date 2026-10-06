@@ -1,11 +1,14 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using ValveResourceFormat.Blocks;
 using ValveResourceFormat.Renderer.RHI;
 using ValveResourceFormat.ResourceTypes;
 using ValveResourceFormat.Serialization.VfxEval;
+using ValveResourceFormat.Utils;
+using Vortice.Vulkan;
 
 namespace ValveResourceFormat.Renderer.Materials
 {
@@ -91,13 +94,14 @@ namespace ValveResourceFormat.Renderer.Materials
         /// <summary>Gets whether this material can perform early depth priming and then shade with Equal comparison.</summary>
         public bool CanPrimeDepth => !hasDepthBias && !IsOverlay && !disableDepthTest;
 
+        /// <summary>The byte offset of <c>parameterBuffer</c> in the shaders' <c>PushData</c>, after the view constants handle.</summary>
+        internal const uint ParameterBufferPushConstantOffset = 8;
+
         private readonly MaterialLoader? Loader;
+        private readonly RendererContext? rendererContext;
 
-        //VKTODO: This will be built straight from shader reflection for now.
         private RHI.Buffer? parameters;
-
-        //VKTODO?: private Globals? globals;
-        //VKTODO?: private GlobalsLayout? filledLayout;
+        private ParameterLayout? filledLayout;
         private uint filledVersion;
 
         private uint InputsVersion => unchecked(
@@ -122,6 +126,7 @@ namespace ValveResourceFormat.Renderer.Materials
         public RenderMaterial(Material material, RendererContext rendererContext, VBIB vbib, Dictionary<string, byte>? shaderArguments)
             : this(material)
         {
+            this.rendererContext = rendererContext;
             Loader = rendererContext.MaterialLoader;
 
             var materialArguments = material.GetShaderArguments();
@@ -323,6 +328,140 @@ namespace ValveResourceFormat.Renderer.Materials
                 6 => BlendMode.ModThenAdd,
                 _ => blendMode,
             };
+        }
+
+        /// <summary>
+        /// Gets the handle of this material's parameter buffer for drawing with <paramref name="pipeline"/>, creating
+        /// a new buffer when the pipeline's layout or any material input changed since the last fill.
+        /// </summary>
+        /// <remarks>
+        /// A buffer is never rewritten once filled, since frames still in flight may be reading it. Changes create a
+        /// new buffer instead and retire the old one through the destroy queue.
+        /// </remarks>
+        /// <param name="pipeline">The pipeline being bound for the draw, read once from <see cref="Pipeline"/>.</param>
+        /// <returns>The buffer handle, or a default handle when the pipeline's shader declares no parameters.</returns>
+        internal DescriptorHandle<RHI.Buffer> PrepareParameterBuffer(PipelineGraphics pipeline)
+        {
+            var layout = pipeline.ParameterLayout;
+
+            if (layout == null || layout.Size == 0)
+            {
+                RetireParameterBuffer();
+                filledLayout = layout;
+                return default;
+            }
+
+            if (parameters != null && filledVersion == InputsVersion && layout.IsEquivalentTo(filledLayout))
+            {
+                // Keeps the next comparison a reference check after a reload that left the layout unchanged
+                filledLayout = layout;
+                return parameters.DescriptorHandle;
+            }
+
+            RetireParameterBuffer();
+
+            var name = Material.Name.Length > 0 ? Material.Name : ShaderName;
+            parameters = new RHI.Buffer(layout.Size, VkBufferUsageFlags.UniformBuffer, VmaMemoryUsage.CpuToGpu, name: $"{name} parameters");
+
+            FillParameterBuffer(layout, parameters);
+
+            filledLayout = layout;
+            filledVersion = InputsVersion;
+
+            return parameters.DescriptorHandle;
+        }
+
+        private void RetireParameterBuffer()
+        {
+            if (parameters == null)
+            {
+                return;
+            }
+
+            Debug.Assert(rendererContext != null, "Only materials created with a renderer context own a parameter buffer.");
+            rendererContext.DestroyQueue.Enqueue(parameters, rendererContext.CurrentFrame);
+            parameters = null;
+        }
+
+        private unsafe void FillParameterBuffer(ParameterLayout layout, RHI.Buffer buffer)
+        {
+            var mapped = new Span<byte>(buffer.Map(), (int)layout.Size);
+
+            layout.DefaultBytes.CopyTo(mapped);
+
+            foreach (var (name, member) in layout.Members)
+            {
+                var target = mapped.Slice((int)member.Offset, (int)member.Size);
+
+                if (member.IsTexture)
+                {
+                    if (Textures.TryGetValue(name, out var texture))
+                    {
+                        MemoryMarshal.Write(target, texture.DescriptorHandle);
+                    }
+
+                    continue;
+                }
+
+                if (member.IsMatrix)
+                {
+                    // Matrix4x4 memory order is the transpose of the column-major layout, which is what row-vector math expects
+                    if (member is { ElementType: ElementType.Float, Rows: 4, Columns: 4 } && Matrices.TryGetValue(name, out var matrix))
+                    {
+                        MemoryMarshal.Write(target, matrix);
+                    }
+
+                    continue;
+                }
+
+                if (member.Columns == 1)
+                {
+                    if (FloatParams.TryGetValue(name, out var floatValue))
+                    {
+                        WriteComponent(target, member.ElementType, floatValue);
+                    }
+                    else if (IntParams.TryGetValue(name, out var intValue))
+                    {
+                        WriteComponent(target, member.ElementType, intValue);
+                    }
+
+                    continue;
+                }
+
+                if (VectorParams.TryGetValue(name, out var vector))
+                {
+                    if (member.IsSrgbRead)
+                    {
+                        vector = new Vector4(ColorSpace.SrgbGammaToLinear(vector.AsVector3()), vector.W);
+                    }
+
+                    for (var i = 0; i < member.Columns; i++)
+                    {
+                        WriteComponent(target[(i * sizeof(float))..], member.ElementType, vector[i]);
+                    }
+                }
+            }
+
+            buffer.Unmap();
+        }
+
+        private static void WriteComponent(Span<byte> target, ElementType elementType, double value)
+        {
+            switch (elementType)
+            {
+                case ElementType.Float:
+                    MemoryMarshal.Write(target, (float)value);
+                    break;
+                case ElementType.Int:
+                    MemoryMarshal.Write(target, (int)value);
+                    break;
+                case ElementType.Uint:
+                    MemoryMarshal.Write(target, (uint)(long)value);
+                    break;
+                case ElementType.Bool:
+                    MemoryMarshal.Write(target, value != 0 ? 1u : 0u);
+                    break;
+            }
         }
 
         /// <summary>

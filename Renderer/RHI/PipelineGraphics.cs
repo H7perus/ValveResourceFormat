@@ -58,6 +58,7 @@ namespace ValveResourceFormat.Renderer.RHI
             BlendStateDescription = blendState;
 #endif
 
+            ParameterLayout = shader.MaterialParameters;
 
             VkShaderModule shaderModule;
             fixed (byte* pSpirv = shader.Spirv.Span)

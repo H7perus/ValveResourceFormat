@@ -54,8 +54,6 @@ public class Renderer2
     /// </summary>
     public float DeltaTime { get; set; }
 
-    private DestroyQueue DestroyQueue = new();
-
 
     /// <summary>
     /// Shared renderer context containing loaders and caches.
@@ -100,7 +98,7 @@ public class Renderer2
     {
         var Frame = InFlightFrames.StartNextFrame();
         RendererContext.CurrentFrame = InFlightFrames.FramesSubmitted;
-        DestroyQueue.ProcessDestroys(InFlightFrames.FramesCompleted);
+        RendererContext.DestroyQueue.ProcessDestroys(InFlightFrames.FramesCompleted);
 
         var cmd = Frame.CommandList;
 
