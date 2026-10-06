@@ -625,10 +625,11 @@ namespace ValveResourceFormat.Renderer.RHI
             VkWriteDescriptorSet write = new()
             {
                 dstSet = RenderDevice!.SharedBindlessDescriptorSet,
-                dstBinding = 6,
+                // Bindings are numbered after their descriptor type, see CreateSharedBindlessDescriptorSetLayout
+                dstBinding = (uint)(BindlessBindingIndex)descriptorType,
                 dstArrayElement = bindlessIndex,
                 descriptorCount = 1,
-                descriptorType = VkDescriptorType.UniformBuffer,
+                descriptorType = descriptorType,
                 pBufferInfo = &bufferInfo
             };
 
@@ -751,6 +752,7 @@ namespace ValveResourceFormat.Renderer.RHI
             VkPushConstantRange pushRange = new()
             {
                 stageFlags = VkShaderStageFlags.All,
+                // Must match the bounds check in CommandList.PushConstants
                 size = 16
             };
 
