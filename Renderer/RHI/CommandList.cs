@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using Microsoft.VisualBasic.FileIO;
@@ -135,6 +136,8 @@ unsafe public class CommandList : IDisposable
 
     internal void BlitImageToImage(Image a, Image b)
     {
+        Debug.Assert(a.ArrayLayers == b.ArrayLayers, "Blitting requires matching layer counts");
+
         VkImageBlit2 blit = new()
         {
             srcSubresource = new VkImageSubresourceLayers
@@ -142,22 +145,22 @@ unsafe public class CommandList : IDisposable
                 aspectMask = VkImageAspectFlags.Color,
                 mipLevel = 0,
                 baseArrayLayer = 0,
-                layerCount = 1
+                layerCount = a.ArrayLayers
             },
             dstSubresource = new VkImageSubresourceLayers
             {
                 aspectMask = VkImageAspectFlags.Color,
                 mipLevel = 0,
                 baseArrayLayer = 0,
-                layerCount = 1
+                layerCount = b.ArrayLayers
             }
         };
 
         blit.srcOffsets[0] = new VkOffset3D(0, 0, 0);
-        blit.srcOffsets[1] = new VkOffset3D((int)a.Width, (int)a.Height, 1);
+        blit.srcOffsets[1] = new VkOffset3D((int)a.Width, (int)a.Height, (int)a.Depth);
 
         blit.dstOffsets[0] = new VkOffset3D(0, 0, 0);
-        blit.dstOffsets[1] = new VkOffset3D((int)b.Width, (int)b.Height, 1);
+        blit.dstOffsets[1] = new VkOffset3D((int)b.Width, (int)b.Height, (int)b.Depth);
 
         VkBlitImageInfo2 info = new()
         {
@@ -178,9 +181,9 @@ unsafe public class CommandList : IDisposable
         {
             aspectMask = VkImageAspectFlags.Color,
             baseMipLevel = 0,
-            levelCount = (uint)image.MipLayouts.Length,
+            levelCount = image.MipLevels,
             baseArrayLayer = 0,
-            layerCount = 1
+            layerCount = image.ArrayLayers
         };
 
         RenderDevice!.VkDeviceApi.vkCmdClearColorImage(
@@ -200,9 +203,9 @@ unsafe public class CommandList : IDisposable
         {
             aspectMask = VkImageAspectFlags.Depth,
             baseMipLevel = 0,
-            levelCount = (uint)image.MipLayouts.Length,
+            levelCount = image.MipLevels,
             baseArrayLayer = 0,
-            layerCount = 1
+            layerCount = image.ArrayLayers
         };
 
         VkClearDepthStencilValue value = new VkClearDepthStencilValue(depthValue, stencilValue);
@@ -324,7 +327,7 @@ unsafe public class CommandList : IDisposable
                 baseMipLevel = mipLevel,
                 levelCount = 1,
                 baseArrayLayer = 0,
-                layerCount = 1
+                layerCount = image.ArrayLayers
             }
         };
 

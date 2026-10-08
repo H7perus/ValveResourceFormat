@@ -64,7 +64,7 @@ namespace ValveResourceFormat.Renderer.RHI
                 {
                     Capacity = capacity;
                 }
-                
+
                 public uint Allocate()
                 {
                     if (FreeIndices.TryPop(out uint index))
@@ -86,30 +86,40 @@ namespace ValveResourceFormat.Renderer.RHI
                     FreeIndices.Push(index);
                 }
             }
-            private readonly BindlessSlotAllocator[] Allocators;
+            private readonly Dictionary<BindlessBindingIndex, BindlessSlotAllocator> Allocators = [];
 
-            public BindlessManagerType()
+            public BindlessManagerType(IReadOnlyDictionary<BindlessBindingIndex, uint> capacities)
             {
-                Allocators = new BindlessSlotAllocator[Enum.GetValues<BindlessBindingIndex>().Length];
-                for (int i = 0; i < Allocators.Length; i++)
-                    Allocators[i] = new BindlessSlotAllocator(1000);
+                foreach (var (binding, capacity) in capacities)
+                {
+                    Allocators[binding] = new BindlessSlotAllocator(capacity);
+                }
             }
 
-            public uint GetFreeBindlessIndex(BindlessBindingIndex bindingIndex)
-            {
-                var allocatorIndex = Array.IndexOf(Enum.GetValues<BindlessBindingIndex>(), bindingIndex);
+            public uint GetBindlessIndex(BindlessBindingIndex bindingIndex) => Allocators[bindingIndex].Allocate();
 
-                return Allocators[allocatorIndex].Allocate();
-            }
-
-            public void FreeBindlessIndex(BindlessBindingIndex bindingIndex, uint index)
-            {
-                var allocatorIndex = Array.IndexOf(Enum.GetValues<BindlessBindingIndex>(), bindingIndex);
-
-                Allocators[allocatorIndex].Free(index);
-            }
+            public void FreeBindlessIndex(BindlessBindingIndex bindingIndex, uint index) => Allocators[bindingIndex].Free(index);
         }
-        private readonly BindlessManagerType BindlessManager = new();
+
+        // Slots and samplers are also created on loading and thread pool threads while frames are recorded,
+        // so the slot allocators, writes into the shared set and the sampler cache must not overlap
+        private readonly Lock BindlessLock = new();
+        private readonly Lock SamplerLock = new();
+
+        // Uploads are submitted from thread pool threads, and a queue must not be submitted to from two threads
+        // at once. Without a dedicated transfer family both locks are the same object, since the transfer queue
+        // is then the graphics queue, which the render thread submits and presents on.
+        internal Lock GraphicsQueueLock { get; } = new();
+        internal Lock TransferQueueLock { get; private set; } = null!;
+
+        private BindlessManagerType BindlessManager = null!;
+        private readonly Dictionary<BindlessBindingIndex, uint> BindlessCapacities = [];
+
+        /// <summary>The core features the device was created with.</summary>
+        public VkPhysicalDeviceFeatures EnabledFeatures { get; private set; }
+
+        /// <summary>The highest anisotropy a sampler may use, only meaningful when <c>samplerAnisotropy</c> is enabled.</summary>
+        public float MaxSamplerAnisotropy { get; private set; }
         public VkDescriptorSetLayout SharedBindlessDescriptorSetLayout;
         public VkDescriptorSet SharedBindlessDescriptorSet;
         public VkPipelineLayout SharedPipelineLayout;
@@ -280,15 +290,26 @@ namespace ValveResourceFormat.Renderer.RHI
 
             Console.WriteLine("Picked GPU: " + Marshal.PtrToStringAnsi((nint)properties.deviceName));
 
+            MaxSamplerAnisotropy = properties.limits.maxSamplerAnisotropy;
+
+            var properties12 = new VkPhysicalDeviceVulkan12Properties();
+            var properties2 = new VkPhysicalDeviceProperties2 { pNext = &properties12 };
+            VkInstanceApi.vkGetPhysicalDeviceProperties2(VkPhysicalDevice, &properties2);
+
+            ComputeBindlessCapacities(properties12);
+            BindlessManager = new BindlessManagerType(BindlessCapacities);
+
+            VkInstanceApi.vkGetPhysicalDeviceFeatures(VkPhysicalDevice, out var supportedFeatures);
 
             var features12 = new VkPhysicalDeviceVulkan12Features
             {
                 descriptorBindingSampledImageUpdateAfterBind = true,
                 descriptorBindingUniformBufferUpdateAfterBind = true,
                 descriptorBindingStorageBufferUpdateAfterBind = true,
+                descriptorBindingUpdateUnusedWhilePending = true,
                 descriptorBindingPartiallyBound = true,
                 descriptorBindingVariableDescriptorCount = true,
-                
+
                 runtimeDescriptorArray = true
             };
 
@@ -320,6 +341,8 @@ namespace ValveResourceFormat.Renderer.RHI
                 pQueuePriorities = &transferQueuePriority
             };
 
+            // Each family may only be listed once, without a dedicated transfer family the graphics queue does both
+            var hasDedicatedTransferFamily = QueueFamilyIndices.TransferFamily != QueueFamilyIndices.GraphicsFamily;
             var queueCreateInfos = stackalloc VkDeviceQueueCreateInfo[2] { graphicsQueueCreateInfo, transferQueueCreateInfo };
 
 
@@ -327,14 +350,24 @@ namespace ValveResourceFormat.Renderer.RHI
 
             VkStringArray extensionsArray = new VkStringArray(extensions);
 
+            // Compressed formats can only be used with their feature enabled, the rest is optional quality
+            var features10 = new VkPhysicalDeviceFeatures
+            {
+                imageCubeArray = true,
+                samplerAnisotropy = supportedFeatures.samplerAnisotropy,
+                textureCompressionBC = supportedFeatures.textureCompressionBC,
+                textureCompressionETC2 = supportedFeatures.textureCompressionETC2,
+            };
+
+            EnabledFeatures = features10;
+
             var deviceCreateInfo = new VkDeviceCreateInfo
             {
                 sType = VkStructureType.DeviceCreateInfo,
-                queueCreateInfoCount = 2,
+                queueCreateInfoCount = hasDedicatedTransferFamily ? 2u : 1u,
                 pQueueCreateInfos = queueCreateInfos,
 
-                //Sketch as hell
-                pEnabledFeatures = null,
+                pEnabledFeatures = &features10,
                 enabledExtensionCount = extensionsArray.Length,
                 ppEnabledExtensionNames = extensionsArray,
                 pNext = &features13
@@ -350,6 +383,8 @@ namespace ValveResourceFormat.Renderer.RHI
             VkDeviceApi.vkGetDeviceQueue(QueueFamilyIndices.GraphicsFamily!.Value, 0, out _graphicsQueue);
 
             VkDeviceApi.vkGetDeviceQueue(QueueFamilyIndices.TransferFamily!.Value, 0, out _transferQueue);
+
+            TransferQueueLock = hasDedicatedTransferFamily ? new Lock() : GraphicsQueueLock;
 
 
             VmaAllocatorCreateInfo allocatorCreateInfo = new()
@@ -400,14 +435,13 @@ namespace ValveResourceFormat.Renderer.RHI
                     indices.TransferFamily = i;
                 }
 
-
-                if (!indices.GraphicsFamily.HasValue)
-                {
-                    throw new Exception("This RenderDevice does not have a queue family supporting graphics AND present");
-                }
-
                 if (indices.IsComplete)
                     break;
+            }
+
+            if (!indices.GraphicsFamily.HasValue)
+            {
+                throw new Exception("This RenderDevice does not have a queue family supporting graphics AND present");
             }
 
             // fallback: no dedicated transfer family found, just reuse graphics
@@ -450,6 +484,8 @@ namespace ValveResourceFormat.Renderer.RHI
 
         public VkSampler CreateSampler(VkSamplerCreateInfo samplerInfo)
         {
+            using var _ = SamplerLock.EnterScope();
+
             if (Samplers.TryGetValue(samplerInfo, out var sampler))
             {
                 return sampler;
@@ -549,7 +585,10 @@ namespace ValveResourceFormat.Renderer.RHI
                 pSignalSemaphoreInfos = &renderFinishedSemaphoreInfo
             };
 
-            VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, fifFreed);
+            using (GraphicsQueueLock.EnterScope())
+            {
+                VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, fifFreed);
+            }
         }
         unsafe public void SubmitGraphics(CommandList list, VkSemaphore imageAvailableSemaphore, VkSemaphore renderFinishedSemaphore, VkSemaphore timelineSemaphore, ulong timelineSignalValue)
         {
@@ -591,7 +630,10 @@ namespace ValveResourceFormat.Renderer.RHI
                     pSignalSemaphoreInfos = pInfos
                 };
 
-                VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, 0);
+                using (GraphicsQueueLock.EnterScope())
+                {
+                    VkDeviceApi.vkQueueSubmit2(_graphicsQueue, submitInfo, 0);
+                }
             }
         }
 
@@ -608,12 +650,38 @@ namespace ValveResourceFormat.Renderer.RHI
                 pCommandBufferInfos = &cmdBufferSubmitInfo,
             };
 
-            VkDeviceApi.vkQueueSubmit2(_transferQueue, submitInfo, transferFinished);
-            
+            using (TransferQueueLock.EnterScope())
+            {
+                VkDeviceApi.vkQueueSubmit2(_transferQueue, submitInfo, transferFinished);
+            }
         }
+
+        /// <summary>Whether uploads run on a separate queue family, which then has to hand images over to the graphics family.</summary>
+        public bool HasDedicatedTransferFamily => QueueFamilyIndices.TransferFamily != QueueFamilyIndices.GraphicsFamily;
+
+        /// <summary>
+        /// Returns whether images of <paramref name="format"/> with the given shape can be sampled and uploaded to.
+        /// Compressed formats in particular depend on device features, and 3D support is optional for most of them.
+        /// </summary>
+        /// <param name="format">The texel format.</param>
+        /// <param name="dimension">The image shape.</param>
+        public unsafe bool SupportsSampledImage(VkFormat format, TextureDimension dimension)
+        {
+            var (imageType, _) = Image.GetImageTypes(dimension);
+            var flags = Image.IsCube(dimension) ? VkImageCreateFlags.CubeCompatible : VkImageCreateFlags.None;
+
+            VkImageFormatProperties imageFormatProperties;
+            var result = VkInstanceApi.vkGetPhysicalDeviceImageFormatProperties(VkPhysicalDevice, format, imageType, VkImageTiling.Optimal,
+                VkImageUsageFlags.Sampled | VkImageUsageFlags.TransferDst, flags, &imageFormatProperties);
+
+            return result == VkResult.Success;
+        }
+
         public unsafe uint GetBindlessSlot(VkDescriptorType descriptorType, VkBuffer bufferHandle)
         {
-            var bindlessIndex = BindlessManager.GetFreeBindlessIndex((BindlessBindingIndex)descriptorType);
+            using var _ = BindlessLock.EnterScope();
+
+            var bindlessIndex = BindlessManager.GetBindlessIndex((BindlessBindingIndex)descriptorType);
 
             VkDescriptorBufferInfo bufferInfo = new()
             {
@@ -640,7 +708,9 @@ namespace ValveResourceFormat.Renderer.RHI
 
         internal unsafe uint GetBindlessSlot(VkDescriptorType descriptorType, VkImageView imageViewHandle, VkSampler samplerHandle)
         {
-            var bindlessIndex = BindlessManager.GetFreeBindlessIndex((BindlessBindingIndex)descriptorType);
+            using var _ = BindlessLock.EnterScope();
+
+            var bindlessIndex = BindlessManager.GetBindlessIndex((BindlessBindingIndex)descriptorType);
 
             VkDescriptorImageInfo imageInfo = new();
             imageInfo.imageLayout = VkImageLayout.ShaderReadOnlyOptimal;
@@ -663,9 +733,15 @@ namespace ValveResourceFormat.Renderer.RHI
             return bindlessIndex; 
         }
 
-        //Dangerous as hell though probably fine if it goes through an UpdateSampler mechanism for the texture
+        // Rewrites a slot that frames still in flight may be sampling through. The spec only allows updating
+        // descriptors that pending command buffers do not use (UPDATE_UNUSED_WHILE_PENDING), and promises nothing
+        // about what in-flight work reads from one that is rewritten under it. This relies on drivers handing it
+        // either the old or the new descriptor, which has to hold on every vendor. If it does not, the fallback
+        // is a fresh slot per change, with the old one freed once the owning renderer's frames are done with it.
         internal unsafe void UpdateBindlessCombinedSampler(VkImageView imageViewHandle, VkSampler samplerHandle, uint bindlessIndex)
         {
+            using var _ = BindlessLock.EnterScope();
+
             VkDescriptorImageInfo imageInfo = new();
             imageInfo.imageLayout = VkImageLayout.ShaderReadOnlyOptimal;
             imageInfo.imageView = imageViewHandle;
@@ -687,7 +763,44 @@ namespace ValveResourceFormat.Renderer.RHI
 
         internal void FreeBindlessSlot(VkDescriptorType descriptorType, uint index)
         {
+            using var _ = BindlessLock.EnterScope();
+
             BindlessManager.FreeBindlessIndex((BindlessBindingIndex)descriptorType, index);
+        }
+
+        // Combined image samplers count against both the sampler and the sampled image limits, and every
+        // binding is visible to all stages, so the per stage limits apply on top of the per set ones
+        private void ComputeBindlessCapacities(in VkPhysicalDeviceVulkan12Properties limits)
+        {
+            const uint DesiredCapacity = 65536;
+
+            BindlessCapacities[BindlessBindingIndex.CombinedImageSampler] = Math.Min(DesiredCapacity, Math.Min(
+                Math.Min(limits.maxDescriptorSetUpdateAfterBindSampledImages, limits.maxPerStageDescriptorUpdateAfterBindSampledImages),
+                Math.Min(limits.maxDescriptorSetUpdateAfterBindSamplers, limits.maxPerStageDescriptorUpdateAfterBindSamplers)));
+
+            BindlessCapacities[BindlessBindingIndex.UniformBuffer] = Math.Min(DesiredCapacity,
+                Math.Min(limits.maxDescriptorSetUpdateAfterBindUniformBuffers, limits.maxPerStageDescriptorUpdateAfterBindUniformBuffers));
+
+            BindlessCapacities[BindlessBindingIndex.StorageBuffer] = Math.Min(DesiredCapacity,
+                Math.Min(limits.maxDescriptorSetUpdateAfterBindStorageBuffers, limits.maxPerStageDescriptorUpdateAfterBindStorageBuffers));
+
+            // All bindings together must also fit the per stage resource limit
+            var total = 0UL;
+
+            foreach (var capacity in BindlessCapacities.Values)
+            {
+                total += capacity;
+            }
+
+            if (total > limits.maxPerStageUpdateAfterBindResources)
+            {
+                var scale = (double)limits.maxPerStageUpdateAfterBindResources / total;
+
+                foreach (var binding in BindlessCapacities.Keys.ToArray())
+                {
+                    BindlessCapacities[binding] = (uint)(BindlessCapacities[binding] * scale);
+                }
+            }
         }
 
         private unsafe void CreateSharedBindlessDescriptorSetLayout()
@@ -703,12 +816,14 @@ namespace ValveResourceFormat.Renderer.RHI
                 //Looks like nonsense, but the bindings match VkDescriptorType's values. I believe this is by design on slangs side.
                 descriptorSetLayoutBindings[i].descriptorType = (VkDescriptorType)bindings[i];
                 descriptorSetLayoutBindings[i].stageFlags = VkShaderStageFlags.All;
-                //H7per: TODO: We probably want to make this more fine grained. We won't need as many buffers as we do textures, for instance.
-                descriptorSetLayoutBindings[i].descriptorCount = 1000;
+                descriptorSetLayoutBindings[i].descriptorCount = BindlessCapacities[bindings[i]];
             }
 
-            //These flags are static for us. Just annoying we have to have them N times.
-            VkDescriptorBindingFlags[] bindingFlags = Enumerable.Repeat(VkDescriptorBindingFlags.PartiallyBound | VkDescriptorBindingFlags.UpdateAfterBind, bindings.Length).ToArray();
+            // Slots are written while frames that use other slots of the same binding are still in flight,
+            // which only UpdateUnusedWhilePending allows
+            VkDescriptorBindingFlags[] bindingFlags = Enumerable.Repeat(
+                VkDescriptorBindingFlags.PartiallyBound | VkDescriptorBindingFlags.UpdateAfterBind | VkDescriptorBindingFlags.UpdateUnusedWhilePending,
+                bindings.Length).ToArray();
 
 
             fixed (VkDescriptorBindingFlags* pBindingFlags = bindingFlags)
@@ -778,7 +893,7 @@ namespace ValveResourceFormat.Renderer.RHI
             for (var i = 0; i < bindings.Length; i++)
             {
                 poolSizes[i].type = (VkDescriptorType)bindings[i];
-                poolSizes[i].descriptorCount = 10000;
+                poolSizes[i].descriptorCount = BindlessCapacities[bindings[i]];
             }
 
             fixed (VkDescriptorPoolSize* pPoolSizes = poolSizes)

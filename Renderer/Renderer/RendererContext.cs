@@ -30,8 +30,7 @@ public class RendererContext : IDisposable
     /// <summary>
     /// Background loader for textures.
     /// </summary>
-    //VKTODO:
-    //public TextureStreamingHelper TextureStreaming { get; }
+    public TextureStreamingHelper TextureStreaming { get; }
 
     /// <summary>
     /// Shader compiler and cache.
@@ -78,8 +77,7 @@ public class RendererContext : IDisposable
     {
         FileLoader = fileLoader;
         Logger = logger;
-        //VKTODO:
-        //TextureStreaming = new TextureStreamingHelper(this);
+        TextureStreaming = new TextureStreamingHelper(this);
         MaterialLoader = new MaterialLoader(this);
         ShaderLoader = new ShaderLoader(this);
         MeshBufferCache = new GPUMeshBufferCache(this);
@@ -108,8 +106,8 @@ public class RendererContext : IDisposable
         CancelLoading();
 
         disposed = true;
+        TextureStreaming.CancelAllStreaming();
         //VKTODO:
-        //TextureStreaming.CancelAllStreaming();
         //ShaderLoader?.Dispose();
     }
 
@@ -156,8 +154,7 @@ public class RendererContext : IDisposable
         {
             Logger.LogWarning("Loading did not stop within {Timeout}, carrying on without it", LoadStopTimeout);
         }
-        //VKTODO:
-        //TextureStreaming.DrainPendingLoads();
+        TextureStreaming.DrainPendingLoads();
 
         return stopped;
     }

@@ -314,7 +314,10 @@ namespace ValveResourceFormat.Renderer.RHI
                     pImageIndices = pImageIndex
                 };
 
-                RenderDevice!.VkDeviceApi.vkQueuePresentKHR(RenderDevice.GraphicsQueue, &presentInfo);
+                using (RenderDevice!.GraphicsQueueLock.EnterScope())
+                {
+                    RenderDevice!.VkDeviceApi.vkQueuePresentKHR(RenderDevice.GraphicsQueue, &presentInfo);
+                }
             }
         }
 

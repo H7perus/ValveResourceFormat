@@ -59,7 +59,7 @@ namespace ValveResourceFormat.Renderer.Materials
         /// <summary>Gets the map of matrix parameter names to their current values for this material.</summary>
         public MaterialInputs<Matrix4x4> Matrices { get; } = new();
 
-        /// <summary>Gets the map of texture parameter names to the bound <see cref="RenderTexture"/> objects for this material.</summary>
+        /// <summary>Gets the map of texture parameter names to the bound <see cref="RHI.Texture"/> objects for this material.</summary>
         public MaterialInputs<RHI.Texture> Textures { get; } = new();
 
         /// <summary>Gets or sets a value indicating whether this material is rendered as a screen-space or world-space overlay (polygon-offset, no depth write).</summary>
@@ -104,8 +104,21 @@ namespace ValveResourceFormat.Renderer.Materials
         private ParameterLayout? filledLayout;
         private uint filledVersion;
 
-        private uint InputsVersion => unchecked(
-            IntParams.Version + FloatParams.Version + VectorParams.Version + Matrices.Version + Textures.Version);
+        private uint InputsVersion
+        {
+            get
+            {
+                var version = unchecked(IntParams.Version + FloatParams.Version + VectorParams.Version + Matrices.Version + Textures.Version);
+
+                // A texture replaces the fallback written in its place once its first mip arrives
+                foreach (var texture in Textures.Values)
+                {
+                    version = unchecked(version + texture.ResidencyVersion);
+                }
+
+                return version;
+            }
+        }
 
         private BlendMode blendMode;
         private bool isRenderBackfaces;
@@ -395,7 +408,13 @@ namespace ValveResourceFormat.Renderer.Materials
 
                 if (member.IsTexture)
                 {
-                    if (Textures.TryGetValue(name, out var texture))
+                    // A handle to a view of another shape is invalid to sample, and so is a texture without any mips yet
+                    if (!Textures.TryGetValue(name, out var texture) || !texture.IsResident || texture.Dimension != member.TextureDimension)
+                    {
+                        texture = Loader?.GetFallbackTexture(member.TextureDimension);
+                    }
+
+                    if (texture != null)
                     {
                         MemoryMarshal.Write(target, texture.DescriptorHandle);
                     }

@@ -6,6 +6,7 @@ struct Parameters : IParameters
 {
     [SrgbRead] DescriptorHandle<Sampler2D> g_tColor;
     float g_flDetailBlendFactor;
+    [SrgbRead] float4 g_vTexCoordCenter;
 };
 
 [vk::push_constant] PushData<Parameters> pc;
@@ -46,9 +47,9 @@ void fragMain(
 
     // Visualize normals: convert from [-1,1] to [0,1] range
     float3 normColor = in_.normal * 0.5f + 0.5f;
-    color = float4(pc.Parameters.g_flDetailBlendFactor); //float4(normColor, 1.0f);
+    color = float4(pc.Parameters.g_vTexCoordCenter); //float4(normColor, 1.0f);
     
-    //color = pc.Parameters.g_tColor.Sample(in_.uv);
+    color = pc.Parameters.g_tColor.Sample(in_.uv);
 
     outDepth = in_.linearDepth;
 }
